@@ -1,34 +1,28 @@
-// Helper: parseWifiSignal
 function parseWifiSignal(raw: string) {
   const n = Number(String(raw).trim())
   return Number.isFinite(n) ? n : -1
 }
 
-// Helper: parseVolume
 function parseVolume(raw: string) {
   const m = String(raw).match(/([0-9.]+)/)
   if (!m) return 0.5
   const n = Number(m[1])
   return Number.isFinite(n) ? n : 0.5
 }
-// Helper: parseActiveWorkspace
 function parseActiveWorkspace(raw: string) {
   try {
     const parsed = JSON.parse(raw)
     const id = Number(parsed?.id)
     if (Number.isFinite(id) && id > 0) return id
   } catch {
-    // ignored
   }
   return 1
 }
 
-// Helper: parseWifiEnabled
 function parseWifiEnabled(raw: string) {
   return /enabled|yes|on|true/i.test(raw)
 }
 
-// Helper: clamp01
 function clamp01(x: number) {
   return Math.max(0, Math.min(1, x))
 }
@@ -190,9 +184,9 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
     parseWorkspaceIds(out),
   )
   const gcalEvents = createPoll(
-    "No events available.",
+    "No upcoming Google Calendar events.",
     6000,
-    ["bash", "-c", "~/.config/quickshell/calendar-events.sh 2>/dev/null || echo 'No events available.'"],
+    ["bash", "-lc", "$HOME/.config/ags/calendar-events.sh 2>/dev/null || echo 'No upcoming Google Calendar events.'"],
     (out) => {
       const cleaned = sanitizeEventText(out)
       return cleaned.length > 0 ? cleaned : "No upcoming Google Calendar events."
@@ -203,22 +197,31 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
   const [barWindowVisible, setBarWindowVisible] = createState(true)
   const [barRevealed, setBarRevealed] = createState(true)
   const [barReserved, setBarReserved] = createState(true)
-  // Force visibility for debugging
-  const forceVisible = true
   const [controlOpen, setControlOpen] = createState(false)
   const [powerMenuOpen, setPowerMenuOpen] = createState(false)
   const [pendingPowerAction, setPendingPowerAction] = createState<null | "lock" | "logout" | "reboot" | "shutdown">(null)
   const [calendarOpen, setCalendarOpen] = createState(false)
   const [desktopMenuOpen, setDesktopMenuOpen] = createState(false)
+  const [calendarAccountEmail, setCalendarAccountEmail] = createState<string | null>(null)
+  const [authDialogOpen, setAuthDialogOpen] = createState(false)
+  const [authDialogInfo, setAuthDialogInfo] = createState({
+    verification_url: "",
+    user_code: "",
+    device_code: "",
+    error: "",
+  })
+  let authPollStop: (() => void) | null = null
 
   const [brightnessPercent, setBrightnessPercent] = createState(100)
+
+  createEffect(() => {
+    const pct = brightnessPercent()
+    execAsync(["bash", "-lc", `$HOME/.config/ags/brightness-dim.sh ${Math.round(pct)}`]).catch(() => null)
+  })
   const [manualVolume, setManualVolume] = createState(0.5)
   const popupOpen = createComputed(() => controlOpen() || calendarOpen() || desktopMenuOpen() || powerMenuOpen())
   const effectiveBarVisible = createComputed(() => barVisible() || popupOpen())
   const effectiveBrightness = createComputed(() => Math.max(5, Math.min(100, Math.round(brightnessPercent()))))
-  const dimOpacity = createComputed(() => (100 - effectiveBrightness()) / 100)
-  const dimVisible = createComputed(() => dimOpacity() > 0.001)
-  const volumeValue = createComputed(() => manualVolume())
   const workspaceIds = createComputed(() => {
     const ids = workspaceListRaw()
     const active = activeWorkspace()
@@ -236,15 +239,6 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
     if (signal >= 1) return "▂"
     return "·"
   })
-  const clockDisplay = createComputed(() => {
-    const raw = clock()
-    const time = raw.split("  ")[1] || raw
-    if (calendarOpen()) return time
-
-    const parts = time.split(":")
-    if (parts.length >= 2) return `${parts[0]}:${parts[1]}`
-    return time
-  })
   const centerDisplay = createComputed(() => (calendarOpen() ? clock() : focusedWindowTitle()))
 
   let hideTimer: ReturnType<typeof timeout> | null = null
@@ -256,9 +250,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
   const barReserveReleaseDelay = 48
   const controlFlyoutMarginTop = 48
   const controlFlyoutMarginEnd = 18
-  // Place the power drawer flush with other flyouts at the top
-  const powerFlyoutMarginTop = 48;
-  const powerDrawerDuration = 260
+  const powerFlyoutMarginTop = 48
   const flyoutToggleSize = 24
 
   function closeFlyouts() {
@@ -267,6 +259,8 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
     setPendingPowerAction(null)
     setCalendarOpen(false)
     setDesktopMenuOpen(false)
+    setAuthDialogOpen(false)
+    if (authPollStop) { authPollStop(); authPollStop = null }
   }
 
   function togglePowerMenu() {
@@ -283,7 +277,6 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
   function toggleControl() {
     const next = !controlOpen()
     setControlOpen(next)
-    // Reset power submenu only when closing control flyout
     if (!next) {
       setPowerMenuOpen(false)
       setPendingPowerAction(null)
@@ -300,6 +293,10 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
     setControlOpen(false)
     setPowerMenuOpen(false)
     setDesktopMenuOpen(false)
+    if (!next) {
+      setAuthDialogOpen(false)
+      if (authPollStop) { authPollStop(); authPollStop = null }
+    }
   }
 
   function toggleDesktopMenu() {
@@ -308,6 +305,100 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
     setControlOpen(false)
     setPowerMenuOpen(false)
     setCalendarOpen(false)
+  }
+
+  execAsync(["bash", "-lc", "$HOME/.config/ags/calendar-auth.sh status"])
+    .then((out) => {
+      try {
+        const parsed = JSON.parse(out)
+        if (parsed.signed_in && parsed.email) {
+          setCalendarAccountEmail(parsed.email)
+        }
+      } catch { /* ignored */ }
+    })
+    .catch(() => null)
+
+  function handleAccountClick() {
+    if (calendarAccountEmail()) {
+      execAsync(["bash", "-lc", "$HOME/.config/ags/calendar-auth.sh logout"])
+        .then(() => {
+          setCalendarAccountEmail(null)
+        })
+        .catch(() => null)
+    } else {
+      setAuthDialogInfo({ verification_url: "", user_code: "", device_code: "", error: "" })
+      setAuthDialogOpen(true)
+      execAsync(["bash", "-lc", "$HOME/.config/ags/calendar-auth.sh login"])
+        .then((out) => {
+          try {
+            const parsed = JSON.parse(out)
+            if (parsed.status === "need_code") {
+              setAuthDialogInfo({
+                verification_url: parsed.verification_url || "",
+                user_code: parsed.user_code || "",
+                device_code: parsed.device_code || "",
+                error: "",
+              })
+            } else if (parsed.status === "error") {
+              setAuthDialogInfo({
+                verification_url: "",
+                user_code: "",
+                device_code: "",
+                error: parsed.message || "Login failed.",
+              })
+            }
+          } catch {
+            setAuthDialogInfo({
+              verification_url: "",
+              user_code: "",
+              device_code: "",
+              error: "Unexpected response from auth script.",
+            })
+          }
+        })
+        .catch(() => {
+          setAuthDialogInfo({
+            verification_url: "",
+            user_code: "",
+            device_code: "",
+            error: "Could not reach auth script.",
+          })
+        })
+    }
+  }
+
+  function startAuthPoll() {
+    const info = authDialogInfo()
+    if (!info.device_code) return
+    if (authPollStop) { authPollStop(); authPollStop = null }
+    let stopped = false
+    authPollStop = () => { stopped = true }
+    function poll() {
+      if (stopped) return
+      execAsync(["bash", "-lc", `$HOME/.config/ags/calendar-auth.sh poll ${info.device_code}`])
+        .then((out) => {
+          if (stopped) return
+          try {
+            const parsed = JSON.parse(out)
+            if (parsed.status === "success") {
+              setCalendarAccountEmail(parsed.email || null)
+              setAuthDialogOpen(false)
+              authPollStop = null
+              return
+            }
+            if (parsed.status === "error") {
+              setAuthDialogInfo({ ...authDialogInfo(), error: parsed.message || "Polling failed." })
+              authPollStop = null
+              return
+            }
+          } catch { /* ignored */ }
+          timeout(5000, poll)
+        })
+        .catch(() => {
+          if (!stopped) timeout(5000, poll)
+        })
+    }
+    poll()
   }
 
   function openAudioSettings() {
@@ -410,26 +501,6 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
   function openOverview() {
     execAsync(["hyprctl", "dispatch", "hyprexpo:expo", "toggle"]).catch(() => null)
     setDesktopMenuOpen(false)
-  }
-
-  function runCalendarCrud(action: "add" | "edit" | "delete" | "refresh") {
-    const shouldReopen = action !== "refresh" && calendarOpen()
-
-    if (shouldReopen) {
-      setCalendarOpen(false)
-      cancelHide()
-      setBarVisible(true)
-    }
-
-    execAsync(["bash", "-lc", `~/.config/quickshell/google-calendar-crud.sh ${action}`])
-      .catch(() => null)
-      .finally(() => {
-        if (shouldReopen) {
-          setCalendarOpen(true)
-          cancelHide()
-          setBarVisible(true)
-        }
-      })
   }
 
   function scheduleHide() {
@@ -591,27 +662,6 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
 
   return (
     <>
-      <window
-        visible={dimVisible}
-        name={`ags-dimmer-${monitorIndex}`}
-        class="DimmerWindow"
-        gdkmonitor={gdkmonitor}
-        anchor={TOP | LEFT | RIGHT | BOTTOM}
-        layer={Astal.Layer.OVERLAY}
-        keymode={Astal.Keymode.NONE}
-        exclusivity={Astal.Exclusivity.IGNORE}
-        canTarget={false}
-        application={app}
-      >
-        <box class="Dimmer" canTarget={false} hexpand vexpand
-          $={(self) => {
-            createEffect(() => {
-              self.opacity = dimOpacity()
-            })
-          }}
-        />
-      </window>
-
       <window
         visible={popupOpen}
         name={`ags-dismiss-${monitorIndex}`}
@@ -826,7 +876,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
             <centerbox>
               <label
                 $type="start"
-                label={volumeValue((v) => `Volume ${Math.round(v * 100)}%`)}
+                label={manualVolume((v) => `Volume ${Math.round(v * 100)}%`)}
                 xalign={0}
               />
               <box $type="center" />
@@ -843,7 +893,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
                 upper: 100,
                 stepIncrement: 1,
                 pageIncrement: 5,
-                value: Math.round(volumeValue() * 100),
+                value: Math.round(manualVolume() * 100),
               })}
               onValueChanged={(self) => {
                 const next = clamp01(self.get_value() / 100)
@@ -1032,27 +1082,72 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
         <box hexpand>
           <button class="DismissSurface" hexpand vexpand canTarget onClicked={closeFlyouts} />
           <box class="flyout calendar-flyout" orientation={Gtk.Orientation.VERTICAL} spacing={10} marginBottom={40}>
-            <label class="flyout-title" label="Calendar" xalign={0.5} />
+            <centerbox>
+              <box $type="start" widthRequest={34} />
+              <label $type="center" class="flyout-title" label="Calendar" xalign={0.5} />
+              <button $type="end" class="calendar-account-btn" onClicked={handleAccountClick}
+                tooltipText={calendarAccountEmail((e) => e ? "Sign out" : "Sign in to Google Calendar")}>
+                <label label={calendarAccountEmail((e) => {
+                  if (!e) return "Sign in"
+                  return e.length > 20 ? e.slice(0, 18) + "…" : e
+                })} />
+              </button>
+            </centerbox>
             <Gtk.Calendar class="calendar-widget" />
             <Gtk.Separator orientation={Gtk.Orientation.HORIZONTAL} />
             <label class="events-title" label="Google Calendar" xalign={0.5} />
-            <box class="calendar-actions" orientation={Gtk.Orientation.HORIZONTAL} spacing={8} halign={Gtk.Align.CENTER}>
-              <button class="action" onClicked={() => runCalendarCrud("add")}>
-                <label label="Add" />
-              </button>
-              <button class="action" onClicked={() => runCalendarCrud("edit")}>
-                <label label="Edit" />
-              </button>
-              <button class="action" onClicked={() => runCalendarCrud("delete")}>
-                <label label="Delete" />
-              </button>
-              <button class="action" onClicked={() => runCalendarCrud("refresh")}>
-                <label label="Refresh" />
-              </button>
-            </box>
+
             <label class="events" label={gcalEvents} xalign={0.5} wrap justify={Gtk.Justification.CENTER} />
           </box>
           <button class="DismissSurface" hexpand vexpand canTarget onClicked={closeFlyouts} />
+        </box>
+      </window>
+
+      <window
+        visible={authDialogOpen}
+        name={`ags-calendar-auth-${monitorIndex}`}
+        class="FlyoutWindow"
+        gdkmonitor={gdkmonitor}
+        anchor={TOP | LEFT | RIGHT}
+        layer={Astal.Layer.OVERLAY}
+        keymode={Astal.Keymode.ON_DEMAND}
+        exclusivity={Astal.Exclusivity.IGNORE}
+        marginTop={42}
+        application={app}
+      >
+        <box hexpand>
+          <button class="DismissSurface" hexpand vexpand canTarget onClicked={() => {
+            setAuthDialogOpen(false)
+            if (authPollStop) { authPollStop(); authPollStop = null }
+          }} />
+          <box class="flyout calendar-auth-dialog" orientation={Gtk.Orientation.VERTICAL} spacing={10} marginBottom={40}>
+            <label class="flyout-title" label="Sign in to Google Calendar" xalign={0.5} />
+            <Gtk.Separator orientation={Gtk.Orientation.HORIZONTAL} />
+            <box class="auth-instructions" orientation={Gtk.Orientation.VERTICAL} spacing={6} marginTop={4}>
+              <label label="Go to this URL and enter the code:" xalign={0.5} wrap />
+              <label class="auth-url" label={authDialogInfo((i) => i.verification_url || "—")} xalign={0.5} wrap selectable />
+              <label class="auth-code" label={authDialogInfo((i) => i.user_code || "—")} xalign={0.5} />
+            </box>
+            {authDialogInfo((i) => i.error ? (
+              <label class="auth-error" label={i.error} xalign={0.5} wrap />
+            ) : null)}
+            <box orientation={Gtk.Orientation.HORIZONTAL} spacing={10} halign={Gtk.Align.CENTER} marginTop={6}>
+              <button class="action" onClicked={() => {
+                setAuthDialogOpen(false)
+                if (authPollStop) { authPollStop(); authPollStop = null }
+              }}>
+                <label label="Cancel" />
+              </button>
+              <button class="action" onClicked={startAuthPoll}
+                visible={authDialogInfo((i) => !!i.device_code)}>
+                <label label="I've authorized" />
+              </button>
+            </box>
+          </box>
+          <button class="DismissSurface" hexpand vexpand canTarget onClicked={() => {
+            setAuthDialogOpen(false)
+            if (authPollStop) { authPollStop(); authPollStop = null }
+          }} />
         </box>
       </window>
     </>

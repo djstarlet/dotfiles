@@ -7,26 +7,17 @@
   font-size: 10px;
   font-weight: 700;
   min-width: 60px;
-  /* text-align removed: use xalign={1.0} on label widget instead */
 }
 
 :root {
   --curve: cubic-bezier(0.22, 1, 0.36, 1);
   --aero-bounce: cubic-bezier(.22,1.5,.36,1);
   --ink: #091521;
-  --line: #f4f7fc;
 }
 
-window.DimmerWindow,
 window.DismissWindow,
 window.FlyoutWindow {
   background: transparent;
-}
-
-.Dimmer {
-  min-height: 1px;
-  min-width: 1px;
-  background: black;
 }
 
 button.DismissSurface {
@@ -94,7 +85,6 @@ button.clock {
   padding: 0;
 }
 
-button.gear,
 button.mini-gear,
 button.action,
 button.round-icon {
@@ -130,7 +120,6 @@ button.bar-cap-button.active {
   box-shadow: inset 0 2px 3px rgba(41, 61, 86, 0.2), inset 0 -1px 0 rgba(255, 255, 255, 0.55), 0 1px 2px rgba(0, 0, 0, 0.12);
 }
 
-button.gear,
 button.mini-gear {
   min-width: 24px;
   min-height: 20px;
@@ -160,14 +149,12 @@ box.power-icon-box {
   background-position: center;
 }
 
-button.gear:hover,
 button.mini-gear:hover,
 button.action:hover,
 button.round-icon:hover {
   background: linear-gradient(180deg, #ffffff 0%, #c7d1df 100%);
 }
 
-button.gear:active,
 button.mini-gear:active,
 button.action:active,
 button.round-icon:active {
@@ -185,8 +172,6 @@ button.ws-dot:focus,
 button.ws-dot:focus-visible,
 button.clock:focus,
 button.clock:focus-visible,
-button.gear:focus,
-button.gear:focus-visible,
 button.mini-gear:focus,
 button.mini-gear:focus-visible,
 button.action:focus,
@@ -232,13 +217,6 @@ button.ws-dot:hover box.ws-core {
   border-color: rgba(255, 255, 255, 0.92);
 }
 
-box.ws-core.active {
-  opacity: 1;
-  transform: scale(1.08) translateY(-1px);
-  filter: saturate(1.16) brightness(1.12);
-  border-color: rgba(255, 255, 255, 0.92);
-}
-
 @keyframes wsMitosisIn {
   0% {
     transform: scale(0.2) translateY(3px);
@@ -267,44 +245,6 @@ box.ws-core.active {
     opacity: 0;
   }
 }
-@keyframes wsSelected {
-  0% {
-    transform: scale(0.9) translateY(0);
-    filter: saturate(1.08) brightness(1.02);
-  }
-  40% {
-    transform: scale(1.32) translateY(-2px);
-    filter: saturate(1.24) brightness(1.1);
-  }
-  72% {
-    transform: scale(0.96) translateY(0);
-    filter: saturate(1.12) brightness(1.06);
-  }
-  100% {
-    transform: scale(1.18) translateY(-1px);
-    filter: saturate(1.14) brightness(1.08);
-  }
-}
-box.ws-core.ws-1 {
-  background: radial-gradient(circle at 32% 30%, #ffd9d3 0%, #ff9b92 28%, #f25b52 58%, #c23028 78%, #8c1812 100%);
-}
-
-box.ws-core.ws-2 {
-  background: radial-gradient(circle at 32% 30%, #ffeebf 0%, #ffd973 30%, #f7b431 58%, #cf7b09 78%, #8f4d00 100%);
-}
-
-box.ws-core.ws-3 {
-  background: radial-gradient(circle at 32% 30%, #dbffd3 0%, #93ed88 30%, #53c647 58%, #29962d 78%, #14601b 100%);
-}
-
-box.ws-core.ws-4 {
-  background: radial-gradient(circle at 32% 30%, #dcefff 0%, #9dcfff 28%, #5a9aef 58%, #2e63b8 78%, #1b3f79 100%);
-}
-
-box.ws-core.ws-5 {
-  background: radial-gradient(circle at 32% 30%, #f4ddff 0%, #dcafff 30%, #ad73e2 58%, #7a3eb6 78%, #4b1f77 100%);
-}
-
 box.ws-core.ws-p1 {
   background: radial-gradient(circle at 32% 28%, #ffd3cf 0%, #ff7f74 26%, #ef3d34 62%, #9b1712 100%);
 }
@@ -339,9 +279,11 @@ box.ws-core.ws-p8 {
 
 box.ws-core.active {
   opacity: 1;
+  transform: scale(1.08) translateY(-1px);
   min-width: 22px;
   min-height: 22px;
   filter: saturate(1.18) brightness(1.12);
+  border-color: rgba(255, 255, 255, 0.92);
   box-shadow: 0 2px 10px 0 rgba(120, 180, 255, 0.35), 0 1px 3px 0 rgba(255, 255, 255, 0.25);
 }
 
@@ -355,10 +297,6 @@ box.ws-core.dying {
   transform: scale(0.96) translateY(0);
   opacity: 0.97;
   animation: wsMitosisOut 620ms var(--aero-bounce) both;
-}
-
-box.ws-core.selected {
-  animation: wsSelected 320ms var(--aero-bounce) both;
 }
 
 .flyout {
@@ -388,13 +326,6 @@ label.flyout-title {
 
 .control-flyout {
   min-width: 380px;
-}
-
-.power-submenu-flyout {
-  margin-top: 0;
-  padding-top: 12px;
-  padding-bottom: 12px;
-  border-top: 1.5px solid rgba(255, 255, 255, 0.5);
 }
 
 .power-confirm-row {
@@ -455,12 +386,6 @@ label.desktop-menu-icon {
 
 .desktop-menu-flyout label {
   font-size: 11px;
-}
-
-.calendar-actions button.action {
-  min-height: 26px;
-  min-width: 72px;
-  padding: 2px 10px;
 }
 
 .calendar-widget {
@@ -658,5 +583,69 @@ label.events {
   font-size: 11px;
   line-height: 1.25;
   color: #2d3137;
+}
+
+/* Calendar account button (top-right of calendar header) */
+button.calendar-account-btn {
+  min-width: 28px;
+  min-height: 22px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #b0bfcf;
+  border-top-color: rgba(255, 255, 255, 0.95);
+  border-bottom-color: rgba(50, 72, 96, 0.5);
+  background: linear-gradient(180deg, #ffffff 0%, #e4eaf3 40%, #c8d3e2 100%);
+  color: #0d1c2a;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 -1px 0 rgba(0, 0, 0, 0.18), 0 1px 3px rgba(0, 0, 0, 0.22);
+  font-size: 9px;
+  font-weight: 600;
+  transition: background 120ms var(--curve), box-shadow 120ms var(--curve);
+}
+
+button.calendar-account-btn:hover {
+  background: linear-gradient(180deg, #ffffff 0%, #c7d1df 100%);
+}
+
+button.calendar-account-btn:active {
+  background: linear-gradient(180deg, #c7d1df 0%, #ffffff 100%);
+  box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.18), inset 0 -1px 0 rgba(255, 255, 255, 0.55);
+}
+
+button.calendar-account-btn label {
+  font-size: 9px;
+  font-weight: 600;
+}
+
+/* Calendar auth dialog */
+.calendar-auth-dialog {
+  min-width: 340px;
+}
+
+.calendar-auth-dialog .auth-instructions {
+  padding: 6px 12px;
+}
+
+.calendar-auth-dialog .auth-instructions label {
+  font-size: 11px;
+  color: #1a3050;
+}
+
+.calendar-auth-dialog .auth-code {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  color: #0e2033;
+}
+
+.calendar-auth-dialog .auth-url {
+  font-size: 10px;
+  font-weight: 600;
+  color: #2e4866;
+}
+
+.calendar-auth-dialog .auth-error {
+  font-size: 10px;
+  font-weight: 600;
+  color: #b33;
 }
 

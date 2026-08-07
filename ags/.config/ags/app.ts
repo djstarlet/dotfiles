@@ -1,7 +1,6 @@
 import app from "ags/gtk4/app"
 import style from "./style.css"
 
-// Swap to MinimalTest for direct minimal widget test
 import Bar from "./widget/Bar"
 
 app.start({

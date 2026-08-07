@@ -1,0 +1,45 @@
+## Hyprland & AGS
+- hyprland
+- hyprland-plugins (hyprexpo)
+- hyprpm
+- swaybg
+- albert
+- wl-clipboard
+- wl-clip-persist
+- pipewire / wireplumber
+- grimblast
+- hyprshade
+- hyprlock
+- ags
+- gnim
+- GTK4
+- gtk4-layer-shell
+- node / npm
+- typescript
+## Scripts, apps & fonts
+- hyprctl
+- nmcli
+- wpctl
+- wtype
+- grim
+- slurp
+- libnotify
+- pavucontrol
+- nmtui
+- nwg-look
+- systemsettings / systemsettings6
+- gnome-control-center
+- krunner
+- systemd
+- kitty
+- librewolf
+- pcmanfm
+- Trebuchet MS
+- Verdana
+- Liberation Sans
+- Liberation Mono
+- Noto Sans
+- Noto Sans Symbols
+- Noto Sans Symbols 2
+- Symbols Nerd Font
+- Symbols Nerd Font Mono
