@@ -1,0 +1,764 @@
+.menu-row {
+  min-width: 180px;
+}
+
+.shortcut-label {
+  color: #6a7a8c;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 60px;
+  /* text-align removed: use xalign={1.0} on label widget instead */
+}
+:root {
+  --curve: cubic-bezier(0.22, 1, 0.36, 1);
+  --aero-bounce: cubic-bezier(.22,1.5,.36,1);
+  --ink: #091521;
+  --line: #f4f7fc;
+}
+
+window.DimmerWindow,
+window.DismissWindow,
+window.FlyoutWindow {
+  background: transparent;
+}
+
+.Dimmer {
+  min-height: 1px;
+  min-width: 1px;
+  background: black;
+}
+
+button.DismissSurface {
+  background: rgba(0, 0, 0, 0.001);
+  border: 0;
+  box-shadow: none;
+}
+
+window.Bar {
+  background: transparent;
+  color: var(--ink);
+  font-family: "Trebuchet MS", "Verdana", "Liberation Sans", "Noto Sans", sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+
+  .bar-viewport {
+    min-height: 36px;
+    min-width: 1px;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .bar-shell {
+    margin: 0;
+    margin-top: 0;
+    padding: 0 8px;
+    min-height: 26px;
+    border-radius: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.95);
+    border-bottom: 1px solid rgba(40, 58, 82, 0.55);
+    border-left: 0;
+    border-right: 0;
+    background: linear-gradient(
+      180deg,
+      #f6faff 0%,
+      #dce8f4 18%,
+      #c7d5e6 44%,
+      #a9bbcc 52%,
+      #8d9eb6 76%,
+      #7a8da4 100%
+    );
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.85),
+      inset 0 -2px 0 rgba(35, 52, 72, 0.5),
+      0 4px 14px rgba(0, 0, 0, 0.42),
+      0 10px 22px rgba(13, 26, 43, 0.28),
+      0 0 16px rgba(120, 186, 255, 0.16);
+    transform: translateY(0);
+    transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .bar-shell.hidden {
+    transform: translateY(-36px);
+  }
+
+  .bar-shell.shown {
+    transform: translateY(0);
+  }
+}
+
+label.clock-label {
+  color: #091521;
+  font-size: 13px;
+  font-weight: 800;
+  text-shadow: 0 1px 0 #f7fbff;
+}
+
+label.center-label {
+  font-size: 12px;
+}
+
+button.clock {
+  min-width: 320px;
+  min-height: 20px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+button.gear,
+  button.mini-gear,
+  button.action,
+  button.round-icon {
+    border-radius: 4px;
+  border: 1px solid #b0bfcf;
+  border-top-color: rgba(255, 255, 255, 0.95);
+  border-bottom-color: rgba(50, 72, 96, 0.5);
+  background: linear-gradient(180deg, #ffffff 0%, #e4eaf3 40%, #c8d3e2 100%);
+  color: #0d1c2a;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+    0 1px 3px rgba(0, 0, 0, 0.22);
+  transition:
+    background 120ms var(--curve),
+    box-shadow 120ms var(--curve),
+    color 120ms var(--curve);
+}
+
+button.bar-cap-button {
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0;
+  border: 1px solid rgba(159, 176, 196, 0.74);
+  border-top-color: rgba(255, 255, 255, 0.92);
+  border-bottom-color: rgba(56, 76, 101, 0.5);
+  border-radius: 4px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.45) 0%, rgba(188, 205, 223, 0.55) 52%, rgba(133, 151, 173, 0.55) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -2px 0 rgba(46, 66, 92, 0.44),
+    inset 0 6px 8px rgba(255, 255, 255, 0.08),
+    0 1px 1px rgba(0, 0, 0, 0.08);
+}
+
+button.bar-cap-button:hover {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.58) 0%, rgba(199, 218, 238, 0.7) 100%);
+}
+
+button.bar-cap-button:active,
+button.bar-cap-button.active {
+  background: linear-gradient(180deg, rgba(162, 185, 211, 0.72) 0%, rgba(232, 241, 251, 0.85) 100%);
+  box-shadow:
+    inset 0 2px 3px rgba(41, 61, 86, 0.2),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.55),
+    0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+button.gear,
+button.mini-gear {
+  min-width: 24px;
+  min-height: 20px;
+  padding: 0;
+}
+
+label.gear-icon,
+label.power-icon {
+  font-family: "Symbols Nerd Font", "Noto Sans Symbols 2", "Noto Sans Symbols", "Noto Sans", sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: #17314d;
+  text-shadow:
+    0 0 5px rgba(134, 205, 255, 0.72),
+    0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+box.gear-icon-box {
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'><g stroke='%2317314d' stroke-width='1.6' stroke-linecap='round' fill='none'><circle cx='7' cy='7' r='2.2'/><line x1='7' y1='0.8' x2='7' y2='3'/><line x1='7' y1='11' x2='7' y2='13.2'/><line x1='0.8' y1='7' x2='3' y2='7'/><line x1='11' y1='7' x2='13.2' y2='7'/><line x1='2.4' y1='2.4' x2='4' y2='4'/><line x1='10' y1='10' x2='11.6' y2='11.6'/><line x1='11.6' y1='2.4' x2='10' y2='4'/><line x1='4' y1='10' x2='2.4' y2='11.6'/></g></svg>");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+box.power-icon-box {
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'><g stroke='%2317314d' stroke-width='1.6' stroke-linecap='round' fill='none'><line x1='7' y1='1.5' x2='7' y2='7'/><path d='M4.5 3.2A5 5 0 1 0 9.5 3.2'/></g></svg>");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+button.gear:hover,
+button.mini-gear:hover,
+button.action:hover,
+button.round-icon:hover {
+  background: linear-gradient(180deg, #ffffff 0%, #c7d1df 100%);
+}
+
+button.gear:active,
+button.mini-gear:active,
+button.action:active,
+button.round-icon:active {
+  background: linear-gradient(180deg, #c7d1df 0%, #ffffff 100%);
+  box-shadow:
+    inset 0 2px 3px rgba(0, 0, 0, 0.18),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.55),
+    0 0 0 rgba(0, 0, 0, 0);
+}
+
+button.clock.active .clock-label,
+button.clock:active .clock-label {
+  color: #2f6fc2;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+button.ws-dot:focus,
+button.ws-dot:focus-visible,
+button.clock:focus,
+button.clock:focus-visible,
+button.gear:focus,
+button.gear:focus-visible,
+button.mini-gear:focus,
+button.mini-gear:focus-visible,
+button.action:focus,
+button.action:focus-visible,
+button.round-icon:focus,
+button.round-icon:focus-visible {
+  outline: none;
+}
+
+button.ws-dot {
+  min-width: 22px;
+  min-height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+box.ws-core {
+  min-width: 16px;
+  min-height: 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.92) 0%, rgba(229, 244, 255, 0.96) 22%, rgba(187, 215, 242, 0.9) 48%, rgba(120, 165, 220, 0.94) 100%);
+  opacity: 0.96;
+  transform: scale(0.88) translateY(0);
+  transform-origin: center center;
+  transition:
+    transform 210ms var(--aero-bounce),
+    opacity 160ms ease-out,
+    filter 160ms ease-out,
+    border-color 210ms var(--aero-bounce);
+}
+
+button.ws-dot:active box.ws-core {
+  transform: scale(0.84) translateY(1px);
+  opacity: 0.94;
+  filter: saturate(0.96) brightness(0.94);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+button.ws-dot:hover box.ws-core {
+  opacity: 1;
+  transform: scale(1.12) translateY(-1px);
+  filter: saturate(1.18) brightness(1.14);
+  border-color: rgba(255, 255, 255, 0.92);
+}
+
+box.ws-core.active {
+  opacity: 1;
+  transform: scale(1.08) translateY(-1px);
+  filter: saturate(1.16) brightness(1.12);
+  border-color: rgba(255, 255, 255, 0.92);
+}
+
+@keyframes wsMitosisIn {
+  0% {
+    transform: scale(0.2) translateY(3px);
+    opacity: 0.16;
+  }
+  50% {
+    transform: scale(1.28) translateY(-2px);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.96) translateY(0);
+    opacity: 0.97;
+  }
+}
+
+@keyframes wsMitosisOut {
+  0% {
+    transform: scale(0.96) translateY(0);
+    opacity: 0.97;
+  }
+  40% {
+    transform: scale(1.22) translateY(-1px);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.22) translateY(3px);
+    opacity: 0;
+  }
+}
+
+@keyframes wsSelected {
+  0% {
+    transform: scale(0.9) translateY(0);
+    filter: saturate(1.08) brightness(1.02);
+  }
+  40% {
+    transform: scale(1.32) translateY(-2px);
+    filter: saturate(1.24) brightness(1.1);
+  }
+  72% {
+    transform: scale(0.96) translateY(0);
+    filter: saturate(1.12) brightness(1.06);
+  }
+  100% {
+    transform: scale(1.18) translateY(-1px);
+    filter: saturate(1.14) brightness(1.08);
+  }
+}
+
+box.ws-core.ws-1 {
+  background: radial-gradient(circle at 32% 30%, #ffd9d3 0%, #ff9b92 28%, #f25b52 58%, #c23028 78%, #8c1812 100%);
+}
+
+box.ws-core.ws-2 {
+  background: radial-gradient(circle at 32% 30%, #ffeebf 0%, #ffd973 30%, #f7b431 58%, #cf7b09 78%, #8f4d00 100%);
+}
+
+box.ws-core.ws-3 {
+  background: radial-gradient(circle at 32% 30%, #dbffd3 0%, #93ed88 30%, #53c647 58%, #29962d 78%, #14601b 100%);
+}
+
+box.ws-core.ws-4 {
+  background: radial-gradient(circle at 32% 30%, #dcefff 0%, #9dcfff 28%, #5a9aef 58%, #2e63b8 78%, #1b3f79 100%);
+}
+
+box.ws-core.ws-5 {
+  background: radial-gradient(circle at 32% 30%, #f4ddff 0%, #dcafff 30%, #ad73e2 58%, #7a3eb6 78%, #4b1f77 100%);
+}
+
+box.ws-core.ws-p1 {
+  background: radial-gradient(circle at 32% 28%, #ffd3cf 0%, #ff7f74 26%, #ef3d34 62%, #9b1712 100%);
+}
+
+box.ws-core.ws-p2 {
+  background: radial-gradient(circle at 32% 28%, #ffe9b8 0%, #ffd064 24%, #f0a114 60%, #9f5b00 100%);
+}
+
+box.ws-core.ws-p3 {
+  background: radial-gradient(circle at 32% 28%, #d9ffd9 0%, #75de80 28%, #24a337 64%, #0c5a1b 100%);
+}
+
+box.ws-core.ws-p4 {
+  background: radial-gradient(circle at 32% 28%, #d2ebff 0%, #83c3ff 26%, #3b83e6 62%, #1a4487 100%);
+}
+
+box.ws-core.ws-p5 {
+  background: radial-gradient(circle at 32% 28%, #f0d8ff 0%, #d7a5ff 28%, #9b5ad7 64%, #54227f 100%);
+}
+
+box.ws-core.ws-p6 {
+  background: radial-gradient(circle at 32% 28%, #cef9f6 0%, #79ded8 30%, #28a9a0 66%, #0e5a54 100%);
+}
+
+box.ws-core.ws-p7 {
+  background: radial-gradient(circle at 32% 28%, #ffd8c5 0%, #ffad86 28%, #e96f3a 62%, #8a2f0d 100%);
+}
+
+box.ws-core.ws-p8 {
+  background: radial-gradient(circle at 32% 28%, #ffd5eb 0%, #f6a0ce 30%, #cf5398 64%, #7e1f57 100%);
+}
+
+box.ws-core.active {
+  opacity: 1;
+  min-width: 22px;
+  min-height: 22px;
+  filter: saturate(1.18) brightness(1.12);
+  box-shadow: 0 2px 10px 0 rgba(120,180,255,0.35), 0 1px 3px 0 rgba(255,255,255,0.25);
+}
+
+box.ws-core.born {
+  transform: scale(0.2) translateY(3px);
+  opacity: 0.16;
+  animation: wsMitosisIn 540ms var(--aero-bounce) both;
+}
+
+box.ws-core.dying {
+  transform: scale(0.96) translateY(0);
+  opacity: 0.97;
+  animation: wsMitosisOut 620ms var(--aero-bounce) both;
+}
+
+box.ws-core.selected {
+  animation: wsSelected 320ms var(--aero-bounce) both;
+}
+
+.flyout {
+  min-width: 380px;
+  padding: 14px;
+  border-radius: 8px;
+  border: 1px solid #f3f7fe;
+  background: linear-gradient(180deg, #ebf1fa 0%, #cfd8e7 100%);
+  box-shadow:
+    0 16px 34px rgba(7, 12, 20, 0.38),
+    0 6px 14px rgba(17, 31, 49, 0.22),
+    0 0 24px rgba(142, 208, 255, 0.12);
+  color: #102236;
+  font-family: "Trebuchet MS", "Verdana", "Liberation Sans", "Noto Sans", sans-serif;
+}
+
+.flyout * {
+  font-family: "Trebuchet MS", "Verdana", "Liberation Sans", "Noto Sans", sans-serif;
+}
+
+label.flyout-title {
+  font-weight: 800;
+  font-size: 14px;
+  color: #0e2033;
+}
+
+.flyout {
+  font-size: 11px;
+}
+
+.control-flyout {
+  min-width: 380px;
+}
+
+.power-submenu-flyout {
+  margin-top: 0;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  border-top: 1.5px solid rgba(255, 255, 255, 0.5);
+}
+
+.power-confirm-row {
+  min-width: 1px;
+}
+
+label.power-confirm-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: #17314d;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+.power-confirm-row button.action {
+  min-width: 78px;
+}
+
+.power-confirm-row button.action.warm {
+  border-color: rgba(196, 150, 97, 0.74);
+  background: linear-gradient(180deg, rgba(255, 245, 222, 0.98) 0%, rgba(235, 190, 99, 0.96) 100%);
+}
+
+.power-confirm-row button.action.danger {
+  border-color: rgba(187, 102, 92, 0.8);
+  background: linear-gradient(180deg, rgba(255, 234, 228, 0.98) 0%, rgba(227, 118, 97, 0.96) 100%);
+}
+
+.calendar-flyout {
+  min-width: 390px;
+}
+
+.desktop-menu-flyout {
+  min-width: 214px;
+  padding: 12px;
+}
+
+button.desktop-menu-toggle {
+  min-width: 24px;
+  min-height: 24px;
+}
+
+button.desktop-menu-toggle.active {
+  background: linear-gradient(180deg, rgba(170, 193, 220, 0.82) 0%, rgba(236, 244, 252, 0.95) 100%);
+}
+
+label.desktop-menu-icon {
+  font-family: "Symbols Nerd Font", "Liberation Sans", sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  color: #1a3652;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.desktop-menu-flyout button.action {
+  min-height: 25px;
+  padding: 2px 9px;
+}
+
+.desktop-menu-flyout label {
+  font-size: 11px;
+}
+
+.calendar-actions button.action {
+  min-height: 26px;
+  min-width: 72px;
+  padding: 2px 10px;
+}
+
+.calendar-widget {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.98) 0%,
+    rgba(239, 247, 255, 0.95) 22%,
+    rgba(210, 226, 244, 0.92) 56%,
+    rgba(188, 209, 233, 0.9) 100%
+  );
+  color: #0f2235;
+  border: 1px solid #c7d5e6;
+  border-top-color: rgba(255, 255, 255, 0.9);
+  border-bottom-color: rgba(71, 92, 117, 0.28);
+  border-radius: 7px;
+  padding: 10px;
+  padding-top: 8px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    inset 0 -1px 0 rgba(55, 76, 101, 0.18),
+    0 6px 16px rgba(14, 26, 41, 0.24),
+    0 0 18px rgba(125, 193, 255, 0.12);
+}
+
+.calendar-widget header {
+  color: #10263d;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+}
+
+.calendar-widget grid {
+  margin-top: 6px;
+}
+
+.calendar-widget button {
+  border-radius: 4px;
+  border: 1px solid rgba(149, 170, 197, 0.42);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(209, 223, 240, 0.78) 100%);
+}
+
+.calendar-widget button:hover {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(191, 209, 231, 0.85) 100%);
+}
+
+.calendar-widget:selected,
+.calendar-widget .day-number:selected,
+.calendar-widget .day-number:selected:focus,
+.calendar-widget .day-number.today:selected,
+.calendar-widget .day-number.today {
+  color: #10233b;
+  border-radius: 999px;
+  border: 1px solid rgba(100, 138, 183, 0.6);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(184, 216, 255, 0.92) 38%, rgba(120, 170, 232, 0.96) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    inset 0 -1px 0 rgba(28, 63, 112, 0.28),
+    0 2px 5px rgba(35, 82, 143, 0.22),
+    0 0 10px rgba(104, 178, 255, 0.24);
+}
+
+.slider-row {
+  font-family: "Trebuchet MS", "Verdana", "Liberation Sans", "Noto Sans", sans-serif;
+  padding: 8px;
+  border-radius: 7px;
+  border: 1px solid #c4d0df;
+  border-top-color: rgba(255, 255, 255, 0.88);
+  border-bottom-color: rgba(70, 87, 110, 0.28);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.98) 0%,
+    rgba(240, 247, 255, 0.94) 18%,
+    rgba(205, 226, 247, 0.9) 48%,
+    rgba(186, 208, 235, 0.88) 52%,
+    rgba(218, 233, 248, 0.92) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    inset 0 -1px 0 rgba(65, 78, 98, 0.2),
+    inset 0 12px 18px rgba(255, 255, 255, 0.18),
+    0 3px 8px rgba(12, 21, 33, 0.12),
+    0 0 12px rgba(113, 186, 255, 0.12);
+}
+
+scale trough {
+  min-height: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(108, 125, 145, 0.35);
+  background: linear-gradient(180deg, rgba(108, 124, 145, 0.62) 0%, rgba(208, 221, 239, 0.65) 100%);
+  box-shadow:
+    inset 0 2px 3px rgba(0, 0, 0, 0.26),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.55),
+    0 0 8px rgba(166, 219, 255, 0.16);
+}
+
+scale highlight {
+  border-radius: 999px;
+  border: 1px solid rgba(66, 110, 176, 0.34);
+  background: linear-gradient(90deg, #bdf1ff 0%, #7ec8ff 22%, #55adff 56%, #326fda 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -1px 0 rgba(12, 36, 74, 0.24),
+    0 0 10px rgba(91, 181, 255, 0.32);
+}
+
+scale slider {
+  min-width: 20px;
+  min-height: 20px;
+  border-radius: 999px;
+  border: 1px solid rgba(106, 122, 142, 0.55);
+  background: radial-gradient(circle at 32% 28%, #ffffff 0%, #f6fbff 18%, #d8eafc 42%, #aac3df 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    inset 0 -1px 0 rgba(38, 53, 74, 0.18),
+    0 1px 3px rgba(0, 0, 0, 0.22),
+    0 0 7px rgba(154, 214, 255, 0.28);
+}
+
+button.round-icon {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(149, 170, 197, 0.42);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(209, 223, 240, 0.78) 100%);
+  box-shadow:
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12),
+    0 2px 6px rgba(0, 0, 0, 0.24),
+    0 0 12px rgba(126, 196, 255, 0.1);
+}
+
+button.round-icon.off {
+  background: linear-gradient(
+    180deg,
+    rgba(235, 241, 250, 0.98) 0%,
+    rgba(207, 216, 231, 0.95) 100%
+  );
+  border-color: rgba(159, 177, 199, 0.42);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    inset 0 -1px 0 rgba(74, 92, 116, 0.12),
+    0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+button.round-icon.active {
+  border-color: rgba(88, 142, 212, 0.74);
+  background: linear-gradient(180deg, rgba(220, 243, 255, 0.98) 0%, rgba(109, 185, 255, 0.96) 42%, rgba(45, 111, 214, 1) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -1px 0 rgba(9, 41, 87, 0.28),
+    0 0 0 1px rgba(255, 255, 255, 0.45),
+    0 1px 3px rgba(0, 0, 0, 0.22),
+    0 0 14px rgba(96, 180, 255, 0.28);
+}
+
+button.round-icon.power-toggle.active {
+  border-color: rgba(183, 102, 94, 0.82);
+  background: linear-gradient(180deg, rgba(255, 245, 239, 0.98) 0%, rgba(255, 176, 145, 0.96) 40%, rgba(212, 78, 53, 1) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    inset 0 -1px 0 rgba(107, 25, 16, 0.32),
+    0 0 0 1px rgba(255, 255, 255, 0.45),
+    0 1px 3px rgba(0, 0, 0, 0.24),
+    0 0 16px rgba(255, 132, 108, 0.24);
+}
+
+.control-actions-section {
+  min-width: 1px;
+}
+
+.control-actions-row {
+  min-width: 1px;
+}
+
+.control-action-tile {
+  min-width: 68px;
+}
+
+button.power-action-button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  transition: transform 160ms var(--curve);
+}
+
+button.power-action-button:hover {
+  transform: translateY(-1px);
+}
+
+button.power-action-button:active {
+  transform: translateY(1px);
+}
+
+button.power-action-button.warm {
+  border-color: rgba(196, 150, 97, 0.74);
+  background: radial-gradient(circle at 30% 26%, rgba(255, 250, 240, 0.98) 0%, rgba(255, 222, 157, 0.94) 34%, rgba(223, 162, 57, 0.98) 76%, rgba(181, 118, 24, 0.98) 100%);
+}
+
+button.power-action-button.warm:hover {
+  background: radial-gradient(circle at 30% 26%, rgba(255, 253, 246, 1) 0%, rgba(255, 230, 170, 0.98) 34%, rgba(235, 178, 72, 1) 76%, rgba(198, 135, 36, 1) 100%);
+}
+
+button.power-action-button.danger {
+  border-color: rgba(187, 102, 92, 0.8);
+  background: radial-gradient(circle at 30% 26%, rgba(255, 246, 242, 0.98) 0%, rgba(255, 194, 171, 0.94) 34%, rgba(221, 90, 67, 0.98) 76%, rgba(164, 49, 34, 0.98) 100%);
+}
+
+button.power-action-button.danger:hover {
+  background: radial-gradient(circle at 30% 26%, rgba(255, 249, 246, 1) 0%, rgba(255, 204, 184, 0.98) 34%, rgba(232, 106, 84, 1) 76%, rgba(180, 58, 42, 1) 100%);
+}
+
+label.control-action-label {
+  font-size: 10px;
+  font-weight: 800;
+  color: #17314d;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+label.power-action-glyph {
+  font-family: "Symbols Nerd Font", "Noto Sans Symbols 2", "Noto Sans Symbols", "Noto Sans", sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  color: #17314d;
+  text-shadow:
+    0 0 7px rgba(136, 207, 255, 0.52),
+    0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+image.symbol-icon {
+  color: #102236;
+  margin: 0;
+  -gtk-icon-shadow: 0 0 7px rgba(128, 204, 255, 0.7);
+}
+
+label.signal-icon {
+  font-family: "Symbols Nerd Font Mono", "Liberation Mono", monospace;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  line-height: 1;
+  margin: 0;
+  color: #163250;
+  text-shadow: 0 0 7px rgba(124, 201, 255, 0.55);
+}
+
+label.events-title {
+  margin-top: 4px;
+  font-weight: 700;
+  color: #2e4866;
+}
+
+label.events {
+  font-family: "Symbols Nerd Font Mono", "Liberation Mono", monospace;
+  font-size: 11px;
+  line-height: 1.25;
+  color: #2d3137;
+}
+
