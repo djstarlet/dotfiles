@@ -28,6 +28,13 @@
 - SUPER + L - layout: dwindle
 - SUPER + SHIFT + L - layout: master
 
+## Setup
+- drop `hypr/` into `~/.config/` - that's your Hyprland config (keybinds, wallpaper, autostart)
+- drop `ags/.config/ags/` into `~/.config/` - that's the bar
+- `cd ~/.config/ags && npm install` (the bar is TypeScript + gnim)
+- install the dependencies below, then log in - the bar just shows up
+- Google Calendar: click the calendar in the bar, then Sign in (you'll need your own OAuth client_id from Google Cloud - the dialog walks you through it)
+
 ## Install Dependencies
 
 Gentoo - hyprland-plugins, ags, albert, librewolf, wl-clip-persist are in GURU/overlays
