@@ -29,33 +29,38 @@
 - SUPER + SHIFT + L - layout: master
 
 ## Setup
-- or just run: `curl -fsSL https://raw.githubusercontent.com/djstarlet/dotfiles/main/install.sh | bash` (same as the three steps below)
+
+# Install Script:
+`curl -fsSL https://raw.githubusercontent.com/djstarlet/dotfiles/main/install.sh | bash`
+- then install the dependencies listed below on your package manager & reboot/logout then login
+
+# Manual:
 - drop `hypr/` into `~/.config/` - that's your Hyprland config (keybinds, wallpaper, autostart)
 - drop `ags/.config/ags/` into `~/.config/` - that's the bar
-- `cd ~/.config/ags && npm install` (the bar is TypeScript + gnim)
-- install the dependencies below, then log in - the bar just shows up
+- `cd ~/.config/ags && npm install gnim, typescript` (the bar is TypeScript + gnim)
+- then install the dependencies listed below on your package manager & reboot/logout then login
 - Google Calendar: click the calendar in the bar, then Sign in (you'll need your own OAuth client_id from Google Cloud - the dialog walks you through it)
 
 ## Install Dependencies
 
 Gentoo - hyprland-plugins, ags, albert, librewolf, wl-clip-persist are in GURU/overlays
 
-emerge hyprland gui-libs/gtk4-layer-shell net-libs/nodejs net-misc/curl dev-lang/python x11-terms/kitty x11-misc/pcmanfm gui-apps/swaybg gui-apps/wl-clipboard media-session/wireplumber media-video/pipewire net-misc/networkmanager xfce-base/xfce4-settings media-sound/pavucontrol gui-apps/grim gui-apps/slurp x11-libs/libnotify media-fonts/symbols-nerd-font
+`emerge hyprland gui-libs/gtk4-layer-shell net-libs/nodejs net-misc/curl dev-lang/python x11-terms/kitty x11-misc/pcmanfm gui-apps/swaybg gui-apps/wl-clipboard media-session/wireplumber media-video/pipewire net-misc/networkmanager xfce-base/xfce4-settings media-sound/pavucontrol gui-apps/grim gui-apps/slurp x11-libs/libnotify media-fonts/symbols-nerd-font`
 
 Arch - ags, albert, hyprland-plugins are in the AUR
 
-sudo pacman -S --needed hyprland gtk4 gtk4-layer-shell nodejs npm curl python wtype kitty librewolf pcmanfm swaybg wl-clipboard wl-clip-persist wireplumber pipewire networkmanager xfce4-settings pavucontrol grim slurp libnotify ttf-nerd-fonts-symbols
+`sudo pacman -S --needed hyprland gtk4 gtk4-layer-shell nodejs npm curl python wtype kitty librewolf pcmanfm swaybg wl-clipboard wl-clip-persist wireplumber pipewire networkmanager xfce4-settings pavucontrol grim slurp libnotify ttf-nerd-fonts-symbols`
 
 Debian / Ubuntu (hyprland needs trixie+/universe) - albert: OBS repo, librewolf: flatpak
 
-sudo apt install hyprland hyprland-plugins gtk4-layer-shell-dev libgtk-4-dev wtype nodejs npm curl python3 kitty pcmanfm swaybg wl-clipboard wireplumber pipewire network-manager xfce4-settings pavucontrol grim slurp libnotify-bin
+`sudo apt install hyprland hyprland-plugins gtk4-layer-shell-dev libgtk-4-dev wtype nodejs npm curl python3 kitty pcmanfm swaybg wl-clipboard wireplumber pipewire network-manager xfce4-settings pavucontrol grim slurp libnotify-bin`
 
 Fedora (hyprland 41+) - hyprland-plugins: COPR, albert: OBS, librewolf: flatpak, wl-clip-persist must be compiled from source: https://github.com/Linus789/wl-clip-persist.git
 
-sudo dnf install hyprland gtk4 gtk4-layer-shell gtk4-layer-shell-devel wtype nodejs npm curl python3 kitty pcmanfm swaybg wl-clipboard wireplumber pipewire NetworkManager xfce4-settings pavucontrol grim slurp libnotify
+`sudo dnf install hyprland gtk4 gtk4-layer-shell gtk4-layer-shell-devel wtype nodejs npm curl python3 kitty pcmanfm swaybg wl-clipboard wireplumber pipewire NetworkManager xfce4-settings pavucontrol grim slurp libnotify`
 
-npm toolchain (inside ags/.config/ags): npm install gnim, typescript
-fonts not in Debian/Fedora repos: install Nerd Fonts manually
+
+for Debian/Fedora repos: install Nerd Fonts manually from https://github.com/ryanoasis/nerd-fonts
 
 ## Necessary deps
 hyprland
@@ -66,15 +71,15 @@ hyprpm
 
 ags
 
-gnim
-
 GTK4
 
 gtk4-layer-shell
 
 node / npm
 
-typescript
+typescript (npm)
+
+gnim (npm)
 
 hyprctl 
 
