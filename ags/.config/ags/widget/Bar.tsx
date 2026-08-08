@@ -210,6 +210,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
     device_code: "",
     error: "",
   })
+  const [clientIdInput, setClientIdInput] = createState("")
   let authPollStop: (() => void) | null = null
 
   const [brightnessPercent, setBrightnessPercent] = createState(100)
@@ -318,6 +319,48 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
     })
     .catch(() => null)
 
+  function startLogin() {
+    setClientIdInput("")
+    setAuthDialogInfo({ verification_url: "", user_code: "", device_code: "", error: "" })
+    setAuthDialogOpen(true)
+    execAsync(["bash", "-lc", "$HOME/.config/ags/calendar-auth.sh login"])
+      .then((out) => {
+        try {
+          const parsed = JSON.parse(out)
+          if (parsed.status === "need_code") {
+            setAuthDialogInfo({
+              verification_url: parsed.verification_url || "",
+              user_code: parsed.user_code || "",
+              device_code: parsed.device_code || "",
+              error: "",
+            })
+          } else if (parsed.status === "error") {
+            setAuthDialogInfo({
+              verification_url: "",
+              user_code: "",
+              device_code: "",
+              error: parsed.message || "Login failed.",
+            })
+          }
+        } catch {
+          setAuthDialogInfo({
+            verification_url: "",
+            user_code: "",
+            device_code: "",
+            error: "Unexpected response from auth script.",
+          })
+        }
+      })
+      .catch(() => {
+        setAuthDialogInfo({
+          verification_url: "",
+          user_code: "",
+          device_code: "",
+          error: "Could not reach auth script.",
+        })
+      })
+  }
+
   function handleAccountClick() {
     if (calendarAccountEmail()) {
       execAsync(["bash", "-lc", "$HOME/.config/ags/calendar-auth.sh logout"])
@@ -326,45 +369,33 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
         })
         .catch(() => null)
     } else {
-      setAuthDialogInfo({ verification_url: "", user_code: "", device_code: "", error: "" })
-      setAuthDialogOpen(true)
-      execAsync(["bash", "-lc", "$HOME/.config/ags/calendar-auth.sh login"])
-        .then((out) => {
-          try {
-            const parsed = JSON.parse(out)
-            if (parsed.status === "need_code") {
-              setAuthDialogInfo({
-                verification_url: parsed.verification_url || "",
-                user_code: parsed.user_code || "",
-                device_code: parsed.device_code || "",
-                error: "",
-              })
-            } else if (parsed.status === "error") {
-              setAuthDialogInfo({
-                verification_url: "",
-                user_code: "",
-                device_code: "",
-                error: parsed.message || "Login failed.",
-              })
-            }
-          } catch {
-            setAuthDialogInfo({
-              verification_url: "",
-              user_code: "",
-              device_code: "",
-              error: "Unexpected response from auth script.",
-            })
-          }
-        })
-        .catch(() => {
-          setAuthDialogInfo({
-            verification_url: "",
-            user_code: "",
-            device_code: "",
-            error: "Could not reach auth script.",
-          })
-        })
+      startLogin()
     }
+  }
+
+  const isClientIdMissing = createComputed(() => {
+    const err = authDialogInfo().error
+    return err.startsWith("No Google OAuth client_id configured")
+  })
+
+  function saveClientIdAndLogin() {
+    const raw = clientIdInput().trim()
+    if (!raw) return
+    const escaped = raw.replace(/'/g, "'\\''")
+    execAsync(["bash", "-lc", `$HOME/.config/ags/calendar-auth.sh set-client-id '${escaped}'`])
+      .then(() => {
+        setClientIdInput("")
+        startLogin()
+      })
+      .catch((err) => {
+        setAuthDialogInfo({ ...authDialogInfo(), error: String(err) || "Failed to save client_id." })
+      })
+  }
+
+  function closeAuthDialog() {
+    setAuthDialogOpen(false)
+    setClientIdInput("")
+    if (authPollStop) { authPollStop(); authPollStop = null }
   }
 
   function startAuthPoll() {
@@ -402,35 +433,21 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
   }
 
   function openAudioSettings() {
-    execAsync(["bash", "-lc", "(command -v pavucontrol >/dev/null 2>&1 && pavucontrol) || true"]).catch(
-      () => null,
-    )
+    execAsync(["pavucontrol"]).catch(() => null)
   }
 
   function openLauncher() {
-    execAsync([
-      "bash",
-      "-lc",
-      "(command -v albert >/dev/null 2>&1 && albert show) || (command -v krunner >/dev/null 2>&1 && krunner) || true",
-    ]).catch(() => null)
+    execAsync(["bash", "-lc", "albert show"]).catch(() => null)
     setDesktopMenuOpen(false)
   }
 
   function openSystemSettings() {
-    execAsync([
-      "bash",
-      "-lc",
-      "(command -v systemsettings >/dev/null 2>&1 && systemsettings) || (command -v systemsettings6 >/dev/null 2>&1 && systemsettings6) || (command -v gnome-control-center >/dev/null 2>&1 && gnome-control-center) || (command -v nwg-look >/dev/null 2>&1 && nwg-look) || true",
-    ]).catch(() => null)
+    execAsync(["xfce4-settings-manager"]).catch(() => null)
     setDesktopMenuOpen(false)
   }
 
   function openNetworkSettings() {
-    execAsync([
-      "bash",
-      "-lc",
-      "(command -v nm-connection-editor >/dev/null 2>&1 && nm-connection-editor) || (command -v kitty >/dev/null 2>&1 && kitty -e nmtui) || nmtui",
-    ]).catch(() => null)
+    execAsync(["nmtui"]).catch(() => null)
     setDesktopMenuOpen(false)
   }
 
@@ -445,7 +462,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
     closeFlyouts()
 
     const command = {
-      lock: "(command -v hyprlock >/dev/null 2>&1 && hyprlock) || loginctl lock-session",
+      lock: "loginctl lock-session",
       logout: "hyprctl dispatch exit",
       reboot: "loginctl reboot",
       shutdown: "loginctl poweroff",
@@ -1116,27 +1133,51 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
         application={app}
       >
         <box hexpand>
-          <button class="DismissSurface" hexpand vexpand canTarget onClicked={() => {
-            setAuthDialogOpen(false)
-            if (authPollStop) { authPollStop(); authPollStop = null }
-          }} />
+          <button class="DismissSurface" hexpand vexpand canTarget onClicked={closeAuthDialog} />
           <box class="flyout calendar-auth-dialog" orientation={Gtk.Orientation.VERTICAL} spacing={10} marginBottom={40}>
             <label class="flyout-title" label="Sign in to Google Calendar" xalign={0.5} />
             <Gtk.Separator orientation={Gtk.Orientation.HORIZONTAL} />
+
+            {/* State A: need_code — device_code set */}
             <box class="auth-instructions" orientation={Gtk.Orientation.VERTICAL} spacing={6} marginTop={4}
-              visible={createComputed(() => authDialogInfo().error === "")}>
+              visible={createComputed(() => !!authDialogInfo().device_code)}>
               <label label="Go to this URL and enter the code:" xalign={0.5} wrap />
               <label class="auth-url" label={createComputed(() => authDialogInfo().verification_url || "—")} xalign={0.5} wrap selectable />
               <label class="auth-code" label={createComputed(() => authDialogInfo().user_code || "—")} xalign={0.5} />
             </box>
+
+            {/* State B: client_id missing */}
+            <box class="auth-setup" orientation={Gtk.Orientation.VERTICAL} spacing={6} marginTop={4}
+              visible={createComputed(() => isClientIdMissing())}>
+              <label label="No OAuth client_id found. Create one at:" xalign={0.5} wrap />
+              <box orientation={Gtk.Orientation.HORIZONTAL} spacing={6} halign={Gtk.Align.CENTER}>
+                <label class="auth-url" label="https://console.cloud.google.com/" xalign={0.5} wrap selectable />
+                <button class="action" onClicked={() => execAsync(["bash", "-lc",
+                  "(command -v xdg-open >/dev/null 2>&1 && xdg-open 'https://console.cloud.google.com/') || true"
+                ]).catch(() => null)}>
+                  <label label="Open" />
+                </button>
+              </box>
+              <Gtk.Entry
+                class="auth-entry"
+                placeholderText="Paste your OAuth client_id (xxxx.apps.googleusercontent.com)"
+                text={clientIdInput()}
+                onNotifyText={(self) => setClientIdInput(self.text)}
+                halign={Gtk.Align.CENTER}
+              />
+            </box>
+
+            {/* State C: other errors */}
             <label class="auth-error" label={createComputed(() => authDialogInfo().error)} xalign={0.5} wrap
-              visible={createComputed(() => authDialogInfo().error !== "")} />
+              visible={createComputed(() => authDialogInfo().error !== "" && !isClientIdMissing())} />
+
             <box orientation={Gtk.Orientation.HORIZONTAL} spacing={10} halign={Gtk.Align.CENTER} marginTop={6}>
-              <button class="action" onClicked={() => {
-                setAuthDialogOpen(false)
-                if (authPollStop) { authPollStop(); authPollStop = null }
-              }}>
+              <button class="action" onClicked={closeAuthDialog}>
                 <label label="Cancel" />
+              </button>
+              <button class="action" onClicked={saveClientIdAndLogin}
+                visible={createComputed(() => isClientIdMissing())}>
+                <label label="Save & Sign in" />
               </button>
               <button class="action" onClicked={startAuthPoll}
                 visible={createComputed(() => !!authDialogInfo().device_code)}>
@@ -1144,10 +1185,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
               </button>
             </box>
           </box>
-          <button class="DismissSurface" hexpand vexpand canTarget onClicked={() => {
-            setAuthDialogOpen(false)
-            if (authPollStop) { authPollStop(); authPollStop = null }
-          }} />
+          <button class="DismissSurface" hexpand vexpand canTarget onClicked={closeAuthDialog} />
         </box>
       </window>
     </>

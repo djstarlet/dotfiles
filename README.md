@@ -7,15 +7,13 @@
 - wl-clipboard
 - wl-clip-persist
 - pipewire / wireplumber
-- grimblast
-- hyprshade
-- hyprlock
 - ags
 - gnim
 - GTK4
 - gtk4-layer-shell
 - node / npm
 - typescript
+- xfce4-settings
 ## Scripts, apps & fonts
 - hyprctl
 - nmcli
@@ -24,13 +22,7 @@
 - grim
 - slurp
 - libnotify
-- pavucontrol
 - nmtui
-- nwg-look
-- systemsettings / systemsettings6
-- gnome-control-center
-- krunner
-- systemd
 - kitty
 - librewolf
 - pcmanfm
@@ -43,3 +35,9 @@
 - Noto Sans Symbols 2
 - Symbols Nerd Font
 - Symbols Nerd Font Mono
+## Where things plug in
+- hyprland/hypr/hyprland.conf — exec-once apps (swaybg wallpaper, albert launcher), Hyprland plugins (hyprexpo), monitor config
+- ags/.config/ags/widget/Bar.tsx — bar logic: nmcli (NetworkManager Wi-Fi toggle), wpctl (WirePlumber volume), hyprctl (workspaces), albert (launcher), pavucontrol (audio), xfce4-settings-manager (system settings), nmtui (network), hyprctl (power/logout)
+- ags/.config/ags/calendar-auth.sh — Google Calendar OAuth (client_id via GOOGLE_CLIENT_ID or ~/.config/ags/google-calendar-auth.json)
+- ags/.config/ags/brightness-dim.sh — brightness dimming shader (Hyprland screen_shader)
+- hyprland/hypr/scripts/ — screenshot & window helpers (grim, slurp, wl-copy, notify-send)

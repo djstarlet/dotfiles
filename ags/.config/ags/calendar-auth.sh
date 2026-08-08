@@ -91,13 +91,43 @@ cmd_logout() {
   echo '{"status":"signed_out"}'
 }
 
+cmd_set_client_id() {
+  local client_id="${1:-}"
+  if [[ -z "$client_id" ]]; then
+    echo '{"status":"error","message":"Client ID cannot be empty."}'
+    return
+  fi
+  if [[ -f "$CACHE_FILE" ]]; then
+    python3 -c '
+import sys, json
+with open(sys.argv[1], "r") as f:
+    d = json.load(f)
+d["client_id"] = sys.argv[2]
+with open(sys.argv[3], "w") as f:
+    json.dump(d, f)
+' "$CACHE_FILE" "$client_id" "$CACHE_FILE.tmp.$$"
+  else
+    printf '{}' | python3 -c '
+import sys, json
+d = json.load(sys.stdin)
+d["client_id"] = sys.argv[1]
+with open(sys.argv[2], "w") as f:
+    json.dump(d, f)
+' "$client_id" "$CACHE_FILE.tmp.$$"
+  fi
+  chmod 600 "$CACHE_FILE.tmp.$$"
+  mv -f "$CACHE_FILE.tmp.$$" "$CACHE_FILE"
+  echo '{"status":"ok"}'
+}
+
 case "${1:-}" in
-  status)  cmd_status ;;
-  login)   cmd_login ;;
-  poll)    cmd_poll "${2:-}" ;;
-  logout)  cmd_logout ;;
+  status)    cmd_status ;;
+  login)     cmd_login ;;
+  poll)      cmd_poll "${2:-}" ;;
+  logout)    cmd_logout ;;
+  set-client-id) cmd_set_client_id "${2:-}" ;;
   *)
-    echo "Usage: calendar-auth.sh {status|login|poll <device_code>|logout}" >&2
+    echo "Usage: calendar-auth.sh {status|login|poll <device_code>|logout|set-client-id <client_id>}" >&2
     exit 1
     ;;
 esac
