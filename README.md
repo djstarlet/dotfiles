@@ -29,6 +29,7 @@
 - SUPER + SHIFT + L - layout: master
 
 ## Setup
+- or just run: `curl -fsSL https://raw.githubusercontent.com/djstarlet/dotfiles/main/install.sh | bash` (same as the three steps below)
 - drop `hypr/` into `~/.config/` - that's your Hyprland config (keybinds, wallpaper, autostart)
 - drop `ags/.config/ags/` into `~/.config/` - that's the bar
 - `cd ~/.config/ags && npm install` (the bar is TypeScript + gnim)
