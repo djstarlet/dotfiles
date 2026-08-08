@@ -35,9 +35,9 @@
 - then install the dependencies listed below on your package manager & reboot/logout then login
 
 # Manual:
-- drop `hypr/` into `~/.config/` - that's your Hyprland config (keybinds, wallpaper, autostart)
-- drop `ags/.config/ags/` into `~/.config/` - that's the bar
-- `cd ~/.config/ags && npm install` (the bar is TypeScript + gnim)
+- drop `hypr/` into `~/.config/` - for hyprland config
+- drop `ags/.config/ags/` into `~/.config/` - for the taskbar
+- `cd ~/.config/ags && npm install` (the bar is typescript + gnim)
 - then install the dependencies listed below on your package manager & reboot/logout then login
 - more about the widgets: widgets.md
 
