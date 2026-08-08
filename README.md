@@ -1,5 +1,5 @@
 ## Keybinds
-- SUPER + RETURN - terminal (kitty)
+- SUPER + Q - terminal (kitty)
 - SUPER + SPACE - albert toggle
 - SUPER + F - browser (librewolf)
 - SUPER + E - file explorer (pcmanfm)
