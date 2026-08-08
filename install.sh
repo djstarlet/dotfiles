@@ -8,7 +8,7 @@ REPO_URL="https://github.com/djstarlet/dotfiles/archive/refs/heads/main.tar.gz"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-echo "downloading configs..."
+echo "downloading dotfiles..."
 curl -fsSL "$REPO_URL" | tar xz -C "$TMP" --strip-components=1
 
 echo "installing Hyprland config (~/.config/hypr)..."
@@ -23,4 +23,4 @@ cp -r "$TMP/ags/.config/ags" ~/.config/ags
 echo "installing bar dependencies (npm install)..."
 (cd ~/.config/ags && npm install)
 
-echo "done. log into hyprland - the bar shows up by itself."
+echo "Done!"
