@@ -1,37 +1,33 @@
 ## Keybinds
-- ALT + RETURN — terminal (kitty)
-- ALT + Q — terminal (kitty)
-- ALT + R — albert toggle
-- ALT + SPACE — albert toggle
-- ALT + F — browser (librewolf)
-- ALT + E — file explorer (pcmanfm)
-- ALT + V — toggle floating
-- ALT + F4 — close window
-- ALT + C — close window
-- ALT + SHIFT + C — force kill window
-- ALT + mouse button 1 — move window
-- ALT + mouse button 2 — resize window
-- ALT + TAB — hyprexpo toggle
-- ALT + SHIFT + TAB — hyprexpo toggle
-- ALT + GRAVE — hyprexpo toggle
-- ALT + SHIFT + GRAVE — reload hyprland
-- ALT + 1 — workspace 1
-- ALT + 2 — workspace 2
-- ALT + 3 — workspace 3
-- ALT + 4 — workspace 4
-- ALT + 5 — workspace 5
-- ALT + SHIFT + 1 — move to workspace 1
-- ALT + SHIFT + 2 — move to workspace 2
-- ALT + SHIFT + 3 — move to workspace 3
-- ALT + SHIFT + 4 — move to workspace 4
-- ALT + SHIFT + 5 — move to workspace 5
+- SUPER + RETURN — terminal (kitty)
+- SUPER + SPACE — albert toggle
+- SUPER + F — browser (librewolf)
+- SUPER + E — file explorer (pcmanfm)
+- SUPER + V — toggle floating
+- SUPER + F4 — close window
+- SUPER + C — close window
+- SUPER + SHIFT + C — force kill window
+- SUPER + mouse button 1 — move window
+- SUPER + mouse button 2 — resize window
+- SUPER + TAB — hyprexpo toggle
+- SUPER + SHIFT + GRAVE — reload hyprland
+- SUPER + 1 — workspace 1
+- SUPER + 2 — workspace 2
+- SUPER + 3 — workspace 3
+- SUPER + 4 — workspace 4
+- SUPER + 5 — workspace 5
+- SUPER + SHIFT + 1 — move to workspace 1
+- SUPER + SHIFT + 2 — move to workspace 2
+- SUPER + SHIFT + 3 — move to workspace 3
+- SUPER + SHIFT + 4 — move to workspace 4
+- SUPER + SHIFT + 5 — move to workspace 5
 - PRINT — screenshot (copy screen)
 - SHIFT + PRINT — screenshot (save area)
-- ALT + SHIFT + S — screenshot (copy area)
-- ALT + SHIFT + H — hyprshade toggle (frutiger_aero)
-- ALT + CTRL + H — hyprshade on (chrome_bloom)
-- ALT + L — layout: dwindle
-- ALT + SHIFT + L — layout: master
+- SUPER + SHIFT + S — screenshot (copy area)
+- SUPER + SHIFT + H — hyprshade toggle (frutiger_aero)
+- SUPER + CTRL + H — hyprshade on (chrome_bloom)
+- SUPER + L — layout: dwindle
+- SUPER + SHIFT + L — layout: master
 
 ## Necessities
 hyprland
