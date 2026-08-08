@@ -21,18 +21,16 @@ SHADER_FILE="$SHADER_DIR/ags-dim.frag"
 mkdir -p "$SHADER_DIR"
 
 cat > "$SHADER_FILE" <<SHADER
+#version 320 es
 precision highp float;
-varying vec2 v_texcoord;
+in vec2 v_texcoord;
 uniform sampler2D tex;
-uniform float alpha;
-uniform int active;
+out vec4 fragColor;
 
 void main() {
-    vec4 c = texture2D(tex, v_texcoord);
-    if (active == 1) {
-        c.rgb *= (1.0 - $DIM);
-    }
-    gl_FragColor = c;
+    vec4 c = texture(tex, v_texcoord);
+    c.rgb *= (1.0 - $DIM);
+    fragColor = c;
 }
 SHADER
 

@@ -1123,14 +1123,14 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
           <box class="flyout calendar-auth-dialog" orientation={Gtk.Orientation.VERTICAL} spacing={10} marginBottom={40}>
             <label class="flyout-title" label="Sign in to Google Calendar" xalign={0.5} />
             <Gtk.Separator orientation={Gtk.Orientation.HORIZONTAL} />
-            <box class="auth-instructions" orientation={Gtk.Orientation.VERTICAL} spacing={6} marginTop={4}>
+            <box class="auth-instructions" orientation={Gtk.Orientation.VERTICAL} spacing={6} marginTop={4}
+              visible={createComputed(() => authDialogInfo().error === "")}>
               <label label="Go to this URL and enter the code:" xalign={0.5} wrap />
-              <label class="auth-url" label={authDialogInfo((i) => i.verification_url || "—")} xalign={0.5} wrap selectable />
-              <label class="auth-code" label={authDialogInfo((i) => i.user_code || "—")} xalign={0.5} />
+              <label class="auth-url" label={createComputed(() => authDialogInfo().verification_url || "—")} xalign={0.5} wrap selectable />
+              <label class="auth-code" label={createComputed(() => authDialogInfo().user_code || "—")} xalign={0.5} />
             </box>
-            {authDialogInfo((i) => i.error ? (
-              <label class="auth-error" label={i.error} xalign={0.5} wrap />
-            ) : null)}
+            <label class="auth-error" label={createComputed(() => authDialogInfo().error)} xalign={0.5} wrap
+              visible={createComputed(() => authDialogInfo().error !== "")} />
             <box orientation={Gtk.Orientation.HORIZONTAL} spacing={10} halign={Gtk.Align.CENTER} marginTop={6}>
               <button class="action" onClicked={() => {
                 setAuthDialogOpen(false)
@@ -1139,7 +1139,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
                 <label label="Cancel" />
               </button>
               <button class="action" onClicked={startAuthPoll}
-                visible={authDialogInfo((i) => !!i.device_code)}>
+                visible={createComputed(() => !!authDialogInfo().device_code)}>
                 <label label="I've authorized" />
               </button>
             </box>
