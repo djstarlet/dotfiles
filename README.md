@@ -1,6 +1,6 @@
 ## Keybinds
 - SUPER + Q - terminal (kitty)
-- SUPER + SPACE - albert toggle
+- ALT + SPACE - albert toggle
 - SUPER + F - browser (librewolf)
 - SUPER + E - file explorer (pcmanfm)
 - SUPER + V - toggle floating
