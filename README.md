@@ -37,7 +37,7 @@
 # Manual:
 - drop `hypr/` into `~/.config/` - that's your Hyprland config (keybinds, wallpaper, autostart)
 - drop `ags/.config/ags/` into `~/.config/` - that's the bar
-- `cd ~/.config/ags && npm install gnim, typescript` (the bar is TypeScript + gnim)
+- `cd ~/.config/ags && npm install` (the bar is TypeScript + gnim)
 - then install the dependencies listed below on your package manager & reboot/logout then login
 - Google Calendar: click the calendar in the bar, then Sign in (you'll need your own OAuth client_id from Google Cloud - the dialog walks you through it)
 
