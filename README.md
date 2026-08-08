@@ -1,38 +1,29 @@
-## Hyprland & AGS
+## Necessities
 - hyprland
 - hyprland-plugins (hyprexpo)
 - hyprpm
-- swaybg (hypr/hyprland.conf — exec-once)
-- albert (hypr/hyprland.conf — exec-once; ags/.config/ags/widget/Bar.tsx — launcher button)
-- wl-clipboard (hypr/hyprland.conf — exec-once)
-- wl-clip-persist (hypr/hyprland.conf — exec-once)
-- pipewire / wireplumber (hypr/hyprland.conf — gentoo-pipewire-launcher)
 - ags
 - gnim
 - GTK4
 - gtk4-layer-shell
 - node / npm
 - typescript
-- xfce4-settings (ags/.config/ags/widget/Bar.tsx — system settings button)
-## Scripts, apps & fonts
-- hyprctl (hypr/hyprland.conf — keybinds; ags/.config/ags/widget/Bar.tsx — workspaces/power)
-- nmcli (ags/.config/ags/widget/Bar.tsx — Wi-Fi toggle)
-- wpctl (ags/.config/ags/widget/Bar.tsx — volume)
+- pipewire / wireplumber
+- hyprctl (Hyprland — used throughout ags/.config/ags/widget/Bar.tsx)
+- nmcli (NetworkManager — Wi-Fi toggle in Bar.tsx)
+- wpctl (WirePlumber — volume in Bar.tsx)
+- curl
+- python3 (calendar scripts)
+## Changeable
+- swaybg (hypr/hyprland.conf — exec-once)
+- albert (hypr/hyprland.conf — exec-once; ags/.config/ags/widget/Bar.tsx — launcher button)
+- wl-clipboard + wl-clip-persist (hypr/hyprland.conf — exec-once)
 - wtype (ags/.config/ags/widget/Bar.tsx — shortcut injection)
-- grim (hypr/scripts/take-screenshot.sh)
-- slurp (hypr/scripts/take-screenshot.sh)
-- libnotify (hypr/scripts/take-screenshot.sh — notify-send)
 - nmtui (ags/.config/ags/widget/Bar.tsx — network settings button)
+- xfce4-settings (ags/.config/ags/widget/Bar.tsx — system settings button)
 - pavucontrol (ags/.config/ags/widget/Bar.tsx — volume button)
+- grim, slurp, wl-copy, libnotify (hypr/hypr/scripts/take-screenshot.sh)
 - kitty
 - librewolf
 - pcmanfm
-- Trebuchet MS
-- Verdana
-- Liberation Sans
-- Liberation Mono
-- Noto Sans
-- Noto Sans Symbols
-- Noto Sans Symbols 2
-- Symbols Nerd Font
-- Symbols Nerd Font Mono
+- fonts (ags/.config/ags/style.css — font-family declarations: Trebuchet MS, Verdana, Liberation Sans, Noto Sans, Noto Sans Symbols, Noto Sans Symbols 2, Symbols Nerd Font, Symbols Nerd Font Mono)
