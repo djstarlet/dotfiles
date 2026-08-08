@@ -4,7 +4,6 @@
 - SUPER + F — browser (librewolf)
 - SUPER + E — file explorer (pcmanfm)
 - SUPER + V — toggle floating
-- SUPER + F4 — close window
 - SUPER + C — close window
 - SUPER + SHIFT + C — force kill window
 - SUPER + mouse button 1 — move window
