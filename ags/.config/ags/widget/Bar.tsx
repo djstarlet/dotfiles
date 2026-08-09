@@ -202,6 +202,66 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
   const [pendingPowerAction, setPendingPowerAction] = createState<null | "lock" | "logout" | "reboot" | "shutdown">(null)
   const [calendarOpen, setCalendarOpen] = createState(false)
   const [desktopMenuOpen, setDesktopMenuOpen] = createState(false)
+  const [settingsOpen, setSettingsOpen] = createState(false)
+  const [settingsStatus, setSettingsStatus] = createState("")
+  const [chooserOpen, setChooserOpen] = createState(false)
+
+  // Auto-clear settings status after 3s
+  createEffect(() => {
+    const msg = settingsStatus()
+    if (msg) {
+      setTimeout(() => setSettingsStatus(""), 3000)
+    }
+  })
+
+  const [activeList, setActiveList] = createState<"theme" | "icon" | "font" | "cursor" | null>(null)
+  const [listPopupOpen, setListPopupOpen] = createState(false)
+  const [themeList, setThemeList] = createState<string[]>([])
+  const [iconList, setIconList] = createState<string[]>([])
+  const [fontList, setFontList] = createState<string[]>([])
+  const [cursorList, setCursorList] = createState<string[]>([])
+  const [currentTheme, setCurrentTheme] = createState("loading…")
+  const [currentIcon, setCurrentIcon] = createState("loading…")
+  const [currentFont, setCurrentFont] = createState("loading…")
+  const [currentCursor, setCurrentCursor] = createState("loading…")
+  const [cursorSizeInput, setCursorSizeInput] = createState("24")
+
+  createEffect(() => {
+    if (settingsOpen()) {
+      setListPopupOpen(false)
+      setActiveList(null)
+      execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh list-themes"])
+        .then((out) => setThemeList(out.trim().split("\n").filter(Boolean)))
+        .catch(() => setThemeList([]))
+      execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh list-icons"])
+        .then((out) => setIconList(out.trim().split("\n").filter(Boolean)))
+        .catch(() => setIconList([]))
+      execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh list-fonts"])
+        .then((out) => setFontList(out.trim().split("\n").filter(Boolean)))
+        .catch(() => setFontList([]))
+      execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh get theme"])
+        .then((out) => setCurrentTheme(out.trim()))
+        .catch(() => setCurrentTheme("…"))
+      execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh get icon"])
+        .then((out) => setCurrentIcon(out.trim()))
+        .catch(() => setCurrentIcon("…"))
+      execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh get font"])
+        .then((out) => setCurrentFont(out.trim()))
+        .catch(() => setCurrentFont("…"))
+      execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh list-cursors"])
+        .then((out) => setCursorList(out.trim().split("\n").filter(Boolean)))
+        .catch(() => setCursorList([]))
+      execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh get cursor-theme"])
+        .then((out) => setCurrentCursor(out.trim()))
+        .catch(() => setCurrentCursor("…"))
+      execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh get cursor-size"])
+        .then((out) => setCursorSizeInput(out.trim() || "24"))
+        .catch(() => setCursorSizeInput("24"))
+    } else {
+      setListPopupOpen(false)
+      setActiveList(null)
+    }
+  })
   const [calendarAccountEmail, setCalendarAccountEmail] = createState<string | null>(null)
   const [authDialogOpen, setAuthDialogOpen] = createState(false)
   const [authDialogInfo, setAuthDialogInfo] = createState({
@@ -220,7 +280,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
     execAsync(["bash", "-lc", `$HOME/.config/ags/brightness-dim.sh ${Math.round(pct)}`]).catch(() => null)
   })
   const [manualVolume, setManualVolume] = createState(0.5)
-  const popupOpen = createComputed(() => controlOpen() || calendarOpen() || desktopMenuOpen() || powerMenuOpen())
+  const popupOpen = createComputed(() => controlOpen() || calendarOpen() || desktopMenuOpen() || powerMenuOpen() || settingsOpen())
   const effectiveBarVisible = createComputed(() => barVisible() || popupOpen())
   const effectiveBrightness = createComputed(() => Math.max(5, Math.min(100, Math.round(brightnessPercent()))))
   const workspaceIds = createComputed(() => {
@@ -260,6 +320,9 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
     setPendingPowerAction(null)
     setCalendarOpen(false)
     setDesktopMenuOpen(false)
+    setSettingsOpen(false)
+    setListPopupOpen(false)
+    setActiveList(null)
     setAuthDialogOpen(false)
     if (authPollStop) { authPollStop(); authPollStop = null }
   }
@@ -272,6 +335,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
       setControlOpen(false)
       setCalendarOpen(false)
       setDesktopMenuOpen(false)
+      setSettingsOpen(false)
     }
   }
 
@@ -285,6 +349,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
     if (next) {
       setCalendarOpen(false)
       setDesktopMenuOpen(false)
+      setSettingsOpen(false)
     }
   }
 
@@ -294,6 +359,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
     setControlOpen(false)
     setPowerMenuOpen(false)
     setDesktopMenuOpen(false)
+    setSettingsOpen(false)
     if (!next) {
       setAuthDialogOpen(false)
       if (authPollStop) { authPollStop(); authPollStop = null }
@@ -306,6 +372,22 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
     setControlOpen(false)
     setPowerMenuOpen(false)
     setCalendarOpen(false)
+    setSettingsOpen(false)
+  }
+
+  function toggleSettings() {
+    const next = !settingsOpen()
+    setSettingsOpen(next)
+    if (next) {
+      setControlOpen(false)
+      setCalendarOpen(false)
+      setDesktopMenuOpen(false)
+      setPowerMenuOpen(false)
+      setPendingPowerAction(null)
+    } else {
+      setListPopupOpen(false)
+      setActiveList(null)
+    }
   }
 
   execAsync(["bash", "-lc", "$HOME/.config/ags/calendar-auth.sh status"])
@@ -441,11 +523,6 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
     setDesktopMenuOpen(false)
   }
 
-  function openSystemSettings() {
-    execAsync(["xfce4-settings-manager"]).catch(() => null)
-    setDesktopMenuOpen(false)
-  }
-
   function openNetworkSettings() {
     execAsync(["nmtui"]).catch(() => null)
     setDesktopMenuOpen(false)
@@ -524,7 +601,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
     if (hideTimer) return
     hideTimer = timeout(380, () => {
       hideTimer = null
-      if (!popupOpen() && cursorY() > 40) setBarVisible(false)
+      if (!popupOpen() && !chooserOpen() && cursorY() > 40) setBarVisible(false)
     })
   }
 
@@ -589,7 +666,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
     const revealEdge = cursorY() <= 8
     const onBarBand = cursorY() <= 40
     const revealBand = cursorY() <= 20
-    const hasPopup = popupOpen()
+    const hasPopup = popupOpen() || chooserOpen()
     if (hasPopup) {
       cancelHide()
       setBarVisible(true)
@@ -680,7 +757,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
   return (
     <>
       <window
-        visible={popupOpen}
+        visible={createComputed(() => popupOpen() && !chooserOpen())}
         name={`ags-dismiss-${monitorIndex}`}
         class="DismissWindow"
         gdkmonitor={gdkmonitor}
@@ -883,9 +960,9 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
             <button
               $type="end"
               class="mini-gear"
-              onClicked={openSystemSettings}
+              onClicked={toggleSettings}
             >
-              <label class="gear-icon" label={"\u{F013}"} />
+              <label class="gear-icon" label={"\u{F1FC}"} />
             </button>
           </centerbox>
 
@@ -1186,6 +1263,230 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
             </box>
           </box>
           <button class="DismissSurface" hexpand vexpand canTarget onClicked={closeAuthDialog} />
+        </box>
+      </window>
+
+      <window
+        visible={settingsOpen}
+        name={`ags-settings-${monitorIndex}`}
+        class="FlyoutWindow"
+        gdkmonitor={gdkmonitor}
+        anchor={TOP | RIGHT}
+        layer={Astal.Layer.OVERLAY}
+        keymode={Astal.Keymode.ON_DEMAND}
+        exclusivity={Astal.Exclusivity.IGNORE}
+        marginTop={48}
+        application={app}
+      >
+        <box hexpand halign={Gtk.Align.END} marginEnd={controlFlyoutMarginEnd}>
+          <box
+            class="flyout settings-flyout"
+            orientation={Gtk.Orientation.VERTICAL}
+            spacing={8}
+            vexpand
+            marginBottom={40}
+          >
+            <centerbox>
+              <box $type="start" widthRequest={34} />
+              <label $type="center" class="flyout-title" label="Settings" xalign={0.5} />
+              <box $type="end" widthRequest={34} />
+            </centerbox>
+
+            <Gtk.Separator orientation={Gtk.Orientation.HORIZONTAL} />
+
+            {/* GTK Theme */}
+            <box class="settings-row" orientation={Gtk.Orientation.VERTICAL} spacing={4}>
+              <label label="GTK Theme" xalign={0} />
+              <button class="settings-dropdown" onClicked={() => {
+                if (activeList() === "theme" && listPopupOpen()) {
+                  setListPopupOpen(false)
+                  setActiveList(null)
+                } else {
+                  setActiveList("theme")
+                  setListPopupOpen(true)
+                }
+              }}>
+                <label label={currentTheme((v) => v || "GTK theme…")} xalign={0} hexpand />
+              </button>
+            </box>
+
+            {/* Icon Theme */}
+            <box class="settings-row" orientation={Gtk.Orientation.VERTICAL} spacing={4}>
+              <label label="Icon Theme" xalign={0} />
+              <button class="settings-dropdown" onClicked={() => {
+                if (activeList() === "icon" && listPopupOpen()) {
+                  setListPopupOpen(false)
+                  setActiveList(null)
+                } else {
+                  setActiveList("icon")
+                  setListPopupOpen(true)
+                }
+              }}>
+                <label label={currentIcon((v) => v || "Icon theme…")} xalign={0} hexpand />
+              </button>
+            </box>
+
+            {/* Font */}
+            <box class="settings-row" orientation={Gtk.Orientation.VERTICAL} spacing={4}>
+              <label label="Font" xalign={0} />
+              <button class="settings-dropdown" onClicked={() => {
+                if (activeList() === "font" && listPopupOpen()) {
+                  setListPopupOpen(false)
+                  setActiveList(null)
+                } else {
+                  setActiveList("font")
+                  setListPopupOpen(true)
+                }
+              }}>
+                <label label={currentFont((v) => v || "Font…")} xalign={0} hexpand />
+              </button>
+            </box>
+
+            {/* Cursor */}
+            <box class="settings-row" orientation={Gtk.Orientation.VERTICAL} spacing={4}>
+              <label label="Cursor" xalign={0} />
+              <box orientation={Gtk.Orientation.HORIZONTAL} spacing={6}>
+                <button class="settings-dropdown" hexpand halign={Gtk.Align.FILL} onClicked={() => {
+                  if (activeList() === "cursor" && listPopupOpen()) {
+                    setListPopupOpen(false)
+                    setActiveList(null)
+                  } else {
+                    setActiveList("cursor")
+                    setListPopupOpen(true)
+                  }
+                }}>
+                  <label label={currentCursor((v) => v || "Cursor theme…")} xalign={0} hexpand />
+                </button>
+                <Gtk.Entry
+                  class="settings-entry settings-size-entry"
+                  placeholderText="Size"
+                  widthRequest={56}
+                  widthChars={4}
+                  maxWidthChars={4}
+                  text={cursorSizeInput()}
+                  tooltipText="Size \u2014 press Enter to apply"
+                  onActivate={(self) => {
+                    const size = self.get_text().trim() || "24"
+                    setCursorSizeInput(size)
+                    const theme = currentCursor()
+                    if (theme) {
+                      execAsync(["bash", "-c", `$HOME/.config/ags/settings.sh set cursor '${theme}' ${size}`])
+                        .then(() => setSettingsStatus(`Cursor size set to ${size}`))
+                        .catch(() => setSettingsStatus("Failed to set cursor size"))
+                    }
+                  }}
+                />
+              </box>
+            </box>
+
+            {/* Wallpaper */}
+            <box class="settings-row" orientation={Gtk.Orientation.VERTICAL} spacing={4}>
+              <label label="Wallpaper" xalign={0} />
+              <button class="action" onClicked={() => {
+                setSettingsStatus("Choosing wallpaper...")
+                execAsync(["bash", "-c", "$HOME/.config/ags/pick-file.py"])
+                  .then((out) => {
+                    const path = out.trim()
+                    if (!path) { setSettingsStatus(""); return }
+                    execAsync(["bash", "-c", `$HOME/.config/ags/settings.sh set wallpaper '${path}'`])
+                      .then(() => setSettingsStatus("Wallpaper set"))
+                      .catch(() => setSettingsStatus("Failed to set wallpaper"))
+                  })
+                  .catch(() => setSettingsStatus("Failed to open file picker"))
+              }}>
+                <label label="Choose wallpaper..." />
+              </button>
+            </box>
+
+            <Gtk.Separator orientation={Gtk.Orientation.HORIZONTAL} />
+
+            <label
+              class="settings-status"
+              label={settingsStatus}
+              xalign={0.5}
+              visible={createComputed(() => settingsStatus() !== "")}
+            />
+          </box>
+        </box>
+      </window>
+
+      <window
+        visible={createComputed(() => listPopupOpen() && activeList() !== null)}
+        name={`ags-settings-list-${monitorIndex}`}
+        class="FlyoutWindow"
+        gdkmonitor={gdkmonitor}
+        anchor={TOP | RIGHT}
+        layer={Astal.Layer.OVERLAY}
+        keymode={Astal.Keymode.ON_DEMAND}
+        exclusivity={Astal.Exclusivity.IGNORE}
+        marginTop={120}
+        application={app}
+      >
+        <box hexpand halign={Gtk.Align.END} marginEnd={controlFlyoutMarginEnd}>
+          <button class="DismissSurface" hexpand vexpand canTarget onClicked={() => {
+            setListPopupOpen(false)
+            setActiveList(null)
+          }} />
+          <box
+            class="flyout settings-list-popup"
+            orientation={Gtk.Orientation.VERTICAL}
+            spacing={8}
+            marginBottom={40}
+          >
+            <label class="flyout-title" label={createComputed(() => {
+              const kind = activeList()
+              if (kind === "theme") return "GTK Theme"
+              if (kind === "icon") return "Icon Theme"
+              if (kind === "font") return "Fonts"
+              if (kind === "cursor") return "Cursor Theme"
+              return ""
+            })} xalign={0.5} />
+            <Gtk.Separator orientation={Gtk.Orientation.HORIZONTAL} />
+            <Gtk.ScrolledWindow heightRequest={220} widthRequest={300} overlayScrolling={false}>
+              <box class="settings-list" orientation={Gtk.Orientation.VERTICAL}>
+                <For each={createComputed(() => {
+                  const kind = activeList()
+                  if (kind === "theme") return themeList()
+                  if (kind === "icon") return iconList()
+                  if (kind === "font") return fontList()
+                  if (kind === "cursor") return cursorList()
+                  return []
+                })}>
+                  {(item) => (
+                    <button class="settings-item" onClicked={() => {
+                      const kind = activeList()
+                      if (kind === "theme") {
+                        execAsync(["bash", "-c", `$HOME/.config/ags/settings.sh set theme '${item}'`])
+                          .then(() => setCurrentTheme(item))
+                          .catch(() => null)
+                      } else if (kind === "icon") {
+                        execAsync(["bash", "-c", `$HOME/.config/ags/settings.sh set icon '${item}'`])
+                          .then(() => setCurrentIcon(item))
+                          .catch(() => null)
+                      } else if (kind === "font") {
+                        execAsync(["bash", "-c", `$HOME/.config/ags/settings.sh set font '${item}'`])
+                          .then(() => setCurrentFont(item))
+                          .catch(() => null)
+                      } else if (kind === "cursor") {
+                        const size = cursorSizeInput()
+                        execAsync(["bash", "-c", `$HOME/.config/ags/settings.sh set cursor '${item}' ${size}`])
+                          .then(() => setCurrentCursor(item))
+                          .catch(() => null)
+                      }
+                      setListPopupOpen(false)
+                      setActiveList(null)
+                    }}>
+                      <label label={item} xalign={0} hexpand />
+                    </button>
+                  )}
+                </For>
+              </box>
+            </Gtk.ScrolledWindow>
+          </box>
+          <button class="DismissSurface" hexpand vexpand canTarget onClicked={() => {
+            setListPopupOpen(false)
+            setActiveList(null)
+          }} />
         </box>
       </window>
     </>

@@ -670,3 +670,94 @@ button.calendar-account-btn label {
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
+.settings-flyout {
+  min-width: 340px;
+}
+
+.settings-list-popup {
+  min-width: 300px;
+}
+
+.settings-flyout label {
+  font-size: 11px;
+  color: #1a3050;
+  font-weight: 600;
+}
+
+.settings-row {
+  padding: 4px 0;
+}
+
+button.settings-dropdown {
+  min-height: 26px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #b0bfcf;
+  border-top-color: rgba(255, 255, 255, 0.95);
+  border-bottom-color: rgba(50, 72, 96, 0.5);
+  background: linear-gradient(180deg, #ffffff 0%, #e4eaf3 40%, #c8d3e2 100%);
+  color: #0d1c2a;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 -1px 0 rgba(0, 0, 0, 0.18), 0 1px 3px rgba(0, 0, 0, 0.22);
+  transition: background 120ms var(--curve), box-shadow 120ms var(--curve);
+}
+
+button.settings-dropdown:hover {
+  background: linear-gradient(180deg, #ffffff 0%, #c7d1df 100%);
+}
+
+button.settings-dropdown:active {
+  background: linear-gradient(180deg, #c7d1df 0%, #ffffff 100%);
+  box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.18), inset 0 -1px 0 rgba(255, 255, 255, 0.55);
+}
+
+box.settings-list {
+  border-radius: 4px;
+  border: 1px solid #b0bfcf;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(239, 247, 255, 0.95) 100%);
+}
+
+button.settings-item {
+  min-height: 24px;
+  padding: 3px 8px;
+  border: 0;
+  border-radius: 0;
+  border-bottom: 1px solid rgba(180, 195, 215, 0.35);
+  background: transparent;
+  color: #0d1c2a;
+  box-shadow: none;
+  transition: background 100ms var(--curve);
+}
+
+button.settings-item:last-child {
+  border-bottom: 0;
+}
+
+button.settings-item:hover {
+  background: linear-gradient(180deg, rgba(200, 220, 245, 0.7) 0%, rgba(160, 195, 235, 0.6) 100%);
+}
+
+button.settings-item:active {
+  background: linear-gradient(180deg, rgba(120, 170, 232, 0.6) 0%, rgba(184, 216, 255, 0.7) 100%);
+}
+
+.settings-entry {
+  min-height: 24px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(180, 195, 215, 0.7);
+  background: rgba(255, 255, 255, 0.85);
+  color: #0e2033;
+  font-size: 11px;
+}
+
+.settings-size-entry {
+  min-width: 50px;
+}
+
+.settings-status {
+  font-size: 10px;
+  color: #2e7d32;
+  font-weight: 600;
+  padding: 2px 0;
+}
+
