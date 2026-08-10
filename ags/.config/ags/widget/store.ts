@@ -1,21 +1,8 @@
 import { execAsync } from "ags/process"
 import { createPoll, timeout } from "ags/time"
-import config from "./widgets.config"
 import { createComputed, createEffect, createState } from "gnim"
 
 // ─── Parser helpers ───────────────────────────────────────────────────────────
-
-function parseWifiSignal(raw: string) {
-  const n = Number(String(raw).trim())
-  return Number.isFinite(n) ? n : -1
-}
-
-function parseVolume(raw: string) {
-  const m = String(raw).match(/([0-9.]+)/)
-  if (!m) return 0.5
-  const n = Number(m[1])
-  return Number.isFinite(n) ? n : 0.5
-}
 
 function parseActiveWorkspace(raw: string) {
   try {
@@ -25,14 +12,6 @@ function parseActiveWorkspace(raw: string) {
   } catch {
   }
   return 1
-}
-
-function parseWifiEnabled(raw: string) {
-  return /enabled|yes|on|true/i.test(raw)
-}
-
-function clamp01(x: number) {
-  return Math.max(0, Math.min(1, x))
 }
 
 // Helper: send a keyboard shortcut to the focused window via wtype
@@ -166,21 +145,6 @@ export function createStore() {
     const cls = parseFocusedWindowClass(out)
     return cls !== "" ? cls : prev
   })
-  const wifiEnabled = createPoll(true, 3000, ["nmcli", "-t", "-f", "WIFI", "g"], (out) =>
-    parseWifiEnabled(out),
-  )
-  const wifiSignal = createPoll(-1, 5000, (prev) =>
-    execAsync([
-      "bash",
-      "-lc",
-      "nmcli -t -f ACTIVE,SIGNAL dev wifi list | grep '^yes:' | cut -d: -f2 | head -n1",
-    ])
-      .then((out) => parseWifiSignal(out))
-      .catch(() => prev),
-  )
-  const liveVolume = createPoll(0.5, 1200, ["bash", "-c", "wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null || echo '0.5'"], (out) =>
-    parseVolume(out),
-  )
   const cursorY = createPoll(9999, 120, ["hyprctl", "cursorpos"], (out) => parseCursorY(out))
   const workspaceListRaw = createPoll([1], 1300, ["hyprctl", "workspaces", "-j"], (out) =>
     parseWorkspaceIds(out),
@@ -228,28 +192,15 @@ export function createStore() {
   const [clientIdInput, setClientIdInput] = createState("")
   let authPollStop: (() => void) | null = null
 
-  const [brightnessPercent, setBrightnessPercent] = createState(100)
-  const [manualVolume, setManualVolume] = createState(0.5)
   const [workspaceFx, setWorkspaceFx] = createState<Record<number, "born" | "dying" | "settled">>({})
 
   // ── Computeds ──────────────────────────────────────────────────────────────
   const popupOpen = createComputed(() => controlOpen() || calendarOpen() || desktopMenuOpen() || powerMenuOpen() || settingsOpen())
-  const effectiveBrightness = createComputed(() => Math.max(5, Math.min(100, Math.round(brightnessPercent()))))
   const workspaceIds = createComputed(() => {
     const ids = workspaceListRaw()
     const active = activeWorkspace()
     if (ids.includes(active)) return ids
     return [...ids, active].sort((a, b) => a - b)
-  })
-  const wifiGlyph = createComputed(() => {
-    if (!wifiEnabled()) return "×"
-
-    const signal = wifiSignal()
-    if (signal >= 75) return "▂▄▆█"
-    if (signal >= 50) return "▂▄▆"
-    if (signal >= 25) return "▂▄"
-    if (signal >= 1) return "▂"
-    return "·"
   })
   const centerDisplay = createComputed(() => (calendarOpen() ? clock() : focusedWindowTitle()))
   const isClientIdMissing = createComputed(() => {
@@ -301,19 +252,6 @@ export function createStore() {
     } else {
       setListPopupOpen(false)
       setActiveList(null)
-    }
-  })
-
-  // Brightness effect
-  createEffect(() => {
-    const pct = brightnessPercent()
-    execAsync(["bash", "-lc", `$HOME/.config/ags/brightness-dim.sh ${Math.round(pct)}`]).catch(() => null)
-  })
-
-  // Manual volume sync
-  createEffect(() => {
-    if (config.controlCenter) {
-      setManualVolume(liveVolume())
     }
   })
 
@@ -591,9 +529,6 @@ export function createStore() {
     activeWorkspace,
     focusedWindowTitle,
     focusedWindowClass,
-    wifiEnabled,
-    wifiSignal,
-    liveVolume,
     cursorY,
     workspaceListRaw,
     gcalEvents,
@@ -645,18 +580,12 @@ export function createStore() {
     setAuthDialogInfo,
     clientIdInput,
     setClientIdInput,
-    brightnessPercent,
-    setBrightnessPercent,
-    manualVolume,
-    setManualVolume,
     workspaceFx,
     setWorkspaceFx,
 
     // Computeds
     popupOpen,
-    effectiveBrightness,
     workspaceIds,
-    wifiGlyph,
     centerDisplay,
     isClientIdMissing,
 
@@ -680,7 +609,6 @@ export function createStore() {
     moveWindowToNewDesktop,
     openOverview,
     sendFocusedShortcut,
-    clamp01,
     startLogin,
     handleAccountClick,
     saveClientIdAndLogin,
