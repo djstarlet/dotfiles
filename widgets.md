@@ -1,13 +1,14 @@
 ## Widgets
-- clock (center of the bar) - opens the calendar flyout
-- workspace dots (1-12) - click to switch, middle-click makes a new desktop
-- desktop menu (top left) - quick actions for the focused app, app launcher (albert), screenshot, and desktop tools (new desktop, close current, overview, move window)
-- control center (gear) - volume (wpctl + pavucontrol), brightness (Hyprland screen shader), Wi-Fi toggle (nmcli), network settings (nmtui), power menu
-- power menu - lock, logout, reboot, shutdown (with a confirm step)
+- clock (center of the bar) - shows the date/time; click to open the calendar flyout
+- workspace dots (1-12) - click to switch, middle-click creates a new desktop
+- desktop menu (hamburger, top left) - quick actions for the focused app, app launcher (albert), screenshot, and desktop tools (new desktop, close current, overview, move window)
+- control center (gear, top right) - volume slider (wpctl), brightness slider, Wi-Fi toggle (nmcli), network settings (nmtui), power tile (toggles the power menu)
+- power menu (power icon, top right) - lock, logout, reboot, shutdown (with a confirm step)
 - calendar flyout - month view plus your next Google Calendar events
   - Google Calendar: click the calendar in the bar, then Sign in (you'll need your own OAuth client_id from Google Cloud - the dialog walks you through it)
   - events refresh every 6 seconds; your token lives in ~/.config/ags/google-calendar-auth.json (gitignored)
+- settings (mini-gear inside the control center header) - theme, icon, font, cursor, and wallpaper
+  - wallpaper: click "Choose wallpaper..." to open a GTK3 file picker; the selected image is imported to ~/.config/hypr/wallpapers/, converted to PNG, and applied via swaybg
 - the bar auto-hides - move the cursor to the top edge to bring it back
-- settings (gear icon in the control center header) - theme, icon, font, cursor, and wallpaper picker (drop images into ~/.config/hypr/wallpapers/ or pick any file)
 - toggle widgets in ags/.config/ags/widget/widgets.config.ts (edit, then restart the bar - no hot reload)
 - wallpaper persists across logins: the settings chooser writes ~/.config/hypr/current-wallpaper.png, restored by start-wallpaper.sh on startup
