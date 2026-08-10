@@ -45,7 +45,7 @@ export default function CalendarWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
                 tooltipText={s.calendarAccountEmail((e) => e ? "Sign out" : "Sign in to Google Calendar")}>
                 <label label={s.calendarAccountEmail((e) => {
                   if (!e) return "Sign in"
-                  return e.length > 20 ? e.slice(0, 18) + "…" : e
+                  return e.length > 20 ? e.slice(0, 18) + "..." : e
                 })} />
               </button>
             </centerbox>
@@ -77,12 +77,12 @@ export default function CalendarWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
             <label class="flyout-title" label="Sign in to Google Calendar" xalign={0.5} />
             <Gtk.Separator orientation={Gtk.Orientation.HORIZONTAL} />
 
-            {/* State A: need_code — device_code set */}
+            {/* State A: need_code - device_code set */}
             <box class="auth-instructions" orientation={Gtk.Orientation.VERTICAL} spacing={6} marginTop={4}
               visible={createComputed(() => !!s.authDialogInfo().device_code)}>
               <label label="Go to this URL and enter the code:" xalign={0.5} wrap />
-              <label class="auth-url" label={createComputed(() => s.authDialogInfo().verification_url || "—")} xalign={0.5} wrap selectable />
-              <label class="auth-code" label={createComputed(() => s.authDialogInfo().user_code || "—")} xalign={0.5} />
+               <label class="auth-url" label={createComputed(() => s.authDialogInfo().verification_url || "-")} xalign={0.5} wrap selectable />
+               <label class="auth-code" label={createComputed(() => s.authDialogInfo().user_code || "-")} xalign={0.5} />
             </box>
 
             {/* State B: client_id missing */}

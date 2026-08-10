@@ -14,5 +14,5 @@ export const config: Record<WidgetId, boolean> = {
 // settings' only launcher is the mini-gear inside Control Center
 if (!config.controlCenter) config.settings = false
 
-// NOTE: config is static per launch — edit this then restart via start-bar.sh (no hot reload)
+// NOTE: config is static per launch - edit this then restart via start-bar.sh (no hot reload)
 export default config

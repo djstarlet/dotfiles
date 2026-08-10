@@ -49,7 +49,7 @@ export default function SettingsWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
                   s.setListPopupOpen(true)
                 }
               }}>
-                <label label={s.currentTheme((v) => v || "GTK theme…")} xalign={0} hexpand />
+                <label label={s.currentTheme((v) => v || "GTK theme...")} xalign={0} hexpand />
               </button>
             </box>
 
@@ -65,7 +65,7 @@ export default function SettingsWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
                   s.setListPopupOpen(true)
                 }
               }}>
-                <label label={s.currentIcon((v) => v || "Icon theme…")} xalign={0} hexpand />
+                <label label={s.currentIcon((v) => v || "Icon theme...")} xalign={0} hexpand />
               </button>
             </box>
 
@@ -81,7 +81,7 @@ export default function SettingsWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
                   s.setListPopupOpen(true)
                 }
               }}>
-                <label label={s.currentFont((v) => v || "Font…")} xalign={0} hexpand />
+                <label label={s.currentFont((v) => v || "Font...")} xalign={0} hexpand />
               </button>
             </box>
 
@@ -98,7 +98,7 @@ export default function SettingsWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
                     s.setListPopupOpen(true)
                   }
                 }}>
-                  <label label={s.currentCursor((v) => v || "Cursor theme…")} xalign={0} hexpand />
+                  <label label={s.currentCursor((v) => v || "Cursor theme...")} xalign={0} hexpand />
                 </button>
                 <Gtk.Entry
                   class="settings-entry settings-size-entry"

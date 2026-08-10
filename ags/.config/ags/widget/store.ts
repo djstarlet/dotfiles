@@ -15,7 +15,7 @@ function parseActiveWorkspace(raw: string) {
 }
 
 // Helper: send a keyboard shortcut to the focused window via wtype
-// (Wayland virtual-keyboard protocol — dotool/ydotool are unusable here:
+// (Wayland virtual-keyboard protocol - dotool/ydotool are unusable here:
 // this kernel has no CONFIG_INPUT_UINPUT, so there is no /dev/uinput).
 // The caller closes the flyout first; wtype's -s 250 waits for keyboard
 // focus to return to the app underneath before injecting the keys.
@@ -175,10 +175,10 @@ export function createStore() {
   const [iconList, setIconList] = createState<string[]>([])
   const [fontList, setFontList] = createState<string[]>([])
   const [cursorList, setCursorList] = createState<string[]>([])
-  const [currentTheme, setCurrentTheme] = createState("loading…")
-  const [currentIcon, setCurrentIcon] = createState("loading…")
-  const [currentFont, setCurrentFont] = createState("loading…")
-  const [currentCursor, setCurrentCursor] = createState("loading…")
+  const [currentTheme, setCurrentTheme] = createState("loading...")
+  const [currentIcon, setCurrentIcon] = createState("loading...")
+  const [currentFont, setCurrentFont] = createState("loading...")
+  const [currentCursor, setCurrentCursor] = createState("loading...")
   const [cursorSizeInput, setCursorSizeInput] = createState("24")
 
   const [calendarAccountEmail, setCalendarAccountEmail] = createState<string | null>(null)
@@ -213,7 +213,7 @@ export function createStore() {
   createEffect(() => {
     const msg = settingsStatus()
     if (msg) {
-      setTimeout(() => setSettingsStatus(""), 3000)
+      timeout(3000, () => setSettingsStatus(""))
     }
   })
 
@@ -233,19 +233,19 @@ export function createStore() {
         .catch(() => setFontList([]))
       execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh get theme"])
         .then((out) => setCurrentTheme(out.trim()))
-        .catch(() => setCurrentTheme("…"))
+        .catch(() => setCurrentTheme("..."))
       execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh get icon"])
         .then((out) => setCurrentIcon(out.trim()))
-        .catch(() => setCurrentIcon("…"))
+        .catch(() => setCurrentIcon("..."))
       execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh get font"])
         .then((out) => setCurrentFont(out.trim()))
-        .catch(() => setCurrentFont("…"))
+        .catch(() => setCurrentFont("..."))
       execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh list-cursors"])
         .then((out) => setCursorList(out.trim().split("\n").filter(Boolean)))
         .catch(() => setCursorList([]))
       execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh get cursor-theme"])
         .then((out) => setCurrentCursor(out.trim()))
-        .catch(() => setCurrentCursor("…"))
+        .catch(() => setCurrentCursor("..."))
       execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh get cursor-size"])
         .then((out) => setCursorSizeInput(out.trim() || "24"))
         .catch(() => setCursorSizeInput("24"))

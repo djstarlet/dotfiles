@@ -1,21 +1,21 @@
 import app from "ags/gtk4/app"
 import { Astal, Gtk, Gdk } from "ags/gtk4"
-import { execAsync } from "ags/process"
 import { timeout } from "ags/time"
 import { createComputed, createEffect, createState } from "gnim"
-import { createStore, workspaceColorClass } from "./store"
+import { createStore } from "./store"
 import config from "./widgets.config"
 import PowerMenuWindow from "./PowerMenu"
 import DesktopMenuWindow from "./DesktopMenu"
 import SettingsWindows from "./Settings"
 import CalendarWindows from "./Calendar"
 import ControlCenterWindow from "./ControlCenter"
+import { ClockElement } from "./Clock"
+import { WorkspacesElement } from "./Workspaces"
 
 export default function Bar(gdkmonitor: Gdk.Monitor) {
   const s = createStore()
   const monitorIndex = Math.max(0, app.get_monitors().indexOf(gdkmonitor))
   const { TOP, LEFT, RIGHT, BOTTOM } = Astal.WindowAnchor
-  const workspaceSlots = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
   // ── Bar-local state ────────────────────────────────────────────────────────
   const [barVisible, setBarVisible] = createState(true)
@@ -32,9 +32,6 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
   const barSlideDuration = 300
   const barRevealDelay = 20
   const barReserveReleaseDelay = 48
-  const controlFlyoutMarginTop = 48
-  const controlFlyoutMarginEnd = 18
-  const powerFlyoutMarginTop = 48
   const flyoutToggleSize = 24
 
   // ── Bar-local effects ──────────────────────────────────────────────────────
@@ -51,58 +48,6 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
       hideTimer.cancel()
       hideTimer = null
     }
-  }
-
-  let lastWorkspaceIds: number[] = []
-  if (config.workspaces) {
-    createEffect(() => {
-      const ids = s.workspaceIds()
-      const born = ids.filter((id) => !lastWorkspaceIds.includes(id))
-      const dying = lastWorkspaceIds.filter((id) => !ids.includes(id))
-
-      if (born.length === 0 && dying.length === 0) {
-        lastWorkspaceIds = [...ids]
-        return
-      }
-
-      if (born.length > 0) {
-        s.setWorkspaceFx((prev) => {
-          const next = { ...prev }
-          for (const id of born) next[id] = "born"
-          return next
-        })
-
-        timeout(560, () => {
-          s.setWorkspaceFx((prev) => {
-            const next = { ...prev }
-            for (const id of born) {
-              if (next[id] === "born") next[id] = "settled"
-            }
-            return next
-          })
-        })
-      }
-
-      if (dying.length > 0) {
-        s.setWorkspaceFx((prev) => {
-          const next = { ...prev }
-          for (const id of dying) next[id] = "dying"
-          return next
-        })
-
-        timeout(640, () => {
-          s.setWorkspaceFx((prev) => {
-            const next = { ...prev }
-            for (const id of dying) {
-              if (next[id] === "dying") delete next[id]
-            }
-            return next
-          })
-        })
-      }
-
-      lastWorkspaceIds = [...ids]
-    })
   }
 
   createEffect(() => {
@@ -244,58 +189,10 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
                   <label class="desktop-menu-icon" label={"\u{F0C9}"} />
                 </button>
               )}
-              {config.workspaces && (
-                <>{workspaceSlots.map((ws) => (
-                  <button
-                    visible={createComputed(() => {
-                      const fx = s.workspaceFx()
-                      return fx[ws] === "born" || fx[ws] === "settled" || fx[ws] === "dying"
-                    })}
-                    widthRequest={22}
-                    heightRequest={22}
-                    class="ws-dot"
-                    $={(self) => {
-                      const middleClick = new Gtk.GestureClick({ button: 2 })
-                      middleClick.connect("pressed", () => {
-                        s.createNewDesktop()
-                      })
-                      self.add_controller(middleClick)
-                    }}
-                    onClicked={() => {
-                      execAsync(["hyprctl", "dispatch", "workspace", String(ws)]).catch(() => null)
-                    }}
-                  >
-                    <box
-                      widthRequest={22}
-                      heightRequest={22}
-                      halign={Gtk.Align.CENTER}
-                      valign={Gtk.Align.CENTER}
-                      class={createComputed(() => {
-                        const current = s.activeWorkspace()
-                        const fx = s.workspaceFx()
-                        const isActive = current === ws
-                        const phase = fx[ws] === "born" || fx[ws] === "dying" ? ` ${fx[ws]}` : ""
-                        return `ws-core ${workspaceColorClass(ws)}${isActive ? " active" : ""}${phase}`
-                      })}
-                    />
-                  </button>
-                ))}</>
-              )}
+              {config.workspaces && WorkspacesElement(s)}
             </box>
 
-            {config.clock ? (
-              config.calendar ? (
-                <button
-                  $type="center"
-                  class={s.calendarOpen((open) => (open ? "clock active" : "clock"))}
-                  onClicked={s.toggleCalendar}
-                >
-                  <label class="clock-label center-label" label={s.centerDisplay} />
-                </button>
-              ) : (
-                <label $type="center" class="clock-label center-label" label={s.clock} />
-              )
-            ) : null}
+            {ClockElement(s)}
 
             <box $type="end" spacing={8}>
               {config.controlCenter && (
