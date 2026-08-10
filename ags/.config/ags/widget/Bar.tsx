@@ -1,306 +1,27 @@
-function parseWifiSignal(raw: string) {
-  const n = Number(String(raw).trim())
-  return Number.isFinite(n) ? n : -1
-}
-
-function parseVolume(raw: string) {
-  const m = String(raw).match(/([0-9.]+)/)
-  if (!m) return 0.5
-  const n = Number(m[1])
-  return Number.isFinite(n) ? n : 0.5
-}
-function parseActiveWorkspace(raw: string) {
-  try {
-    const parsed = JSON.parse(raw)
-    const id = Number(parsed?.id)
-    if (Number.isFinite(id) && id > 0) return id
-  } catch {
-  }
-  return 1
-}
-
-function parseWifiEnabled(raw: string) {
-  return /enabled|yes|on|true/i.test(raw)
-}
-
-function clamp01(x: number) {
-  return Math.max(0, Math.min(1, x))
-}
-
-// Helper: send a keyboard shortcut to the focused window via wtype
-// (Wayland virtual-keyboard protocol — dotool/ydotool are unusable here:
-// this kernel has no CONFIG_INPUT_UINPUT, so there is no /dev/uinput).
-// The caller closes the flyout first; wtype's -s 250 waits for keyboard
-// focus to return to the app underneath before injecting the keys.
-function sendFocusedShortcut(mod: string, key: string) {
-  const args: string[] = ["wtype", "-s", "250"]
-  if (String(mod).includes("CTRL")) args.push("-M", "ctrl")
-  if (String(mod).includes("SHIFT")) args.push("-M", "shift")
-  if (String(mod).includes("ALT")) args.push("-M", "alt")
-  const k = String(key)
-  args.push("-k", k.length === 1 ? k.toLowerCase() : k)
-  execAsync(args).catch(() => null)
-}
-
-// Mac-style per-app Quick Actions rows: picked by the focused window's class
-// when the menu opens; unknown apps fall back to the generic edit shortcuts.
-type ShortcutDef = { label: string; hint: string; mod: string; key: string }
-const SHORTCUT_FALLBACK: ShortcutDef[] = [
-  { label: "Save", hint: "Ctrl+S", mod: "CTRL", key: "s" },
-  { label: "Undo", hint: "Ctrl+Z", mod: "CTRL", key: "z" },
-  { label: "Redo", hint: "Ctrl+Shift+Z", mod: "CTRL_SHIFT", key: "z" },
-  { label: "Cut", hint: "Ctrl+X", mod: "CTRL", key: "x" },
-  { label: "Copy", hint: "Ctrl+C", mod: "CTRL", key: "c" },
-  { label: "Paste", hint: "Ctrl+V", mod: "CTRL", key: "v" },
-  { label: "Select All", hint: "Ctrl+A", mod: "CTRL", key: "a" },
-]
-const SHORTCUT_PRESETS: Record<string, ShortcutDef[]> = {
-  kitty: [
-    { label: "Copy", hint: "Ctrl+Shift+C", mod: "CTRL_SHIFT", key: "c" },
-    { label: "Paste", hint: "Ctrl+Shift+V", mod: "CTRL_SHIFT", key: "v" },
-    { label: "New Tab", hint: "Ctrl+Shift+T", mod: "CTRL_SHIFT", key: "t" },
-    { label: "Close Tab", hint: "Ctrl+Shift+W", mod: "CTRL_SHIFT", key: "w" },
-    { label: "New Window", hint: "Ctrl+Shift+Enter", mod: "CTRL_SHIFT", key: "Return" },
-  ],
-  librewolf: [
-    { label: "New Tab", hint: "Ctrl+T", mod: "CTRL", key: "t" },
-    { label: "Close Tab", hint: "Ctrl+W", mod: "CTRL", key: "w" },
-    { label: "Reopen Closed Tab", hint: "Ctrl+Shift+T", mod: "CTRL_SHIFT", key: "t" },
-    { label: "Find", hint: "Ctrl+F", mod: "CTRL", key: "f" },
-    { label: "Reload", hint: "Ctrl+R", mod: "CTRL", key: "r" },
-    { label: "Copy", hint: "Ctrl+C", mod: "CTRL", key: "c" },
-    { label: "Paste", hint: "Ctrl+V", mod: "CTRL", key: "v" },
-  ],
-  pcmanfm: [
-    { label: "Copy", hint: "Ctrl+C", mod: "CTRL", key: "c" },
-    { label: "Paste", hint: "Ctrl+V", mod: "CTRL", key: "v" },
-    { label: "Select All", hint: "Ctrl+A", mod: "CTRL", key: "a" },
-    { label: "Rename", hint: "F2", mod: "", key: "F2" },
-    { label: "Move to Trash", hint: "Del", mod: "", key: "Delete" },
-    { label: "Properties", hint: "Alt+Return", mod: "ALT", key: "Return" },
-  ],
-}
-
-function parseFocusedWindowClass(raw: string): string {
-  try {
-    const parsed = JSON.parse(raw)
-    return String(parsed?.class || parsed?.initialClass || "").toLowerCase().trim()
-  } catch {
-    return ""
-  }
-}
-
 import app from "ags/gtk4/app"
 import { Astal, Gtk, Gdk } from "ags/gtk4"
 import { execAsync } from "ags/process"
-import { createPoll, timeout } from "ags/time"
-import { createComputed, createEffect, createState, For } from "gnim"
-
-function parseFocusedWindowTitle(raw: string) {
-  try {
-    const parsed = JSON.parse(raw)
-    const title = String(parsed?.title || parsed?.initialTitle || parsed?.class || "").trim()
-    if (!title) return "Desktop"
-    const compact = title.replace(/\s+/g, " ")
-    return compact.length > 48 ? `${compact.slice(0, 45)}...` : compact
-  } catch {
-    return "Desktop"
-  }
-}
-
-
-function sanitizeEventText(raw: string) {
-  const cleaned = raw
-    .replace(/\u001b\[[0-9;]*m/g, "")
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
-    .replace(/\t/g, " ")
-    .trim()
-
-  return cleaned
-    .split("\n")
-    .map((line) => line.replace(/\s{2,}/g, " ").trim())
-    .filter((line, idx, arr) => line.length > 0 || (idx > 0 && idx < arr.length - 1))
-    .join("\n")
-}
-
-function parseCursorY(raw: string) {
-  const m = raw.match(/(-?\d+)\s*,\s*(-?\d+)/)
-  if (!m) return 9999
-  const y = Number(m[2])
-  return Number.isFinite(y) ? y : 9999
-}
-
-function parseWorkspaceIds(raw: string) {
-  try {
-    const parsed = JSON.parse(raw)
-    const ids: number[] = (parsed as any[])
-      .map((item) => Number(item?.id))
-      .filter((val): val is number => Number.isFinite(val) && val > 0)
-    if (ids.length === 0) return [1]
-    return [...new Set(ids)].sort((a, b) => a - b)
-  } catch {
-    return [1]
-  }
-}
-
-function workspaceColorClass(id: number) {
-  const palette = ((id - 1) % 8) + 1
-  return `ws-p${palette}`
-}
+import { timeout } from "ags/time"
+import { createComputed, createEffect, createState } from "gnim"
+import { createStore, workspaceColorClass } from "./store"
+import config from "./widgets.config"
+import PowerMenuWindow from "./PowerMenu"
+import DesktopMenuWindow from "./DesktopMenu"
+import SettingsWindows from "./Settings"
 
 export default function Bar(gdkmonitor: Gdk.Monitor) {
+  const s = createStore()
   const monitorIndex = Math.max(0, app.get_monitors().indexOf(gdkmonitor))
   const { TOP, LEFT, RIGHT, BOTTOM } = Astal.WindowAnchor
   const workspaceSlots = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
-  const clock = createPoll("", 1000, ["bash", "-lc", "date '+%a %d %b  %H:%M:%S'"])
-  const activeWorkspace = createPoll(1, 1200, ["hyprctl", "activeworkspace", "-j"], (out) =>
-    parseActiveWorkspace(out),
-  )
-  const focusedWindowTitle = createPoll("Desktop", 900, ["hyprctl", "activewindow", "-j"], (out) =>
-    parseFocusedWindowTitle(out),
-  )
-  const focusedWindowClass = createPoll("", 900, ["hyprctl", "activewindow", "-j"], (out, prev) => {
-    const cls = parseFocusedWindowClass(out)
-    return cls !== "" ? cls : prev
-  })
-  const wifiEnabled = createPoll(true, 3000, ["nmcli", "-t", "-f", "WIFI", "g"], (out) =>
-    parseWifiEnabled(out),
-  )
-  const wifiSignal = createPoll(-1, 5000, (prev) =>
-    execAsync([
-      "bash",
-      "-lc",
-      "nmcli -t -f ACTIVE,SIGNAL dev wifi list | grep '^yes:' | cut -d: -f2 | head -n1",
-    ])
-      .then((out) => parseWifiSignal(out))
-      .catch(() => prev),
-  )
-  const liveVolume = createPoll(0.5, 1200, ["bash", "-c", "wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null || echo '0.5'"], (out) =>
-    parseVolume(out),
-  )
-  const cursorY = createPoll(9999, 120, ["hyprctl", "cursorpos"], (out) => parseCursorY(out))
-  const workspaceListRaw = createPoll([1], 1300, ["hyprctl", "workspaces", "-j"], (out) =>
-    parseWorkspaceIds(out),
-  )
-  const gcalEvents = createPoll(
-    "No upcoming Google Calendar events.",
-    6000,
-    ["bash", "-lc", "$HOME/.config/ags/calendar-events.sh 2>/dev/null || echo 'No upcoming Google Calendar events.'"],
-    (out) => {
-      const cleaned = sanitizeEventText(out)
-      return cleaned.length > 0 ? cleaned : "No upcoming Google Calendar events."
-    },
-  )
-
+  // ── Bar-local state ────────────────────────────────────────────────────────
   const [barVisible, setBarVisible] = createState(true)
   const [barWindowVisible, setBarWindowVisible] = createState(true)
   const [barRevealed, setBarRevealed] = createState(true)
   const [barReserved, setBarReserved] = createState(true)
-  const [controlOpen, setControlOpen] = createState(false)
-  const [powerMenuOpen, setPowerMenuOpen] = createState(false)
-  const [pendingPowerAction, setPendingPowerAction] = createState<null | "lock" | "logout" | "reboot" | "shutdown">(null)
-  const [calendarOpen, setCalendarOpen] = createState(false)
-  const [desktopMenuOpen, setDesktopMenuOpen] = createState(false)
-  const [settingsOpen, setSettingsOpen] = createState(false)
-  const [settingsStatus, setSettingsStatus] = createState("")
-  const [chooserOpen, setChooserOpen] = createState(false)
 
-  // Auto-clear settings status after 3s
-  createEffect(() => {
-    const msg = settingsStatus()
-    if (msg) {
-      setTimeout(() => setSettingsStatus(""), 3000)
-    }
-  })
-
-  const [activeList, setActiveList] = createState<"theme" | "icon" | "font" | "cursor" | null>(null)
-  const [listPopupOpen, setListPopupOpen] = createState(false)
-  const [themeList, setThemeList] = createState<string[]>([])
-  const [iconList, setIconList] = createState<string[]>([])
-  const [fontList, setFontList] = createState<string[]>([])
-  const [cursorList, setCursorList] = createState<string[]>([])
-  const [currentTheme, setCurrentTheme] = createState("loading…")
-  const [currentIcon, setCurrentIcon] = createState("loading…")
-  const [currentFont, setCurrentFont] = createState("loading…")
-  const [currentCursor, setCurrentCursor] = createState("loading…")
-  const [cursorSizeInput, setCursorSizeInput] = createState("24")
-
-  createEffect(() => {
-    if (settingsOpen()) {
-      setListPopupOpen(false)
-      setActiveList(null)
-      execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh list-themes"])
-        .then((out) => setThemeList(out.trim().split("\n").filter(Boolean)))
-        .catch(() => setThemeList([]))
-      execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh list-icons"])
-        .then((out) => setIconList(out.trim().split("\n").filter(Boolean)))
-        .catch(() => setIconList([]))
-      execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh list-fonts"])
-        .then((out) => setFontList(out.trim().split("\n").filter(Boolean)))
-        .catch(() => setFontList([]))
-      execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh get theme"])
-        .then((out) => setCurrentTheme(out.trim()))
-        .catch(() => setCurrentTheme("…"))
-      execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh get icon"])
-        .then((out) => setCurrentIcon(out.trim()))
-        .catch(() => setCurrentIcon("…"))
-      execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh get font"])
-        .then((out) => setCurrentFont(out.trim()))
-        .catch(() => setCurrentFont("…"))
-      execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh list-cursors"])
-        .then((out) => setCursorList(out.trim().split("\n").filter(Boolean)))
-        .catch(() => setCursorList([]))
-      execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh get cursor-theme"])
-        .then((out) => setCurrentCursor(out.trim()))
-        .catch(() => setCurrentCursor("…"))
-      execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh get cursor-size"])
-        .then((out) => setCursorSizeInput(out.trim() || "24"))
-        .catch(() => setCursorSizeInput("24"))
-    } else {
-      setListPopupOpen(false)
-      setActiveList(null)
-    }
-  })
-  const [calendarAccountEmail, setCalendarAccountEmail] = createState<string | null>(null)
-  const [authDialogOpen, setAuthDialogOpen] = createState(false)
-  const [authDialogInfo, setAuthDialogInfo] = createState({
-    verification_url: "",
-    user_code: "",
-    device_code: "",
-    error: "",
-  })
-  const [clientIdInput, setClientIdInput] = createState("")
-  let authPollStop: (() => void) | null = null
-
-  const [brightnessPercent, setBrightnessPercent] = createState(100)
-
-  createEffect(() => {
-    const pct = brightnessPercent()
-    execAsync(["bash", "-lc", `$HOME/.config/ags/brightness-dim.sh ${Math.round(pct)}`]).catch(() => null)
-  })
-  const [manualVolume, setManualVolume] = createState(0.5)
-  const popupOpen = createComputed(() => controlOpen() || calendarOpen() || desktopMenuOpen() || powerMenuOpen() || settingsOpen())
-  const effectiveBarVisible = createComputed(() => barVisible() || popupOpen())
-  const effectiveBrightness = createComputed(() => Math.max(5, Math.min(100, Math.round(brightnessPercent()))))
-  const workspaceIds = createComputed(() => {
-    const ids = workspaceListRaw()
-    const active = activeWorkspace()
-    if (ids.includes(active)) return ids
-    return [...ids, active].sort((a, b) => a - b)
-  })
-  const [workspaceFx, setWorkspaceFx] = createState<Record<number, "born" | "dying" | "settled">>({})
-  const wifiGlyph = createComputed(() => {
-    if (!wifiEnabled()) return "×"
-
-    const signal = wifiSignal()
-    if (signal >= 75) return "▂▄▆█"
-    if (signal >= 50) return "▂▄▆"
-    if (signal >= 25) return "▂▄"
-    if (signal >= 1) return "▂"
-    return "·"
-  })
-  const centerDisplay = createComputed(() => (calendarOpen() ? clock() : focusedWindowTitle()))
+  const effectiveBarVisible = createComputed(() => barVisible() || s.popupOpen())
 
   let hideTimer: ReturnType<typeof timeout> | null = null
   let barRevealTimer: ReturnType<typeof timeout> | null = null
@@ -314,294 +35,12 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
   const powerFlyoutMarginTop = 48
   const flyoutToggleSize = 24
 
-  function closeFlyouts() {
-    setControlOpen(false)
-    setPowerMenuOpen(false)
-    setPendingPowerAction(null)
-    setCalendarOpen(false)
-    setDesktopMenuOpen(false)
-    setSettingsOpen(false)
-    setListPopupOpen(false)
-    setActiveList(null)
-    setAuthDialogOpen(false)
-    if (authPollStop) { authPollStop(); authPollStop = null }
-  }
-
-  function togglePowerMenu() {
-    const next = !powerMenuOpen()
-    setPowerMenuOpen(next)
-    if (!next) setPendingPowerAction(null)
-    if (next) {
-      setControlOpen(false)
-      setCalendarOpen(false)
-      setDesktopMenuOpen(false)
-      setSettingsOpen(false)
-    }
-  }
-
-  function toggleControl() {
-    const next = !controlOpen()
-    setControlOpen(next)
-    if (!next) {
-      setPowerMenuOpen(false)
-      setPendingPowerAction(null)
-    }
-    if (next) {
-      setCalendarOpen(false)
-      setDesktopMenuOpen(false)
-      setSettingsOpen(false)
-    }
-  }
-
-  function toggleCalendar() {
-    const next = !calendarOpen()
-    setCalendarOpen(next)
-    setControlOpen(false)
-    setPowerMenuOpen(false)
-    setDesktopMenuOpen(false)
-    setSettingsOpen(false)
-    if (!next) {
-      setAuthDialogOpen(false)
-      if (authPollStop) { authPollStop(); authPollStop = null }
-    }
-  }
-
-  function toggleDesktopMenu() {
-    const next = !desktopMenuOpen()
-    setDesktopMenuOpen(next)
-    setControlOpen(false)
-    setPowerMenuOpen(false)
-    setCalendarOpen(false)
-    setSettingsOpen(false)
-  }
-
-  function toggleSettings() {
-    const next = !settingsOpen()
-    setSettingsOpen(next)
-    if (next) {
-      setControlOpen(false)
-      setCalendarOpen(false)
-      setDesktopMenuOpen(false)
-      setPowerMenuOpen(false)
-      setPendingPowerAction(null)
-    } else {
-      setListPopupOpen(false)
-      setActiveList(null)
-    }
-  }
-
-  execAsync(["bash", "-lc", "$HOME/.config/ags/calendar-auth.sh status"])
-    .then((out) => {
-      try {
-        const parsed = JSON.parse(out)
-        if (parsed.signed_in && parsed.email) {
-          setCalendarAccountEmail(parsed.email)
-        }
-      } catch { /* ignored */ }
-    })
-    .catch(() => null)
-
-  function startLogin() {
-    setClientIdInput("")
-    setAuthDialogInfo({ verification_url: "", user_code: "", device_code: "", error: "" })
-    setAuthDialogOpen(true)
-    execAsync(["bash", "-lc", "$HOME/.config/ags/calendar-auth.sh login"])
-      .then((out) => {
-        try {
-          const parsed = JSON.parse(out)
-          if (parsed.status === "need_code") {
-            setAuthDialogInfo({
-              verification_url: parsed.verification_url || "",
-              user_code: parsed.user_code || "",
-              device_code: parsed.device_code || "",
-              error: "",
-            })
-          } else if (parsed.status === "error") {
-            setAuthDialogInfo({
-              verification_url: "",
-              user_code: "",
-              device_code: "",
-              error: parsed.message || "Login failed.",
-            })
-          }
-        } catch {
-          setAuthDialogInfo({
-            verification_url: "",
-            user_code: "",
-            device_code: "",
-            error: "Unexpected response from auth script.",
-          })
-        }
-      })
-      .catch(() => {
-        setAuthDialogInfo({
-          verification_url: "",
-          user_code: "",
-          device_code: "",
-          error: "Could not reach auth script.",
-        })
-      })
-  }
-
-  function handleAccountClick() {
-    if (calendarAccountEmail()) {
-      execAsync(["bash", "-lc", "$HOME/.config/ags/calendar-auth.sh logout"])
-        .then(() => {
-          setCalendarAccountEmail(null)
-        })
-        .catch(() => null)
-    } else {
-      startLogin()
-    }
-  }
-
-  const isClientIdMissing = createComputed(() => {
-    const err = authDialogInfo().error
-    return err.startsWith("No Google OAuth client_id configured")
-  })
-
-  function saveClientIdAndLogin() {
-    const raw = clientIdInput().trim()
-    if (!raw) return
-    const escaped = raw.replace(/'/g, "'\\''")
-    execAsync(["bash", "-lc", `$HOME/.config/ags/calendar-auth.sh set-client-id '${escaped}'`])
-      .then(() => {
-        setClientIdInput("")
-        startLogin()
-      })
-      .catch((err) => {
-        setAuthDialogInfo({ ...authDialogInfo(), error: String(err) || "Failed to save client_id." })
-      })
-  }
-
-  function closeAuthDialog() {
-    setAuthDialogOpen(false)
-    setClientIdInput("")
-    if (authPollStop) { authPollStop(); authPollStop = null }
-  }
-
-  function startAuthPoll() {
-    const info = authDialogInfo()
-    if (!info.device_code) return
-    if (authPollStop) { authPollStop(); authPollStop = null }
-    let stopped = false
-    authPollStop = () => { stopped = true }
-    function poll() {
-      if (stopped) return
-      execAsync(["bash", "-lc", `$HOME/.config/ags/calendar-auth.sh poll ${info.device_code}`])
-        .then((out) => {
-          if (stopped) return
-          try {
-            const parsed = JSON.parse(out)
-            if (parsed.status === "success") {
-              setCalendarAccountEmail(parsed.email || null)
-              setAuthDialogOpen(false)
-              authPollStop = null
-              return
-            }
-            if (parsed.status === "error") {
-              setAuthDialogInfo({ ...authDialogInfo(), error: parsed.message || "Polling failed." })
-              authPollStop = null
-              return
-            }
-          } catch { /* ignored */ }
-          timeout(5000, poll)
-        })
-        .catch(() => {
-          if (!stopped) timeout(5000, poll)
-        })
-    }
-    poll()
-  }
-
-  function openAudioSettings() {
-    execAsync(["pavucontrol"]).catch(() => null)
-  }
-
-  function openLauncher() {
-    execAsync(["bash", "-lc", "albert show"]).catch(() => null)
-    setDesktopMenuOpen(false)
-  }
-
-  function openNetworkSettings() {
-    execAsync(["nmtui"]).catch(() => null)
-    setDesktopMenuOpen(false)
-  }
-
-  function runPowerAction(action: "lock" | "logout" | "reboot" | "shutdown") {
-    setPendingPowerAction(action)
-  }
-
-  function confirmPowerAction() {
-    const action = pendingPowerAction()
-    if (!action) return
-
-    closeFlyouts()
-
-    const command = {
-      lock: "loginctl lock-session",
-      logout: "hyprctl dispatch exit",
-      reboot: "loginctl reboot",
-      shutdown: "loginctl poweroff",
-    }[action]
-
-    execAsync(["bash", "-lc", command]).catch(() => null)
-  }
-
-  function cancelPowerAction() {
-    setPendingPowerAction(null)
-  }
-
-  function powerGlyph(action: "lock" | "logout" | "reboot" | "shutdown") {
-    return {
-      lock: "\u{F023}",
-      logout: "\u{F08B}",
-      reboot: "\u{F01E}",
-      shutdown: "\u{F011}",
-    }[action]
-  }
-
-  function takeScreenshot() {
-    execAsync(["bash", "-lc", "~/.config/hypr/scripts/take-screenshot.sh"]).catch(() => null)
-    setDesktopMenuOpen(false)
-  }
-
-  function closeCurrentDesktop() {
-    execAsync([
-      "bash",
-      "-lc",
-      "current=$(hyprctl activeworkspace -j | sed -n 's/.*\"id\":\s*\([0-9][0-9]*\).*/\1/p' | head -n1); target=$(hyprctl workspaces -j | sed -n 's/.*\"id\":\s*\([0-9][0-9]*\).*/\1/p' | sort -n | grep -vx \"$current\" | head -n1); hyprctl dispatch removeworkspace \"$current\" >/dev/null 2>&1 || { [[ -n \"$target\" ]] && hyprctl dispatch workspace \"$target\" >/dev/null 2>&1; }",
-    ]).catch(() => null)
-    setDesktopMenuOpen(false)
-  }
-
-  function createNewDesktop() {
-    const ids = workspaceIds()
-    const maxId = ids.length > 0 ? Math.max(...ids) : 1
-    execAsync(["hyprctl", "dispatch", "workspace", String(maxId + 1)]).catch(() => null)
-    setDesktopMenuOpen(false)
-  }
-
-  function moveWindowToNewDesktop() {
-    const ids = workspaceIds()
-    const maxId = ids.length > 0 ? Math.max(...ids) : 1
-    const nextId = String(maxId + 1)
-    execAsync(["bash", "-lc", `hyprctl dispatch movetoworkspace ${nextId}; hyprctl dispatch workspace ${nextId}`]).catch(
-      () => null,
-    )
-    setDesktopMenuOpen(false)
-  }
-
-  function openOverview() {
-    execAsync(["hyprctl", "dispatch", "hyprexpo:expo", "toggle"]).catch(() => null)
-    setDesktopMenuOpen(false)
-  }
-
+  // ── Bar-local effects ──────────────────────────────────────────────────────
   function scheduleHide() {
     if (hideTimer) return
     hideTimer = timeout(380, () => {
       hideTimer = null
-      if (!popupOpen() && !chooserOpen() && cursorY() > 40) setBarVisible(false)
+      if (!s.popupOpen() && !s.chooserOpen() && s.cursorY() > 40) setBarVisible(false)
     })
   }
 
@@ -613,60 +52,62 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
   }
 
   let lastWorkspaceIds: number[] = []
-  createEffect(() => {
-    const ids = workspaceIds()
-    const born = ids.filter((id) => !lastWorkspaceIds.includes(id))
-    const dying = lastWorkspaceIds.filter((id) => !ids.includes(id))
+  if (config.workspaces) {
+    createEffect(() => {
+      const ids = s.workspaceIds()
+      const born = ids.filter((id) => !lastWorkspaceIds.includes(id))
+      const dying = lastWorkspaceIds.filter((id) => !ids.includes(id))
 
-    if (born.length === 0 && dying.length === 0) {
+      if (born.length === 0 && dying.length === 0) {
+        lastWorkspaceIds = [...ids]
+        return
+      }
+
+      if (born.length > 0) {
+        s.setWorkspaceFx((prev) => {
+          const next = { ...prev }
+          for (const id of born) next[id] = "born"
+          return next
+        })
+
+        timeout(560, () => {
+          s.setWorkspaceFx((prev) => {
+            const next = { ...prev }
+            for (const id of born) {
+              if (next[id] === "born") next[id] = "settled"
+            }
+            return next
+          })
+        })
+      }
+
+      if (dying.length > 0) {
+        s.setWorkspaceFx((prev) => {
+          const next = { ...prev }
+          for (const id of dying) next[id] = "dying"
+          return next
+        })
+
+        timeout(640, () => {
+          s.setWorkspaceFx((prev) => {
+            const next = { ...prev }
+            for (const id of dying) {
+              if (next[id] === "dying") delete next[id]
+            }
+            return next
+          })
+        })
+      }
+
       lastWorkspaceIds = [...ids]
-      return
-    }
-
-    if (born.length > 0) {
-      setWorkspaceFx((prev) => {
-        const next = { ...prev }
-        for (const id of born) next[id] = "born"
-        return next
-      })
-
-      timeout(560, () => {
-        setWorkspaceFx((prev) => {
-          const next = { ...prev }
-          for (const id of born) {
-            if (next[id] === "born") next[id] = "settled"
-          }
-          return next
-        })
-      })
-    }
-
-    if (dying.length > 0) {
-      setWorkspaceFx((prev) => {
-        const next = { ...prev }
-        for (const id of dying) next[id] = "dying"
-        return next
-      })
-
-      timeout(640, () => {
-        setWorkspaceFx((prev) => {
-          const next = { ...prev }
-          for (const id of dying) {
-            if (next[id] === "dying") delete next[id]
-          }
-          return next
-        })
-      })
-    }
-
-    lastWorkspaceIds = [...ids]
-  })
+    })
+  }
 
   createEffect(() => {
-    const revealEdge = cursorY() <= 8
-    const onBarBand = cursorY() <= 40
-    const revealBand = cursorY() <= 20
-    const hasPopup = popupOpen() || chooserOpen()
+    const revealEdge = s.cursorY() <= 8
+    const onBarBand = s.cursorY() <= 40
+    const revealBand = s.cursorY() <= 20
+    const hasPopup = s.popupOpen() || s.chooserOpen()
     if (hasPopup) {
       cancelHide()
       setBarVisible(true)
@@ -744,20 +185,26 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
     })
   })
 
-  createEffect(() => {
-    if (pendingPowerAction() !== null && !powerMenuOpen()) {
-      setPowerMenuOpen(true)
-    }
-  })
+  // Top-level calendar auth status check
+  if (config.calendar) {
+    ;(async () => {
+      try {
+        const out = await execAsync(["bash", "-lc", "$HOME/.config/ags/calendar-auth.sh status"])
+        try {
+          const parsed = JSON.parse(out)
+          if (parsed.signed_in && parsed.email) {
+            s.setCalendarAccountEmail(parsed.email)
+          }
+        } catch { /* ignored */ }
+      } catch { /* ignored */ }
+    })()
+  }
 
-  createEffect(() => {
-    setManualVolume(liveVolume())
-  })
-
+  // ── JSX ────────────────────────────────────────────────────────────────────
   return (
     <>
       <window
-        visible={createComputed(() => popupOpen() && !chooserOpen())}
+        visible={createComputed(() => s.popupOpen() && !s.chooserOpen())}
         name={`ags-dismiss-${monitorIndex}`}
         class="DismissWindow"
         gdkmonitor={gdkmonitor}
@@ -773,7 +220,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
           hexpand
           vexpand
           canTarget
-          onClicked={closeFlyouts}
+          onClicked={s.closeFlyouts}
         />
       </window>
 
@@ -799,696 +246,356 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
             halign={Gtk.Align.FILL}
           >
             <box $type="start" spacing={8}>
-              <button
-                widthRequest={flyoutToggleSize}
-                heightRequest={flyoutToggleSize}
-                valign={Gtk.Align.CENTER}
-                class={desktopMenuOpen((open) => `desktop-menu-toggle bar-cap-button${open ? " active" : ""}`)}
-                onClicked={toggleDesktopMenu}
-              >
-                <label class="desktop-menu-icon" label={"\u{F0C9}"} />
-              </button>
-              {workspaceSlots.map((ws) => (
+              {config.desktopMenu && (
                 <button
-                  visible={createComputed(() => {
-                    const fx = workspaceFx()
-                    return fx[ws] === "born" || fx[ws] === "settled" || fx[ws] === "dying"
-                  })}
-                  widthRequest={22}
-                  heightRequest={22}
-                  class="ws-dot"
-                  $={(self) => {
-                    const middleClick = new Gtk.GestureClick({ button: 2 })
-                    middleClick.connect("pressed", () => {
-                      createNewDesktop()
-                    })
-                    self.add_controller(middleClick)
-                  }}
-                  onClicked={() => {
-                    execAsync(["hyprctl", "dispatch", "workspace", String(ws)]).catch(() => null)
-                  }}
+                  widthRequest={flyoutToggleSize}
+                  heightRequest={flyoutToggleSize}
+                  valign={Gtk.Align.CENTER}
+                  class={s.desktopMenuOpen((open) => `desktop-menu-toggle bar-cap-button${open ? " active" : ""}`)}
+                  onClicked={s.toggleDesktopMenu}
                 >
-                  <box
+                  <label class="desktop-menu-icon" label={"\u{F0C9}"} />
+                </button>
+              )}
+              {config.workspaces && (
+                <>{workspaceSlots.map((ws) => (
+                  <button
+                    visible={createComputed(() => {
+                      const fx = s.workspaceFx()
+                      return fx[ws] === "born" || fx[ws] === "settled" || fx[ws] === "dying"
+                    })}
                     widthRequest={22}
                     heightRequest={22}
-                    halign={Gtk.Align.CENTER}
-                    valign={Gtk.Align.CENTER}
-                    class={createComputed(() => {
-                      const current = activeWorkspace()
-                      const fx = workspaceFx()
-                      const isActive = current === ws
-                      const phase = fx[ws] === "born" || fx[ws] === "dying" ? ` ${fx[ws]}` : ""
-                      return `ws-core ${workspaceColorClass(ws)}${isActive ? " active" : ""}${phase}`
-                    })}
-                  />
-                </button>
-              ))}
+                    class="ws-dot"
+                    $={(self) => {
+                      const middleClick = new Gtk.GestureClick({ button: 2 })
+                      middleClick.connect("pressed", () => {
+                        s.createNewDesktop()
+                      })
+                      self.add_controller(middleClick)
+                    }}
+                    onClicked={() => {
+                      execAsync(["hyprctl", "dispatch", "workspace", String(ws)]).catch(() => null)
+                    }}
+                  >
+                    <box
+                      widthRequest={22}
+                      heightRequest={22}
+                      halign={Gtk.Align.CENTER}
+                      valign={Gtk.Align.CENTER}
+                      class={createComputed(() => {
+                        const current = s.activeWorkspace()
+                        const fx = s.workspaceFx()
+                        const isActive = current === ws
+                        const phase = fx[ws] === "born" || fx[ws] === "dying" ? ` ${fx[ws]}` : ""
+                        return `ws-core ${workspaceColorClass(ws)}${isActive ? " active" : ""}${phase}`
+                      })}
+                    />
+                  </button>
+                ))}</>
+              )}
             </box>
 
-            <button
-              $type="center"
-              class={calendarOpen((open) => (open ? "clock active" : "clock"))}
-              onClicked={toggleCalendar}
-            >
-              <label class="clock-label center-label" label={centerDisplay} />
-            </button>
+            {config.clock ? (
+              config.calendar ? (
+                <button
+                  $type="center"
+                  class={s.calendarOpen((open) => (open ? "clock active" : "clock"))}
+                  onClicked={s.toggleCalendar}
+                >
+                  <label class="clock-label center-label" label={s.centerDisplay} />
+                </button>
+              ) : (
+                <label $type="center" class="clock-label center-label" label={s.clock} />
+              )
+            ) : null}
 
             <box $type="end" spacing={8}>
-              <button
-                widthRequest={26}
-                heightRequest={26}
-                valign={Gtk.Align.CENTER}
-                halign={Gtk.Align.CENTER}
-                class={controlOpen((open) => (open ? "bar-cap-button active" : "bar-cap-button"))}
-                onClicked={toggleControl}
-              >
-                <box class="gear-icon-box" widthRequest={14} heightRequest={14} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
-              </button>
-              <button
-                widthRequest={26}
-                heightRequest={26}
-                valign={Gtk.Align.CENTER}
-                halign={Gtk.Align.CENTER}
-                class={powerMenuOpen((open) => (open ? "bar-cap-button active" : "bar-cap-button"))}
-                onClicked={togglePowerMenu}
-              >
-                <box class="power-icon-box" widthRequest={14} heightRequest={14} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
-              </button>
+              {config.controlCenter && (
+                <button
+                  widthRequest={26}
+                  heightRequest={26}
+                  valign={Gtk.Align.CENTER}
+                  halign={Gtk.Align.CENTER}
+                  class={s.controlOpen((open) => (open ? "bar-cap-button active" : "bar-cap-button"))}
+                  onClicked={s.toggleControl}
+                >
+                  <box class="gear-icon-box" widthRequest={14} heightRequest={14} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
+                </button>
+              )}
+              {config.powerMenu && (
+                <button
+                  widthRequest={26}
+                  heightRequest={26}
+                  valign={Gtk.Align.CENTER}
+                  halign={Gtk.Align.CENTER}
+                  class={s.powerMenuOpen((open) => (open ? "bar-cap-button active" : "bar-cap-button"))}
+                  onClicked={s.togglePowerMenu}
+                >
+                  <box class="power-icon-box" widthRequest={14} heightRequest={14} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
+                </button>
+              )}
             </box>
           </centerbox>
         </box>
       </window>
 
-      <window
-        visible={desktopMenuOpen}
-        name={`ags-desktop-menu-${monitorIndex}`}
-        class="FlyoutWindow"
-        gdkmonitor={gdkmonitor}
-        anchor={TOP | LEFT}
-        layer={Astal.Layer.OVERLAY}
-        keymode={Astal.Keymode.ON_DEMAND}
-        exclusivity={Astal.Exclusivity.IGNORE}
-        marginTop={44}
-        marginStart={0}
-        application={app}
-      >
-        <box
-          class="flyout desktop-menu-flyout"
-          orientation={Gtk.Orientation.VERTICAL}
-          spacing={8}
-          marginStart={10}
-          marginEnd={40}
-          marginBottom={40}
+      {config.desktopMenu && DesktopMenuWindow(gdkmonitor, monitorIndex, s)}
+
+      {config.controlCenter && (
+        <window
+          visible={s.controlOpen}
+          name={`ags-control-${monitorIndex}`}
+          class="FlyoutWindow"
+          gdkmonitor={gdkmonitor}
+          anchor={TOP | RIGHT}
+          layer={Astal.Layer.OVERLAY}
+          keymode={Astal.Keymode.ON_DEMAND}
+          exclusivity={Astal.Exclusivity.IGNORE}
+          marginTop={controlFlyoutMarginTop}
+          application={app}
         >
-          <label class="flyout-title" label="Quick Actions" xalign={0.0} />
-          <For each={createComputed(() => SHORTCUT_PRESETS[focusedWindowClass()] ?? SHORTCUT_FALLBACK)}>
-            {(s) => (
-              <button class="action" onClicked={() => { setDesktopMenuOpen(false); sendFocusedShortcut(s.mod, s.key) }}>
-                <box orientation={Gtk.Orientation.HORIZONTAL} hexpand spacing={8} class="menu-row">
-                  <label label={s.label} xalign={0.0} hexpand />
-                  <label label={s.hint} xalign={1.0} class="shortcut-label" />
-                </box>
-              </button>
-            )}
-          </For>
-          <Gtk.Separator orientation={Gtk.Orientation.HORIZONTAL} />
-          <button class="action" onClicked={createNewDesktop}>
-            <label label="New Desktop" />
-          </button>
-          <button class="action" onClicked={closeCurrentDesktop}>
-            <label label="Close Current Desktop" />
-          </button>
-          <button class="action" onClicked={openOverview}>
-            <label label="Desktop Overview" />
-          </button>
-          <button class="action" onClicked={moveWindowToNewDesktop}>
-            <label label="Move Window To New Desktop" />
-          </button>
-          <button class="action" onClicked={openLauncher}>
-            <label label="App Launcher" />
-          </button>
-          <button class="action" onClicked={takeScreenshot}>
-            <label label="Screenshot" />
-          </button>
-        </box>
-      </window>
-
-      <window
-        visible={controlOpen}
-        name={`ags-control-${monitorIndex}`}
-        class="FlyoutWindow"
-        gdkmonitor={gdkmonitor}
-        anchor={TOP | RIGHT}
-        layer={Astal.Layer.OVERLAY}
-        keymode={Astal.Keymode.ON_DEMAND}
-        exclusivity={Astal.Exclusivity.IGNORE}
-        marginTop={controlFlyoutMarginTop}
-        application={app}
-      >
-        <box hexpand halign={Gtk.Align.END} marginEnd={controlFlyoutMarginEnd}>
-        <box
-          class="flyout control-flyout"
-          orientation={Gtk.Orientation.VERTICAL}
-          spacing={10}
-          vexpand
-          marginBottom={40}
-        >
-
-          <centerbox>
-            <box $type="start" widthRequest={34} />
-            <label $type="center" class="flyout-title" label="Control Center" xalign={0.5} />
-            <button
-              $type="end"
-              class="mini-gear"
-              onClicked={toggleSettings}
-            >
-              <label class="gear-icon" label={"\u{F1FC}"} />
-            </button>
-          </centerbox>
-
-          <box class="slider-row" orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-            <centerbox>
-              <label
-                $type="start"
-                label={manualVolume((v) => `Volume ${Math.round(v * 100)}%`)}
-                xalign={0}
-              />
-              <box $type="center" />
-              <button $type="end" class="round-icon" onClicked={openAudioSettings}>
-                <image class="symbol-icon" iconName="audio-volume-high-symbolic" pixelSize={20} />
-              </button>
-            </centerbox>
-            <Gtk.Scale
-              orientation={Gtk.Orientation.HORIZONTAL}
-              drawValue={false}
-              hexpand
-              adjustment={new Gtk.Adjustment({
-                lower: 0,
-                upper: 100,
-                stepIncrement: 1,
-                pageIncrement: 5,
-                value: Math.round(manualVolume() * 100),
-              })}
-              onValueChanged={(self) => {
-                const next = clamp01(self.get_value() / 100)
-                setManualVolume(next)
-                execAsync(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", String(next)]).catch(() => null)
-              }}
-            />
-          </box>
-
-          <box class="slider-row" orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-            <label label={effectiveBrightness((v) => `Brightness ${v}%`)} xalign={0} />
-            <Gtk.Scale
-              orientation={Gtk.Orientation.HORIZONTAL}
-              drawValue={false}
-              hexpand
-              adjustment={new Gtk.Adjustment({
-                lower: 5,
-                upper: 100,
-                stepIncrement: 1,
-                pageIncrement: 5,
-                value: 100,
-              })}
-              onValueChanged={(self) => {
-                const next = Math.round(self.get_value())
-                setBrightnessPercent(Math.max(5, Math.min(100, next)))
-              }}
-            />
-          </box>
-
-          <box class="control-actions-section" orientation={Gtk.Orientation.VERTICAL} spacing={6} halign={Gtk.Align.CENTER}>
-            <box class="control-actions-row" orientation={Gtk.Orientation.HORIZONTAL} spacing={10} halign={Gtk.Align.CENTER}>
-              <box class="control-action-tile" widthRequest={68} orientation={Gtk.Orientation.VERTICAL} spacing={3} halign={Gtk.Align.CENTER}>
-                <button
-                  widthRequest={44} heightRequest={44}
-                  hexpand={false} vexpand={false}
-                  halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}
-                  class={wifiEnabled((on) => `round-icon${on ? " active" : " off"}`)}
-                  onClicked={() => {
-                    const next = !wifiEnabled()
-                    execAsync(["nmcli", "radio", "wifi", next ? "on" : "off"]).catch(() => null)
-                  }}
-                >
-                  <label class="signal-icon" label={wifiGlyph} />
-                </button>
-                <label class="control-action-label" label="Wi-Fi" />
-              </box>
-              <box class="control-action-tile" widthRequest={68} orientation={Gtk.Orientation.VERTICAL} spacing={3} halign={Gtk.Align.CENTER}>
-                <button
-                  widthRequest={44} heightRequest={44}
-                  hexpand={false} vexpand={false}
-                  halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}
-                  class="round-icon"
-                  onClicked={openNetworkSettings}
-                >
-                  <image class="symbol-icon" iconName="network-workgroup-symbolic" pixelSize={20} />
-                </button>
-                <label class="control-action-label" label="Network" />
-              </box>
-              <box class="control-action-tile" widthRequest={68} orientation={Gtk.Orientation.VERTICAL} spacing={3} halign={Gtk.Align.CENTER}>
-                <button
-                  widthRequest={44} heightRequest={44}
-                  hexpand={false} vexpand={false}
-                  halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}
-                  class={powerMenuOpen((open) => `round-icon power-toggle${open ? " active" : ""}`)}
-                  onClicked={() => {
-                    const next = !powerMenuOpen()
-                    setPowerMenuOpen(next)
-                    if (!next) setPendingPowerAction(null)
-                  }}
-                >
-                  <label class="power-icon" label="⏻" />
-                </button>
-                <label class="control-action-label" label="Power" />
-              </box>
-            </box>
-          </box>
-
-        </box>
-        </box>
-      </window>
-
-      <window
-        visible={powerMenuOpen}
-        name={`ags-power-menu-${monitorIndex}`}
-        class="FlyoutWindow"
-        gdkmonitor={gdkmonitor}
-        anchor={TOP | RIGHT}
-        layer={Astal.Layer.OVERLAY}
-        keymode={Astal.Keymode.ON_DEMAND}
-        exclusivity={Astal.Exclusivity.IGNORE}
-        marginTop={powerFlyoutMarginTop}
-        application={app}
-      >
-        <box hexpand halign={Gtk.Align.END} marginEnd={controlFlyoutMarginEnd}>
+          <box hexpand halign={Gtk.Align.END} marginEnd={controlFlyoutMarginEnd}>
           <box
-            class="flyout power-menu-flyout standalone"
+            class="flyout control-flyout"
             orientation={Gtk.Orientation.VERTICAL}
-            spacing={6}
+            spacing={10}
             vexpand
             marginBottom={40}
           >
+
             <centerbox>
               <box $type="start" widthRequest={34} />
-              <label $type="center" class="flyout-title" label="Power Menu" xalign={0.5} />
-              <box $type="end" widthRequest={24} />
+              <label $type="center" class="flyout-title" label="Control Center" xalign={0.5} />
+              {config.settings && (
+                <button
+                  $type="end"
+                  class="mini-gear"
+                  onClicked={s.toggleSettings}
+                >
+                  <label class="gear-icon" label={"\u{F1FC}"} />
+                </button>
+              )}
             </centerbox>
 
-            <box
-              class="control-actions-row power-actions-row"
-              orientation={Gtk.Orientation.HORIZONTAL}
-              spacing={10}
-              halign={Gtk.Align.CENTER}
-              visible={createComputed(() => pendingPowerAction() === null)}
-            >
-              <box class="control-action-tile" widthRequest={68} orientation={Gtk.Orientation.VERTICAL} spacing={3} halign={Gtk.Align.CENTER}>
-                <button widthRequest={44} heightRequest={44} hexpand={false} vexpand={false} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} class="round-icon power-action-button" onClicked={() => runPowerAction("lock")}>
-                  <label class="power-action-glyph" label={powerGlyph("lock")} />
+            <box class="slider-row" orientation={Gtk.Orientation.VERTICAL} spacing={4}>
+              <centerbox>
+                <label
+                  $type="start"
+                  label={s.manualVolume((v) => `Volume ${Math.round(v * 100)}%`)}
+                  xalign={0}
+                />
+                <box $type="center" />
+                <button $type="end" class="round-icon" onClicked={s.openAudioSettings}>
+                  <image class="symbol-icon" iconName="audio-volume-high-symbolic" pixelSize={20} />
                 </button>
-                <label class="control-action-label" label="Lock" />
-              </box>
-              <box class="control-action-tile" widthRequest={68} orientation={Gtk.Orientation.VERTICAL} spacing={3} halign={Gtk.Align.CENTER}>
-                <button widthRequest={44} heightRequest={44} hexpand={false} vexpand={false} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} class="round-icon power-action-button" onClicked={() => runPowerAction("logout")}>
-                  <label class="power-action-glyph" label={powerGlyph("logout")} />
-                </button>
-                <label class="control-action-label" label="Logout" />
-              </box>
-              <box class="control-action-tile" widthRequest={68} orientation={Gtk.Orientation.VERTICAL} spacing={3} halign={Gtk.Align.CENTER}>
-                <button widthRequest={44} heightRequest={44} hexpand={false} vexpand={false} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} class="round-icon power-action-button warm" onClicked={() => runPowerAction("reboot")}>
-                  <label class="power-action-glyph" label={powerGlyph("reboot")} />
-                </button>
-                <label class="control-action-label" label="Reboot" />
-              </box>
-              <box class="control-action-tile" widthRequest={68} orientation={Gtk.Orientation.VERTICAL} spacing={3} halign={Gtk.Align.CENTER}>
-                <button widthRequest={44} heightRequest={44} hexpand={false} vexpand={false} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} class="round-icon power-action-button danger" onClicked={() => runPowerAction("shutdown")}>
-                  <label class="power-action-glyph" label={powerGlyph("shutdown")} />
-                </button>
-                <label class="control-action-label" label="Shutdown" />
-              </box>
-            </box>
-
-            <box
-              class="power-confirm-row"
-              orientation={Gtk.Orientation.VERTICAL}
-              spacing={8}
-              halign={Gtk.Align.CENTER}
-              visible={createComputed(() => pendingPowerAction() !== null)}
-            >
-              <label
-                class="power-confirm-label"
-                label={createComputed(() => {
-                  const action = pendingPowerAction()
-                  if (!action) return ""
-                  return `Confirm ${action}?`
+              </centerbox>
+              <Gtk.Scale
+                orientation={Gtk.Orientation.HORIZONTAL}
+                drawValue={false}
+                hexpand
+                adjustment={new Gtk.Adjustment({
+                  lower: 0,
+                  upper: 100,
+                  stepIncrement: 1,
+                  pageIncrement: 5,
+                  value: Math.round(s.manualVolume() * 100),
                 })}
-              />
-              <box orientation={Gtk.Orientation.HORIZONTAL} spacing={10} halign={Gtk.Align.CENTER}>
-                <button class="action" onClicked={cancelPowerAction}>
-                  <label label="Cancel" />
-                </button>
-                <button class={createComputed(() => {
-                  const action = pendingPowerAction()
-                  if (action === "shutdown") return "action danger"
-                  if (action === "reboot") return "action warm"
-                  return "action"
-                })} onClicked={confirmPowerAction}>
-                  <label label="Confirm" />
-                </button>
-              </box>
-            </box>
-          </box>
-        </box>
-      </window>
-
-      <window
-        visible={calendarOpen}
-        name={`ags-calendar-${monitorIndex}`}
-        class="FlyoutWindow"
-        gdkmonitor={gdkmonitor}
-        anchor={TOP | LEFT | RIGHT}
-        layer={Astal.Layer.OVERLAY}
-        keymode={Astal.Keymode.ON_DEMAND}
-        exclusivity={Astal.Exclusivity.IGNORE}
-        marginTop={42}
-        application={app}
-      >
-        <box hexpand>
-          <button class="DismissSurface" hexpand vexpand canTarget onClicked={closeFlyouts} />
-          <box class="flyout calendar-flyout" orientation={Gtk.Orientation.VERTICAL} spacing={10} marginBottom={40}>
-            <centerbox>
-              <box $type="start" widthRequest={34} />
-              <label $type="center" class="flyout-title" label="Calendar" xalign={0.5} />
-              <button $type="end" class="calendar-account-btn" onClicked={handleAccountClick}
-                tooltipText={calendarAccountEmail((e) => e ? "Sign out" : "Sign in to Google Calendar")}>
-                <label label={calendarAccountEmail((e) => {
-                  if (!e) return "Sign in"
-                  return e.length > 20 ? e.slice(0, 18) + "…" : e
-                })} />
-              </button>
-            </centerbox>
-            <Gtk.Calendar class="calendar-widget" />
-            <Gtk.Separator orientation={Gtk.Orientation.HORIZONTAL} />
-            <label class="events-title" label="Google Calendar" xalign={0.5} />
-
-            <label class="events" label={gcalEvents} xalign={0.5} wrap justify={Gtk.Justification.CENTER} />
-          </box>
-          <button class="DismissSurface" hexpand vexpand canTarget onClicked={closeFlyouts} />
-        </box>
-      </window>
-
-      <window
-        visible={authDialogOpen}
-        name={`ags-calendar-auth-${monitorIndex}`}
-        class="FlyoutWindow"
-        gdkmonitor={gdkmonitor}
-        anchor={TOP | LEFT | RIGHT}
-        layer={Astal.Layer.OVERLAY}
-        keymode={Astal.Keymode.ON_DEMAND}
-        exclusivity={Astal.Exclusivity.IGNORE}
-        marginTop={42}
-        application={app}
-      >
-        <box hexpand>
-          <button class="DismissSurface" hexpand vexpand canTarget onClicked={closeAuthDialog} />
-          <box class="flyout calendar-auth-dialog" orientation={Gtk.Orientation.VERTICAL} spacing={10} marginBottom={40}>
-            <label class="flyout-title" label="Sign in to Google Calendar" xalign={0.5} />
-            <Gtk.Separator orientation={Gtk.Orientation.HORIZONTAL} />
-
-            {/* State A: need_code — device_code set */}
-            <box class="auth-instructions" orientation={Gtk.Orientation.VERTICAL} spacing={6} marginTop={4}
-              visible={createComputed(() => !!authDialogInfo().device_code)}>
-              <label label="Go to this URL and enter the code:" xalign={0.5} wrap />
-              <label class="auth-url" label={createComputed(() => authDialogInfo().verification_url || "—")} xalign={0.5} wrap selectable />
-              <label class="auth-code" label={createComputed(() => authDialogInfo().user_code || "—")} xalign={0.5} />
-            </box>
-
-            {/* State B: client_id missing */}
-            <box class="auth-setup" orientation={Gtk.Orientation.VERTICAL} spacing={6} marginTop={4}
-              visible={createComputed(() => isClientIdMissing())}>
-              <label label="No OAuth client_id found. Create one at:" xalign={0.5} wrap />
-              <box orientation={Gtk.Orientation.HORIZONTAL} spacing={6} halign={Gtk.Align.CENTER}>
-                <label class="auth-url" label="https://console.cloud.google.com/" xalign={0.5} wrap selectable />
-                <button class="action" onClicked={() => execAsync(["bash", "-lc",
-                  "(command -v xdg-open >/dev/null 2>&1 && xdg-open 'https://console.cloud.google.com/') || true"
-                ]).catch(() => null)}>
-                  <label label="Open" />
-                </button>
-              </box>
-              <Gtk.Entry
-                class="auth-entry"
-                placeholderText="Paste your OAuth client_id (xxxx.apps.googleusercontent.com)"
-                text={clientIdInput()}
-                onNotifyText={(self) => setClientIdInput(self.text)}
-                halign={Gtk.Align.CENTER}
+                onValueChanged={(self) => {
+                  const next = s.clamp01(self.get_value() / 100)
+                  s.setManualVolume(next)
+                  execAsync(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", String(next)]).catch(() => null)
+                }}
               />
             </box>
 
-            {/* State C: other errors */}
-            <label class="auth-error" label={createComputed(() => authDialogInfo().error)} xalign={0.5} wrap
-              visible={createComputed(() => authDialogInfo().error !== "" && !isClientIdMissing())} />
-
-            <box orientation={Gtk.Orientation.HORIZONTAL} spacing={10} halign={Gtk.Align.CENTER} marginTop={6}>
-              <button class="action" onClicked={closeAuthDialog}>
-                <label label="Cancel" />
-              </button>
-              <button class="action" onClicked={saveClientIdAndLogin}
-                visible={createComputed(() => isClientIdMissing())}>
-                <label label="Save & Sign in" />
-              </button>
-              <button class="action" onClicked={startAuthPoll}
-                visible={createComputed(() => !!authDialogInfo().device_code)}>
-                <label label="I've authorized" />
-              </button>
+            <box class="slider-row" orientation={Gtk.Orientation.VERTICAL} spacing={4}>
+              <label label={s.effectiveBrightness((v) => `Brightness ${v}%`)} xalign={0} />
+              <Gtk.Scale
+                orientation={Gtk.Orientation.HORIZONTAL}
+                drawValue={false}
+                hexpand
+                adjustment={new Gtk.Adjustment({
+                  lower: 5,
+                  upper: 100,
+                  stepIncrement: 1,
+                  pageIncrement: 5,
+                  value: 100,
+                })}
+                onValueChanged={(self) => {
+                  const next = Math.round(self.get_value())
+                  s.setBrightnessPercent(Math.max(5, Math.min(100, next)))
+                }}
+              />
             </box>
+
+            <box class="control-actions-section" orientation={Gtk.Orientation.VERTICAL} spacing={6} halign={Gtk.Align.CENTER}>
+              <box class="control-actions-row" orientation={Gtk.Orientation.HORIZONTAL} spacing={10} halign={Gtk.Align.CENTER}>
+                <box class="control-action-tile" widthRequest={68} orientation={Gtk.Orientation.VERTICAL} spacing={3} halign={Gtk.Align.CENTER}>
+                  <button
+                    widthRequest={44} heightRequest={44}
+                    hexpand={false} vexpand={false}
+                    halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}
+                    class={s.wifiEnabled((on) => `round-icon${on ? " active" : " off"}`)}
+                    onClicked={() => {
+                      const next = !s.wifiEnabled()
+                      execAsync(["nmcli", "radio", "wifi", next ? "on" : "off"]).catch(() => null)
+                    }}
+                  >
+                    <label class="signal-icon" label={s.wifiGlyph} />
+                  </button>
+                  <label class="control-action-label" label="Wi-Fi" />
+                </box>
+                <box class="control-action-tile" widthRequest={68} orientation={Gtk.Orientation.VERTICAL} spacing={3} halign={Gtk.Align.CENTER}>
+                  <button
+                    widthRequest={44} heightRequest={44}
+                    hexpand={false} vexpand={false}
+                    halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}
+                    class="round-icon"
+                    onClicked={s.openNetworkSettings}
+                  >
+                    <image class="symbol-icon" iconName="network-workgroup-symbolic" pixelSize={20} />
+                  </button>
+                  <label class="control-action-label" label="Network" />
+                </box>
+                {config.powerMenu && (
+                  <box class="control-action-tile" widthRequest={68} orientation={Gtk.Orientation.VERTICAL} spacing={3} halign={Gtk.Align.CENTER}>
+                    <button
+                      widthRequest={44} heightRequest={44}
+                      hexpand={false} vexpand={false}
+                      halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}
+                      class={s.powerMenuOpen((open) => `round-icon power-toggle${open ? " active" : ""}`)}
+                      onClicked={() => {
+                        const next = !s.powerMenuOpen()
+                        s.setPowerMenuOpen(next)
+                        if (!next) s.setPendingPowerAction(null)
+                      }}
+                    >
+                      <label class="power-icon" label="⏻" />
+                    </button>
+                    <label class="control-action-label" label="Power" />
+                  </box>
+                )}
+              </box>
+            </box>
+
           </box>
-          <button class="DismissSurface" hexpand vexpand canTarget onClicked={closeAuthDialog} />
-        </box>
-      </window>
+          </box>
+        </window>
+      )}
 
-      <window
-        visible={settingsOpen}
-        name={`ags-settings-${monitorIndex}`}
-        class="FlyoutWindow"
-        gdkmonitor={gdkmonitor}
-        anchor={TOP | RIGHT}
-        layer={Astal.Layer.OVERLAY}
-        keymode={Astal.Keymode.ON_DEMAND}
-        exclusivity={Astal.Exclusivity.IGNORE}
-        marginTop={48}
-        application={app}
-      >
-        <box hexpand halign={Gtk.Align.END} marginEnd={controlFlyoutMarginEnd}>
-          <box
-            class="flyout settings-flyout"
-            orientation={Gtk.Orientation.VERTICAL}
-            spacing={8}
-            vexpand
-            marginBottom={40}
-          >
-            <centerbox>
-              <box $type="start" widthRequest={34} />
-              <label $type="center" class="flyout-title" label="Settings" xalign={0.5} />
-              <box $type="end" widthRequest={34} />
-            </centerbox>
+      {config.powerMenu && PowerMenuWindow(gdkmonitor, monitorIndex, s)}
 
-            <Gtk.Separator orientation={Gtk.Orientation.HORIZONTAL} />
-
-            {/* GTK Theme */}
-            <box class="settings-row" orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-              <label label="GTK Theme" xalign={0} />
-              <button class="settings-dropdown" onClicked={() => {
-                if (activeList() === "theme" && listPopupOpen()) {
-                  setListPopupOpen(false)
-                  setActiveList(null)
-                } else {
-                  setActiveList("theme")
-                  setListPopupOpen(true)
-                }
-              }}>
-                <label label={currentTheme((v) => v || "GTK theme…")} xalign={0} hexpand />
-              </button>
-            </box>
-
-            {/* Icon Theme */}
-            <box class="settings-row" orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-              <label label="Icon Theme" xalign={0} />
-              <button class="settings-dropdown" onClicked={() => {
-                if (activeList() === "icon" && listPopupOpen()) {
-                  setListPopupOpen(false)
-                  setActiveList(null)
-                } else {
-                  setActiveList("icon")
-                  setListPopupOpen(true)
-                }
-              }}>
-                <label label={currentIcon((v) => v || "Icon theme…")} xalign={0} hexpand />
-              </button>
-            </box>
-
-            {/* Font */}
-            <box class="settings-row" orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-              <label label="Font" xalign={0} />
-              <button class="settings-dropdown" onClicked={() => {
-                if (activeList() === "font" && listPopupOpen()) {
-                  setListPopupOpen(false)
-                  setActiveList(null)
-                } else {
-                  setActiveList("font")
-                  setListPopupOpen(true)
-                }
-              }}>
-                <label label={currentFont((v) => v || "Font…")} xalign={0} hexpand />
-              </button>
-            </box>
-
-            {/* Cursor */}
-            <box class="settings-row" orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-              <label label="Cursor" xalign={0} />
-              <box orientation={Gtk.Orientation.HORIZONTAL} spacing={6}>
-                <button class="settings-dropdown" hexpand halign={Gtk.Align.FILL} onClicked={() => {
-                  if (activeList() === "cursor" && listPopupOpen()) {
-                    setListPopupOpen(false)
-                    setActiveList(null)
-                  } else {
-                    setActiveList("cursor")
-                    setListPopupOpen(true)
-                  }
-                }}>
-                  <label label={currentCursor((v) => v || "Cursor theme…")} xalign={0} hexpand />
+      {config.calendar && (
+        <window
+          visible={s.calendarOpen}
+          name={`ags-calendar-${monitorIndex}`}
+          class="FlyoutWindow"
+          gdkmonitor={gdkmonitor}
+          anchor={TOP | LEFT | RIGHT}
+          layer={Astal.Layer.OVERLAY}
+          keymode={Astal.Keymode.ON_DEMAND}
+          exclusivity={Astal.Exclusivity.IGNORE}
+          marginTop={42}
+          application={app}
+        >
+          <box hexpand>
+            <button class="DismissSurface" hexpand vexpand canTarget onClicked={s.closeFlyouts} />
+            <box class="flyout calendar-flyout" orientation={Gtk.Orientation.VERTICAL} spacing={10} marginBottom={40}>
+              <centerbox>
+                <box $type="start" widthRequest={34} />
+                <label $type="center" class="flyout-title" label="Calendar" xalign={0.5} />
+                <button $type="end" class="calendar-account-btn" onClicked={s.handleAccountClick}
+                  tooltipText={s.calendarAccountEmail((e) => e ? "Sign out" : "Sign in to Google Calendar")}>
+                  <label label={s.calendarAccountEmail((e) => {
+                    if (!e) return "Sign in"
+                    return e.length > 20 ? e.slice(0, 18) + "…" : e
+                  })} />
                 </button>
+              </centerbox>
+              <Gtk.Calendar class="calendar-widget" />
+              <Gtk.Separator orientation={Gtk.Orientation.HORIZONTAL} />
+              <label class="events-title" label="Google Calendar" xalign={0.5} />
+
+              <label class="events" label={s.gcalEvents} xalign={0.5} wrap justify={Gtk.Justification.CENTER} />
+            </box>
+            <button class="DismissSurface" hexpand vexpand canTarget onClicked={s.closeFlyouts} />
+          </box>
+        </window>
+      )}
+
+      {config.calendar && (
+        <window
+          visible={s.authDialogOpen}
+          name={`ags-calendar-auth-${monitorIndex}`}
+          class="FlyoutWindow"
+          gdkmonitor={gdkmonitor}
+          anchor={TOP | LEFT | RIGHT}
+          layer={Astal.Layer.OVERLAY}
+          keymode={Astal.Keymode.ON_DEMAND}
+          exclusivity={Astal.Exclusivity.IGNORE}
+          marginTop={42}
+          application={app}
+        >
+          <box hexpand>
+            <button class="DismissSurface" hexpand vexpand canTarget onClicked={s.closeAuthDialog} />
+            <box class="flyout calendar-auth-dialog" orientation={Gtk.Orientation.VERTICAL} spacing={10} marginBottom={40}>
+              <label class="flyout-title" label="Sign in to Google Calendar" xalign={0.5} />
+              <Gtk.Separator orientation={Gtk.Orientation.HORIZONTAL} />
+
+              {/* State A: need_code — device_code set */}
+              <box class="auth-instructions" orientation={Gtk.Orientation.VERTICAL} spacing={6} marginTop={4}
+                visible={createComputed(() => !!s.authDialogInfo().device_code)}>
+                <label label="Go to this URL and enter the code:" xalign={0.5} wrap />
+                <label class="auth-url" label={createComputed(() => s.authDialogInfo().verification_url || "—")} xalign={0.5} wrap selectable />
+                <label class="auth-code" label={createComputed(() => s.authDialogInfo().user_code || "—")} xalign={0.5} />
+              </box>
+
+              {/* State B: client_id missing */}
+              <box class="auth-setup" orientation={Gtk.Orientation.VERTICAL} spacing={6} marginTop={4}
+                visible={createComputed(() => s.isClientIdMissing())}>
+                <label label="No OAuth client_id found. Create one at:" xalign={0.5} wrap />
+                <box orientation={Gtk.Orientation.HORIZONTAL} spacing={6} halign={Gtk.Align.CENTER}>
+                  <label class="auth-url" label="https://console.cloud.google.com/" xalign={0.5} wrap selectable />
+                  <button class="action" onClicked={() => execAsync(["bash", "-lc",
+                    "(command -v xdg-open >/dev/null 2>&1 && xdg-open 'https://console.cloud.google.com/') || true"
+                  ]).catch(() => null)}>
+                    <label label="Open" />
+                  </button>
+                </box>
                 <Gtk.Entry
-                  class="settings-entry settings-size-entry"
-                  placeholderText="Size"
-                  widthRequest={56}
-                  widthChars={4}
-                  maxWidthChars={4}
-                  text={cursorSizeInput()}
-                  tooltipText="Size \u2014 press Enter to apply"
-                  onActivate={(self) => {
-                    const size = self.get_text().trim() || "24"
-                    setCursorSizeInput(size)
-                    const theme = currentCursor()
-                    if (theme) {
-                      execAsync(["bash", "-c", `$HOME/.config/ags/settings.sh set cursor '${theme}' ${size}`])
-                        .then(() => setSettingsStatus(`Cursor size set to ${size}`))
-                        .catch(() => setSettingsStatus("Failed to set cursor size"))
-                    }
-                  }}
+                  class="auth-entry"
+                  placeholderText="Paste your OAuth client_id (xxxx.apps.googleusercontent.com)"
+                  text={s.clientIdInput()}
+                  onNotifyText={(self) => s.setClientIdInput(self.text)}
+                  halign={Gtk.Align.CENTER}
                 />
               </box>
-            </box>
 
-            {/* Wallpaper */}
-            <box class="settings-row" orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-              <label label="Wallpaper" xalign={0} />
-              <button class="action" onClicked={() => {
-                setSettingsStatus("Choosing wallpaper...")
-                execAsync(["bash", "-c", "$HOME/.config/ags/pick-file.py"])
-                  .then((out) => {
-                    const path = out.trim()
-                    if (!path) { setSettingsStatus(""); return }
-                    execAsync(["bash", "-c", `$HOME/.config/ags/settings.sh set wallpaper '${path}'`])
-                      .then(() => setSettingsStatus("Wallpaper set"))
-                      .catch(() => setSettingsStatus("Failed to set wallpaper"))
-                  })
-                  .catch(() => setSettingsStatus("Failed to open file picker"))
-              }}>
-                <label label="Choose wallpaper..." />
-              </button>
-            </box>
+              {/* State C: other errors */}
+              <label class="auth-error" label={createComputed(() => s.authDialogInfo().error)} xalign={0.5} wrap
+                visible={createComputed(() => s.authDialogInfo().error !== "" && !s.isClientIdMissing())} />
 
-            <Gtk.Separator orientation={Gtk.Orientation.HORIZONTAL} />
-
-            <label
-              class="settings-status"
-              label={settingsStatus}
-              xalign={0.5}
-              visible={createComputed(() => settingsStatus() !== "")}
-            />
-          </box>
-        </box>
-      </window>
-
-      <window
-        visible={createComputed(() => listPopupOpen() && activeList() !== null)}
-        name={`ags-settings-list-${monitorIndex}`}
-        class="FlyoutWindow"
-        gdkmonitor={gdkmonitor}
-        anchor={TOP | RIGHT}
-        layer={Astal.Layer.OVERLAY}
-        keymode={Astal.Keymode.ON_DEMAND}
-        exclusivity={Astal.Exclusivity.IGNORE}
-        marginTop={120}
-        application={app}
-      >
-        <box hexpand halign={Gtk.Align.END} marginEnd={controlFlyoutMarginEnd}>
-          <button class="DismissSurface" hexpand vexpand canTarget onClicked={() => {
-            setListPopupOpen(false)
-            setActiveList(null)
-          }} />
-          <box
-            class="flyout settings-list-popup"
-            orientation={Gtk.Orientation.VERTICAL}
-            spacing={8}
-            marginBottom={40}
-          >
-            <label class="flyout-title" label={createComputed(() => {
-              const kind = activeList()
-              if (kind === "theme") return "GTK Theme"
-              if (kind === "icon") return "Icon Theme"
-              if (kind === "font") return "Fonts"
-              if (kind === "cursor") return "Cursor Theme"
-              return ""
-            })} xalign={0.5} />
-            <Gtk.Separator orientation={Gtk.Orientation.HORIZONTAL} />
-            <Gtk.ScrolledWindow heightRequest={220} widthRequest={300} overlayScrolling={false}>
-              <box class="settings-list" orientation={Gtk.Orientation.VERTICAL}>
-                <For each={createComputed(() => {
-                  const kind = activeList()
-                  if (kind === "theme") return themeList()
-                  if (kind === "icon") return iconList()
-                  if (kind === "font") return fontList()
-                  if (kind === "cursor") return cursorList()
-                  return []
-                })}>
-                  {(item) => (
-                    <button class="settings-item" onClicked={() => {
-                      const kind = activeList()
-                      if (kind === "theme") {
-                        execAsync(["bash", "-c", `$HOME/.config/ags/settings.sh set theme '${item}'`])
-                          .then(() => setCurrentTheme(item))
-                          .catch(() => null)
-                      } else if (kind === "icon") {
-                        execAsync(["bash", "-c", `$HOME/.config/ags/settings.sh set icon '${item}'`])
-                          .then(() => setCurrentIcon(item))
-                          .catch(() => null)
-                      } else if (kind === "font") {
-                        execAsync(["bash", "-c", `$HOME/.config/ags/settings.sh set font '${item}'`])
-                          .then(() => setCurrentFont(item))
-                          .catch(() => null)
-                      } else if (kind === "cursor") {
-                        const size = cursorSizeInput()
-                        execAsync(["bash", "-c", `$HOME/.config/ags/settings.sh set cursor '${item}' ${size}`])
-                          .then(() => setCurrentCursor(item))
-                          .catch(() => null)
-                      }
-                      setListPopupOpen(false)
-                      setActiveList(null)
-                    }}>
-                      <label label={item} xalign={0} hexpand />
-                    </button>
-                  )}
-                </For>
+              <box orientation={Gtk.Orientation.HORIZONTAL} spacing={10} halign={Gtk.Align.CENTER} marginTop={6}>
+                <button class="action" onClicked={s.closeAuthDialog}>
+                  <label label="Cancel" />
+                </button>
+                <button class="action" onClicked={s.saveClientIdAndLogin}
+                  visible={createComputed(() => s.isClientIdMissing())}>
+                  <label label="Save & Sign in" />
+                </button>
+                <button class="action" onClicked={s.startAuthPoll}
+                  visible={createComputed(() => !!s.authDialogInfo().device_code)}>
+                  <label label="I've authorized" />
+                </button>
               </box>
-            </Gtk.ScrolledWindow>
+            </box>
+            <button class="DismissSurface" hexpand vexpand canTarget onClicked={s.closeAuthDialog} />
           </box>
-          <button class="DismissSurface" hexpand vexpand canTarget onClicked={() => {
-            setListPopupOpen(false)
-            setActiveList(null)
-          }} />
-        </box>
-      </window>
+        </window>
+      )}
+
+      {config.settings && SettingsWindows(gdkmonitor, monitorIndex, s)}
     </>
   )
 }
