@@ -106,9 +106,9 @@ wpctl (wireplumber - volume in bar.tsx)
 
 nmcli (ags/.config/ags/widget/Bar.tsx - wifi toggle button)
 
-nmtui (ags/.config/ags/widget/Bar.tsx - network settings button)
+nmtui (ags/.config/ags/widget/store.ts - network settings)
 
-xfce4-settings (ags/.config/ags/widget/Bar.tsx - system settings button)
+xfce4-settings (GTK settings utilities)
 
 pavucontrol (ags/.config/ags/widget/Bar.tsx - volume button)
 
