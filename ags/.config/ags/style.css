@@ -308,6 +308,7 @@ box.ws-core.dying {
   box-shadow: 0 16px 34px rgba(7, 12, 20, 0.38), 0 6px 14px rgba(17, 31, 49, 0.22), 0 0 24px rgba(142, 208, 255, 0.12);
   color: #102236;
   font-family: "Trebuchet MS", "Verdana", "Liberation Sans", "Noto Sans", sans-serif;
+  overflow: visible;
 }
 
 .flyout * {
@@ -760,4 +761,3 @@ button.settings-item:active {
   font-weight: 600;
   padding: 2px 0;
 }
-

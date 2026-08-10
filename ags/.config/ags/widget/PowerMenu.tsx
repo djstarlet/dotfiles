@@ -5,8 +5,6 @@ import type { Store } from "./store"
 
 export default function PowerMenuWindow(gdkmonitor: Gdk.Monitor, monitorIndex: number, s: Store) {
   const { TOP, RIGHT } = Astal.WindowAnchor
-  const controlFlyoutMarginTop = 48
-  const controlFlyoutMarginEnd = 18
 
   createEffect(() => {
     if (s.pendingPowerAction() !== null && !s.powerMenuOpen()) {
@@ -18,21 +16,23 @@ export default function PowerMenuWindow(gdkmonitor: Gdk.Monitor, monitorIndex: n
     <window
       visible={s.powerMenuOpen}
       name={`ags-power-menu-${monitorIndex}`}
+      namespace="ags-power-menu"
       class="FlyoutWindow"
       gdkmonitor={gdkmonitor}
       anchor={TOP | RIGHT}
       layer={Astal.Layer.OVERLAY}
       keymode={Astal.Keymode.ON_DEMAND}
       exclusivity={Astal.Exclusivity.IGNORE}
-      marginTop={controlFlyoutMarginTop}
+      marginTop={44}
       application={app}
     >
-      <box hexpand halign={Gtk.Align.END} marginEnd={controlFlyoutMarginEnd}>
         <box
           class="flyout power-menu-flyout standalone"
           orientation={Gtk.Orientation.VERTICAL}
           spacing={6}
           vexpand
+          marginStart={40}
+          marginEnd={10}
           marginBottom={40}
         >
           <centerbox>
@@ -104,7 +104,6 @@ export default function PowerMenuWindow(gdkmonitor: Gdk.Monitor, monitorIndex: n
             </box>
           </box>
         </box>
-      </box>
     </window>
   )
 }
