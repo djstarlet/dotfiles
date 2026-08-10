@@ -9,3 +9,5 @@
   - events refresh every 6 seconds; your token lives in ~/.config/ags/google-calendar-auth.json (gitignored)
 - the bar auto-hides - move the cursor to the top edge to bring it back
 - settings (gear icon in the control center header) - theme, icon, font, cursor, and wallpaper picker (drop images into ~/.config/hypr/wallpapers/ or pick any file)
+- toggle widgets in ags/.config/ags/widget/widgets.config.ts (edit, then restart the bar - no hot reload)
+- wallpaper persists across logins: the settings chooser writes ~/.config/hypr/current-wallpaper.png, restored by start-wallpaper.sh on startup

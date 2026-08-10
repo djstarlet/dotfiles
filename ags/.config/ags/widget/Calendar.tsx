@@ -1,11 +1,12 @@
 import app from "ags/gtk4/app"
 import { Astal, Gtk, Gdk } from "ags/gtk4"
 import { execAsync } from "ags/process"
-import { createComputed, createEffect, createState } from "gnim"
+import { createComputed } from "gnim"
 import type { Store } from "./store"
 import config from "./widgets.config"
 
 export default function CalendarWindows(gdkmonitor: Gdk.Monitor, monitorIndex: number, s: Store) {
+  const { TOP, LEFT, RIGHT } = Astal.WindowAnchor
   // Top-level calendar auth status check
   if (config.calendar) {
     ;(async () => {

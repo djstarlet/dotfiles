@@ -80,23 +80,25 @@ export default function ControlCenterWindow(gdkmonitor: Gdk.Monitor, monitorInde
   })
 
   // ── JSX ────────────────────────────────────────────────────────────────────
-  const controlFlyoutMarginTop = 48
-  const controlFlyoutMarginEnd = 18
+  const { TOP, LEFT, RIGHT } = Astal.WindowAnchor
 
   return (
     <window
       visible={s.controlOpen}
       name={`ags-control-${monitorIndex}`}
+      namespace="ags-control"
       class="FlyoutWindow"
       gdkmonitor={gdkmonitor}
-      anchor={TOP | RIGHT}
+      anchor={TOP | LEFT | RIGHT}
       layer={Astal.Layer.OVERLAY}
       keymode={Astal.Keymode.ON_DEMAND}
       exclusivity={Astal.Exclusivity.IGNORE}
-      marginTop={controlFlyoutMarginTop}
+      marginTop={42}
       application={app}
     >
-      <box hexpand halign={Gtk.Align.END} marginEnd={controlFlyoutMarginEnd}>
+      <box hexpand>
+        <button class="DismissSurface" hexpand vexpand canTarget onClicked={s.closeFlyouts} />
+        <box halign={Gtk.Align.END} marginEnd={18}>
       <box
         class="flyout control-flyout"
         orientation={Gtk.Orientation.VERTICAL}
@@ -221,6 +223,7 @@ export default function ControlCenterWindow(gdkmonitor: Gdk.Monitor, monitorInde
         </box>
 
       </box>
+        </box>
       </box>
     </window>
   )

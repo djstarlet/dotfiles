@@ -96,7 +96,7 @@ librewolf (hyprland.conf - browser)
 
 pcmanfm (hyprland.conf - file explorer)
 
-swaybg (hyprland.conf - wallpaper)
+swaybg (start-wallpaper.sh - wallpaper)
 
 albert (hyprland.conf, ags/.config/ags/widget/Bar.tsx for quick actions button)
 
