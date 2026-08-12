@@ -1,6 +1,7 @@
 import { execAsync } from "ags/process"
 import { createPoll, timeout } from "ags/time"
 import { createComputed, createEffect, createState } from "gnim"
+import { theme } from "./theme.config"
 
 // ─── Parser helpers ───────────────────────────────────────────────────────────
 
@@ -123,9 +124,12 @@ function parseWorkspaceIds(raw: string) {
   }
 }
 
-export function workspaceColorClass(id: number) {
-  const palette = ((id - 1) % 8) + 1
-  return `ws-p${palette}`
+export const DEFAULT_WS_DOT_COLORS = theme.workspaceDotColors
+
+function parseWsDotColors(raw: string | undefined) {
+  if (!raw) return null
+  const colors = raw.split(",").map((color) => color.trim())
+  return colors.length === 8 && colors.every((color) => /^#[0-9a-fA-F]{6}$/.test(color)) ? colors : null
 }
 
 // ─── Store factory ────────────────────────────────────────────────────────────
@@ -133,6 +137,8 @@ export function workspaceColorClass(id: number) {
 export type Store = ReturnType<typeof createStore>
 
 export function createStore() {
+  const envWsDotColors = typeof process !== "undefined" ? parseWsDotColors(process.env.AGS_WS_DOT_COLORS) : null
+
   // ── Polls ──────────────────────────────────────────────────────────────────
   const clock = createPoll("", 1000, ["bash", "-lc", "date '+%a %d %b  %H:%M:%S'"])
   const activeWorkspace = createPoll(1, 1200, ["hyprctl", "activeworkspace", "-j"], (out) =>
@@ -169,7 +175,7 @@ export function createStore() {
   const [settingsStatus, setSettingsStatus] = createState("")
   const [chooserOpen, setChooserOpen] = createState(false)
 
-  const [activeList, setActiveList] = createState<"theme" | "icon" | "font" | "cursor" | null>(null)
+  const [activeList, setActiveList] = createState<"theme" | "icon" | "font" | "cursor" | "preset" | null>(null)
   const [listPopupOpen, setListPopupOpen] = createState(false)
   const [themeList, setThemeList] = createState<string[]>([])
   const [iconList, setIconList] = createState<string[]>([])
@@ -193,6 +199,30 @@ export function createStore() {
   let authPollStop: (() => void) | null = null
 
   const [workspaceFx, setWorkspaceFx] = createState<Record<number, "born" | "dying" | "settled">>({})
+  const [wsDotColors, setWsDotColors] = createState<string[]>(envWsDotColors ?? [...DEFAULT_WS_DOT_COLORS])
+
+  if (!envWsDotColors) {
+    execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh get ws-dots"])
+      .then((out) => {
+        try {
+          const parsed = JSON.parse(out)
+          const colors = Array.isArray(parsed?.dots) ? parseWsDotColors(parsed.dots.join(",")) : null
+          if (colors) setWsDotColors(colors)
+        } catch {
+          // Keep the defaults when the persisted workspace colors are unavailable.
+        }
+      })
+      .catch(() => null)
+  }
+
+  function setWsDotColor(index: number, hex: string) {
+    if (index < 0 || index >= 8 || !/^#[0-9a-fA-F]{6}$/.test(hex)) return
+    setWsDotColors((current) => current.map((color, i) => i === index ? hex : color))
+  }
+
+  function resetWsDotColors() {
+    setWsDotColors([...DEFAULT_WS_DOT_COLORS])
+  }
 
   // ── Computeds ──────────────────────────────────────────────────────────────
   const popupOpen = createComputed(() => controlOpen() || calendarOpen() || desktopMenuOpen() || powerMenuOpen() || settingsOpen())
@@ -582,6 +612,10 @@ export function createStore() {
     setClientIdInput,
     workspaceFx,
     setWorkspaceFx,
+    wsDotColors,
+    setWsDotColors,
+    setWsDotColor,
+    resetWsDotColors,
 
     // Computeds
     popupOpen,

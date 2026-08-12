@@ -3,7 +3,7 @@
 }
 
 .shortcut-label {
-  color: #6a7a8c;
+  color: var(--bar-text-dim);
   font-size: 10px;
   font-weight: 700;
   min-width: 60px;
@@ -20,6 +20,21 @@ window.FlyoutWindow {
   background: transparent;
 }
 
+/* DEFAULT THEME — declarative source of truth: widget/theme.config.ts (runtime overrides: theme-colors.json / AGS_WS_DOT_COLORS) */
+window.Bar,
+window.FlyoutWindow,
+window.DismissWindow {
+  --bar-bg: #f6faff;
+  --bar-bg-light: #ffffff;
+  --bar-bg-dark: #dbe7f5;
+  --bar-accent: #55adff;
+  --bar-accent-light: #7cc0ff;
+  --bar-accent-dark: #326fda;
+  --bar-accent-pale: #cfe6ff;
+  --bar-text: #0f2235;
+  --bar-text-dim: #6a7a8c;
+}
+
 button.DismissSurface {
   background: rgba(0, 0, 0, 0.001);
   border: 0;
@@ -28,8 +43,8 @@ button.DismissSurface {
 
 window.Bar {
   background: transparent;
-  color: var(--ink);
-  font-family: "Trebuchet MS", "Verdana", "Liberation Sans", "Noto Sans", sans-serif;
+  color: var(--bar-text);
+  font-family: "Liberation Sans", sans-serif;
   font-size: 10px;
   font-weight: 600;
 }
@@ -48,12 +63,12 @@ window.Bar .bar-shell {
   padding: 0 8px;
   min-height: 26px;
   border-radius: 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.95);
+  border-top: 1px solid color-mix(in srgb, #ffffff 40%, var(--bar-bg-light));
   border-bottom: 1px solid rgba(40, 58, 82, 0.55);
   border-left: 0;
   border-right: 0;
-  background: linear-gradient(180deg, #f6faff 0%, #dce8f4 18%, #c7d5e6 44%, #a9bbcc 52%, #8d9eb6 76%, #7a8da4 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 -2px 0 rgba(35, 52, 72, 0.5), 0 4px 14px rgba(0, 0, 0, 0.42), 0 10px 22px rgba(13, 26, 43, 0.28), 0 0 16px rgba(120, 186, 255, 0.16);
+  background: linear-gradient(180deg, var(--bar-bg-light) 0%, var(--bar-bg-dark) 100%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, color-mix(in srgb, #ffffff 40%, var(--bar-bg-light)) 85%, transparent), inset 0 -2px 0 rgba(35, 52, 72, 0.5), 0 4px 14px rgba(0, 0, 0, 0.42), 0 10px 22px rgba(13, 26, 43, 0.28), 0 0 16px color-mix(in srgb, var(--bar-accent) 16%, transparent);
   transform: translateY(0);
   transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -65,10 +80,10 @@ window.Bar .bar-shell.shown {
 }
 
 label.clock-label {
-  color: #091521;
+  color: var(--bar-text);
   font-size: 13px;
   font-weight: 800;
-  text-shadow: 0 1px 0 #f7fbff;
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--bar-text) 25%, transparent);
 }
 
 label.center-label {
@@ -89,12 +104,12 @@ button.mini-gear,
 button.action,
 button.round-icon {
   border-radius: 4px;
-  border: 1px solid #b0bfcf;
-  border-top-color: rgba(255, 255, 255, 0.95);
-  border-bottom-color: rgba(50, 72, 96, 0.5);
-  background: linear-gradient(180deg, #ffffff 0%, #e4eaf3 40%, #c8d3e2 100%);
-  color: #0d1c2a;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 -1px 0 rgba(0, 0, 0, 0.18), 0 1px 3px rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--bar-bg-dark);
+  border-top-color: color-mix(in srgb, #ffffff 40%, var(--bar-bg-light));
+  border-bottom-color: var(--bar-bg-dark);
+  background: linear-gradient(180deg, var(--bar-bg-light) 0%, var(--bar-bg-dark) 100%);
+  color: var(--bar-text);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, color-mix(in srgb, #ffffff 40%, var(--bar-bg-light)) 85%, transparent), inset 0 -1px 0 rgba(0, 0, 0, 0.18), 0 1px 3px rgba(0, 0, 0, 0.22);
   transition: background 120ms var(--curve), box-shadow 120ms var(--curve), color 120ms var(--curve);
 }
 
@@ -102,21 +117,30 @@ button.bar-cap-button {
   min-width: 24px;
   min-height: 24px;
   padding: 0;
-  border: 1px solid rgba(159, 176, 196, 0.74);
-  border-top-color: rgba(255, 255, 255, 0.92);
-  border-bottom-color: rgba(56, 76, 101, 0.5);
+  border: 1px solid var(--bar-bg-dark);
+  border-top-color: color-mix(in srgb, #ffffff 40%, var(--bar-bg-light));
+  border-bottom-color: var(--bar-bg-dark);
   border-radius: 4px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.45) 0%, rgba(188, 205, 223, 0.55) 52%, rgba(133, 151, 173, 0.55) 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 -2px 0 rgba(46, 66, 92, 0.44), inset 0 6px 8px rgba(255, 255, 255, 0.08), 0 1px 1px rgba(0, 0, 0, 0.08);
+  background: linear-gradient(180deg, var(--bar-bg-light) 0%, var(--bar-bg-dark) 100%);
+  color: var(--bar-accent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, color-mix(in srgb, #ffffff 40%, var(--bar-bg-light)) 85%, transparent), inset 0 -2px 0 rgba(46, 66, 92, 0.44), inset 0 6px 8px color-mix(in srgb, color-mix(in srgb, #ffffff 40%, var(--bar-bg-light)) 8%, transparent), 0 1px 1px rgba(0, 0, 0, 0.08);
 }
 
 button.bar-cap-button:hover {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.58) 0%, rgba(199, 218, 238, 0.7) 100%);
+  border-color: var(--bar-accent);
+  background: linear-gradient(180deg, var(--bar-accent-light) 0%, var(--bar-accent-dark) 100%);
+}
+
+button.bar-cap-button label.gear-icon,
+button.bar-cap-button label.power-icon {
+  padding: 0;
+  margin: 0 0 0 1px;
 }
 
 button.bar-cap-button:active,
 button.bar-cap-button.active {
-  background: linear-gradient(180deg, rgba(162, 185, 211, 0.72) 0%, rgba(232, 241, 251, 0.85) 100%);
+  border-color: var(--bar-accent);
+  background: linear-gradient(180deg, var(--bar-accent) 0%, var(--bar-accent-dark) 100%);
   box-shadow: inset 0 2px 3px rgba(41, 61, 86, 0.2), inset 0 -1px 0 rgba(255, 255, 255, 0.55), 0 1px 2px rgba(0, 0, 0, 0.12);
 }
 
@@ -131,41 +155,44 @@ label.power-icon {
   font-family: "Symbols Nerd Font", "Noto Sans Symbols 2", "Noto Sans Symbols", "Noto Sans", sans-serif;
   font-size: 14px;
   font-weight: 400;
-  color: #17314d;
-  text-shadow: 0 0 5px rgba(134, 205, 255, 0.72), 0 1px 0 rgba(255, 255, 255, 0.92);
+  color: var(--bar-accent);
+  text-shadow: 0 0 5px color-mix(in srgb, var(--bar-accent) 55%, transparent), 0 1px 0 color-mix(in srgb, var(--bar-accent) 30%, transparent);
 }
 
-box.gear-icon-box {
-  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'><g stroke='%2317314d' stroke-width='1.6' stroke-linecap='round' fill='none'><circle cx='7' cy='7' r='2.2'/><line x1='7' y1='0.8' x2='7' y2='3'/><line x1='7' y1='11' x2='7' y2='13.2'/><line x1='0.8' y1='7' x2='3' y2='7'/><line x1='11' y1='7' x2='13.2' y2='7'/><line x1='2.4' y1='2.4' x2='4' y2='4'/><line x1='10' y1='10' x2='11.6' y2='11.6'/><line x1='11.6' y1='2.4' x2='10' y2='4'/><line x1='4' y1='10' x2='2.4' y2='11.6'/></g></svg>");
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-}
-
-box.power-icon-box {
-  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'><g stroke='%2317314d' stroke-width='1.6' stroke-linecap='round' fill='none'><line x1='7' y1='1.5' x2='7' y2='7'/><path d='M4.5 3.2A5 5 0 1 0 9.5 3.2'/></g></svg>");
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
+button.bar-cap-button:hover label.gear-icon,
+button.bar-cap-button:hover label.power-icon,
+button.bar-cap-button:hover label.desktop-menu-icon,
+button.bar-cap-button.active label.gear-icon,
+button.bar-cap-button.active label.power-icon,
+button.bar-cap-button.active label.desktop-menu-icon {
+  color: var(--bar-bg);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.72);
 }
 
 button.mini-gear:hover,
 button.action:hover,
 button.round-icon:hover {
-  background: linear-gradient(180deg, #ffffff 0%, #c7d1df 100%);
+  border-color: var(--bar-accent);
+  background: linear-gradient(180deg, var(--bar-accent-light) 0%, var(--bar-accent-dark) 100%);
 }
 
 button.mini-gear:active,
 button.action:active,
 button.round-icon:active {
-  background: linear-gradient(180deg, #c7d1df 0%, #ffffff 100%);
+  border-color: var(--bar-accent-dark);
+  background: linear-gradient(180deg, var(--bar-accent) 0%, var(--bar-accent-dark) 100%);
   box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.18), inset 0 -1px 0 rgba(255, 255, 255, 0.55), 0 0 0 rgba(0, 0, 0, 0);
+}
+
+button.clock:hover .clock-label {
+  color: var(--bar-accent);
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--bar-accent) 30%, transparent);
 }
 
 button.clock.active .clock-label,
 button.clock:active .clock-label {
-  color: #2f6fc2;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.85);
+  color: var(--bar-accent);
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--bar-accent) 30%, transparent);
 }
 
 button.ws-dot:focus,
@@ -245,38 +272,6 @@ button.ws-dot:hover box.ws-core {
     opacity: 0;
   }
 }
-box.ws-core.ws-p1 {
-  background: radial-gradient(circle at 32% 28%, #ffd3cf 0%, #ff7f74 26%, #ef3d34 62%, #9b1712 100%);
-}
-
-box.ws-core.ws-p2 {
-  background: radial-gradient(circle at 32% 28%, #ffe9b8 0%, #ffd064 24%, #f0a114 60%, #9f5b00 100%);
-}
-
-box.ws-core.ws-p3 {
-  background: radial-gradient(circle at 32% 28%, #d9ffd9 0%, #75de80 28%, #24a337 64%, #0c5a1b 100%);
-}
-
-box.ws-core.ws-p4 {
-  background: radial-gradient(circle at 32% 28%, #d2ebff 0%, #83c3ff 26%, #3b83e6 62%, #1a4487 100%);
-}
-
-box.ws-core.ws-p5 {
-  background: radial-gradient(circle at 32% 28%, #f0d8ff 0%, #d7a5ff 28%, #9b5ad7 64%, #54227f 100%);
-}
-
-box.ws-core.ws-p6 {
-  background: radial-gradient(circle at 32% 28%, #cef9f6 0%, #79ded8 30%, #28a9a0 66%, #0e5a54 100%);
-}
-
-box.ws-core.ws-p7 {
-  background: radial-gradient(circle at 32% 28%, #ffd8c5 0%, #ffad86 28%, #e96f3a 62%, #8a2f0d 100%);
-}
-
-box.ws-core.ws-p8 {
-  background: radial-gradient(circle at 32% 28%, #ffd5eb 0%, #f6a0ce 30%, #cf5398 64%, #7e1f57 100%);
-}
-
 box.ws-core.active {
   opacity: 1;
   transform: scale(1.08) translateY(-1px);
@@ -284,7 +279,7 @@ box.ws-core.active {
   min-height: 22px;
   filter: saturate(1.18) brightness(1.12);
   border-color: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 2px 10px 0 rgba(120, 180, 255, 0.35), 0 1px 3px 0 rgba(255, 255, 255, 0.25);
+  box-shadow: 0 2px 10px 0 color-mix(in srgb, var(--bar-accent) 35%, transparent), 0 1px 3px 0 rgba(255, 255, 255, 0.25);
 }
 
 box.ws-core.born {
@@ -303,26 +298,30 @@ box.ws-core.dying {
   min-width: 380px;
   padding: 14px;
   border-radius: 8px;
-  border: 1px solid #f3f7fe;
-  background: linear-gradient(180deg, #ebf1fa 0%, #cfd8e7 100%);
-  box-shadow: 0 16px 34px rgba(7, 12, 20, 0.38), 0 6px 14px rgba(17, 31, 49, 0.22), 0 0 24px rgba(142, 208, 255, 0.12);
-  color: #102236;
-  font-family: "Trebuchet MS", "Verdana", "Liberation Sans", "Noto Sans", sans-serif;
-  overflow: visible;
+  border: 1px solid var(--bar-bg-light);
+  background: linear-gradient(180deg, var(--bar-bg-light) 0%, var(--bar-bg-dark) 100%);
+  box-shadow: 0 16px 34px rgba(7, 12, 20, 0.38), 0 6px 14px rgba(17, 31, 49, 0.22), 0 0 24px color-mix(in srgb, var(--bar-accent) 12%, transparent);
+  color: var(--bar-text);
+  font-family: "Liberation Sans", sans-serif;
 }
 
 .flyout * {
-  font-family: "Trebuchet MS", "Verdana", "Liberation Sans", "Noto Sans", sans-serif;
+  font-family: "Liberation Sans", sans-serif;
 }
 
 label.flyout-title {
   font-weight: 800;
   font-size: 14px;
-  color: #0e2033;
+  color: var(--bar-text);
 }
 
 .flyout {
   font-size: 11px;
+}
+
+window.FlyoutWindow .control-flyout,
+window.FlyoutWindow .power-menu-flyout {
+  background: linear-gradient(180deg, var(--bar-bg-light) 0%, var(--bar-bg-dark) 100%);
 }
 
 .control-flyout {
@@ -336,8 +335,8 @@ label.flyout-title {
 label.power-confirm-label {
   font-size: 11px;
   font-weight: 800;
-  color: #17314d;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.82);
+  color: var(--bar-text-dim);
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--bar-text-dim) 25%, transparent);
 }
 
 .power-confirm-row button.action {
@@ -369,15 +368,16 @@ button.desktop-menu-toggle {
 }
 
 button.desktop-menu-toggle.active {
-  background: linear-gradient(180deg, rgba(170, 193, 220, 0.82) 0%, rgba(236, 244, 252, 0.95) 100%);
+  border-color: var(--bar-accent);
+  background: linear-gradient(180deg, var(--bar-accent-light) 0%, var(--bar-accent-dark) 100%);
 }
 
 label.desktop-menu-icon {
   font-family: "Symbols Nerd Font", "Liberation Sans", sans-serif;
   font-size: 12px;
   font-weight: 800;
-  color: #1a3652;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.92);
+  color: var(--bar-accent);
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--bar-accent) 30%, transparent);
 }
 
 .desktop-menu-flyout button.action {
@@ -386,23 +386,29 @@ label.desktop-menu-icon {
 }
 
 .desktop-menu-flyout label {
+  font-family: "Liberation Sans", sans-serif;
   font-size: 11px;
+  font-weight: 700;
 }
 
 .calendar-widget {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(239, 247, 255, 0.95) 22%, rgba(210, 226, 244, 0.92) 56%, rgba(188, 209, 233, 0.9) 100%);
-  color: #0f2235;
-  border: 1px solid #c7d5e6;
-  border-top-color: rgba(255, 255, 255, 0.9);
+  font-family: "Liberation Sans", sans-serif;
+  font-weight: 600;
+  background: linear-gradient(180deg, var(--bar-bg-light) 0%, var(--bar-bg-dark) 100%);
+  color: var(--bar-text);
+  border: 1px solid var(--bar-bg-dark);
+  border-top-color: color-mix(in srgb, color-mix(in srgb, #ffffff 40%, var(--bar-bg-light)) 90%, transparent);
   border-bottom-color: rgba(71, 92, 117, 0.28);
   border-radius: 7px;
   padding: 10px;
   padding-top: 8px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86), inset 0 -1px 0 rgba(55, 76, 101, 0.18), 0 6px 16px rgba(14, 26, 41, 0.24), 0 0 18px rgba(125, 193, 255, 0.12);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, color-mix(in srgb, #ffffff 40%, var(--bar-bg-light)) 86%, transparent), inset 0 -1px 0 rgba(55, 76, 101, 0.18), 0 6px 16px rgba(14, 26, 41, 0.24), 0 0 18px color-mix(in srgb, var(--bar-accent) 12%, transparent);
 }
 
 .calendar-widget header {
-  color: #10263d;
+  font-family: "Liberation Sans", sans-serif;
+  font-weight: 700;
+  color: var(--bar-text-dim);
   margin-bottom: 8px;
   padding-bottom: 4px;
 }
@@ -411,14 +417,48 @@ label.desktop-menu-icon {
   margin-top: 6px;
 }
 
+.calendar-widget .day-number,
+.calendar-widget .day-name,
+.calendar-widget label {
+  font-family: "Liberation Sans", sans-serif;
+  font-weight: 700;
+}
+
 .calendar-widget button {
   border-radius: 4px;
   border: 1px solid rgba(149, 170, 197, 0.42);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(209, 223, 240, 0.78) 100%);
+  background: linear-gradient(180deg, var(--bar-bg-light) 0%, var(--bar-bg-dark) 100%);
 }
 
 .calendar-widget button:hover {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(191, 209, 231, 0.85) 100%);
+  background: linear-gradient(180deg, var(--bar-bg-light) 0%, var(--bar-bg-dark) 100%);
+}
+
+.calendar-widget header button,
+.calendar-widget header button label {
+  font-family: "Liberation Sans", sans-serif;
+  font-weight: 700;
+  color: var(--bar-accent);
+  text-shadow: 0 0 7px color-mix(in srgb, var(--bar-accent) 55%, transparent);
+}
+
+.calendar-widget header button:hover {
+  border-color: var(--bar-accent);
+  background: linear-gradient(180deg, var(--bar-accent-light) 0%, var(--bar-accent-dark) 100%);
+}
+
+.calendar-widget header button:active {
+  border-color: var(--bar-accent-dark);
+  background: linear-gradient(180deg, var(--bar-accent) 0%, var(--bar-accent-dark) 100%);
+  box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.18), inset 0 -1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.calendar-widget header button:hover,
+.calendar-widget header button:active,
+.calendar-widget header button:hover label,
+.calendar-widget header button:active label {
+  color: var(--bar-bg);
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--bar-bg) 25%, transparent);
 }
 
 .calendar-widget:selected,
@@ -426,46 +466,66 @@ label.desktop-menu-icon {
 .calendar-widget .day-number:selected:focus,
 .calendar-widget .day-number.today:selected,
 .calendar-widget .day-number.today {
-  color: #10233b;
+  color: var(--bar-text);
   border-radius: 999px;
   border: 1px solid rgba(100, 138, 183, 0.6);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(184, 216, 255, 0.92) 38%, rgba(120, 170, 232, 0.96) 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92), inset 0 -1px 0 rgba(28, 63, 112, 0.28), 0 2px 5px rgba(35, 82, 143, 0.22), 0 0 10px rgba(104, 178, 255, 0.24);
+  background: linear-gradient(180deg, var(--bar-accent-light) 0%, var(--bar-accent) 42%, var(--bar-accent-dark) 100%);
 }
 
 .slider-row {
-  font-family: "Trebuchet MS", "Verdana", "Liberation Sans", "Noto Sans", sans-serif;
+  font-family: "Liberation Sans", sans-serif;
   padding: 8px;
   border-radius: 7px;
-  border: 1px solid #c4d0df;
-  border-top-color: rgba(255, 255, 255, 0.88);
+  border: 1px solid var(--bar-bg-dark);
+  border-top-color: color-mix(in srgb, color-mix(in srgb, #ffffff 40%, var(--bar-bg-light)) 88%, transparent);
   border-bottom-color: rgba(70, 87, 110, 0.28);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(240, 247, 255, 0.94) 18%, rgba(205, 226, 247, 0.9) 48%, rgba(186, 208, 235, 0.88) 52%, rgba(218, 233, 248, 0.92) 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92), inset 0 -1px 0 rgba(65, 78, 98, 0.2), inset 0 12px 18px rgba(255, 255, 255, 0.18), 0 3px 8px rgba(12, 21, 33, 0.12), 0 0 12px rgba(113, 186, 255, 0.12);
+  background: linear-gradient(180deg, var(--bar-bg-light) 0%, var(--bar-bg-dark) 100%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, color-mix(in srgb, #ffffff 40%, var(--bar-bg-light)) 92%, transparent), inset 0 -1px 0 rgba(65, 78, 98, 0.2), inset 0 12px 18px color-mix(in srgb, color-mix(in srgb, #ffffff 40%, var(--bar-bg-light)) 18%, transparent), 0 3px 8px rgba(12, 21, 33, 0.12), 0 0 12px color-mix(in srgb, var(--bar-accent) 12%, transparent);
+}
+
+.slider-row label {
+  color: var(--bar-text);
+  font-weight: 700;
+  font-size: 11px;
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--bar-text) 20%, transparent);
 }
 
 scale trough {
   min-height: 10px;
   border-radius: 999px;
-  border: 1px solid rgba(108, 125, 145, 0.35);
-  background: linear-gradient(180deg, rgba(108, 124, 145, 0.62) 0%, rgba(208, 221, 239, 0.65) 100%);
-  box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.26), inset 0 -1px 0 rgba(255, 255, 255, 0.55), 0 0 8px rgba(166, 219, 255, 0.16);
+  border: 1px solid var(--bar-bg-dark);
+  background: linear-gradient(180deg, var(--bar-bg-dark) 0%, var(--bar-bg-light) 100%);
+  box-shadow: inset 0 3px 4px rgba(0, 0, 0, 0.32), inset 0 -1px 0 rgba(255, 255, 255, 0.6), 0 0 8px color-mix(in srgb, var(--bar-accent) 16%, transparent);
 }
 
 scale highlight {
   border-radius: 999px;
-  border: 1px solid rgba(66, 110, 176, 0.34);
-  background: linear-gradient(90deg, #bdf1ff 0%, #7ec8ff 22%, #55adff 56%, #326fda 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), inset 0 -1px 0 rgba(12, 36, 74, 0.24), 0 0 10px rgba(91, 181, 255, 0.32);
+  border: 1px solid var(--bar-accent-dark);
+  background: linear-gradient(180deg, color-mix(in srgb, #ffffff 65%, transparent) 0%, color-mix(in srgb, #ffffff 12%, transparent) 40%, transparent 60%), linear-gradient(90deg, var(--bar-accent-dark) 0%, var(--bar-accent) 44%, var(--bar-accent-light) 100%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 55%, transparent), inset 0 -1px 0 rgba(0, 0, 0, 0.24), 0 0 10px color-mix(in srgb, var(--bar-accent) 40%, transparent);
 }
 
 scale slider {
   min-width: 20px;
   min-height: 20px;
   border-radius: 999px;
-  border: 1px solid rgba(106, 122, 142, 0.55);
-  background: radial-gradient(circle at 32% 28%, #ffffff 0%, #f6fbff 18%, #d8eafc 42%, #aac3df 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82), inset 0 -1px 0 rgba(38, 53, 74, 0.18), 0 1px 3px rgba(0, 0, 0, 0.22), 0 0 7px rgba(154, 214, 255, 0.28);
+  border: 1px solid var(--bar-accent-dark);
+  background: radial-gradient(circle at 30% 24%, #ffffff 0%, var(--bar-accent-pale) 22%, var(--bar-accent) 55%, var(--bar-accent-dark) 100%);
+  box-shadow: inset 0 2px 3px color-mix(in srgb, #ffffff 55%, transparent), inset 0 -2px 3px rgba(0, 0, 0, 0.3), 0 2px 5px rgba(0, 0, 0, 0.3), 0 0 8px color-mix(in srgb, var(--bar-accent) 50%, transparent);
+  transition: background 120ms var(--curve), box-shadow 120ms var(--curve), transform 120ms var(--curve);
+}
+
+scale slider:hover {
+  background: radial-gradient(circle at 30% 24%, #ffffff 0%, var(--bar-accent-pale) 20%, var(--bar-accent) 54%, var(--bar-accent-dark) 100%);
+  box-shadow: inset 0 2px 3px color-mix(in srgb, #ffffff 60%, transparent), inset 0 -2px 3px rgba(0, 0, 0, 0.34), 0 3px 6px rgba(0, 0, 0, 0.3), 0 0 10px color-mix(in srgb, var(--bar-accent) 58%, transparent);
+  transform: scale(1.08);
+}
+
+scale slider:active,
+scale slider:hover:active {
+  border-color: var(--bar-accent-light);
+  background: radial-gradient(circle at 70% 76%, var(--bar-accent-light) 0%, var(--bar-accent) 45%, var(--bar-accent-dark) 100%);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.35), inset 0 -1px 0 color-mix(in srgb, #ffffff 40%, transparent), 0 3px 6px rgba(0, 0, 0, 0.3), 0 0 10px color-mix(in srgb, var(--bar-accent) 65%, transparent);
 }
 
 button.round-icon {
@@ -473,27 +533,27 @@ button.round-icon {
   min-height: 44px;
   padding: 0;
   border-radius: 999px;
-  border: 1px solid rgba(149, 170, 197, 0.42);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88) 0%, rgba(209, 223, 240, 0.78) 100%);
-  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.24), 0 0 12px rgba(126, 196, 255, 0.1);
+  border: 1px solid var(--bar-bg-dark);
+  background: linear-gradient(180deg, var(--bar-bg-light) 0%, var(--bar-bg-dark) 100%);
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.24), 0 0 12px color-mix(in srgb, var(--bar-accent) 10%, transparent);
 }
 
 button.round-icon.off {
-  background: linear-gradient(180deg, rgba(235, 241, 250, 0.98) 0%, rgba(207, 216, 231, 0.95) 100%);
-  border-color: rgba(159, 177, 199, 0.42);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72), inset 0 -1px 0 rgba(74, 92, 116, 0.12), 0 1px 2px rgba(0, 0, 0, 0.12);
+  background: linear-gradient(180deg, var(--bar-bg-dark) 0%, var(--bar-bg-light) 100%);
+  border-color: var(--bar-bg-dark);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, color-mix(in srgb, #ffffff 40%, var(--bar-bg-light)) 72%, transparent), inset 0 -1px 0 rgba(74, 92, 116, 0.12), 0 1px 2px rgba(0, 0, 0, 0.12);
 }
 
 button.round-icon.active {
-  border-color: rgba(88, 142, 212, 0.74);
-  background: linear-gradient(180deg, rgba(220, 243, 255, 0.98) 0%, rgba(109, 185, 255, 0.96) 42%, rgb(45, 111, 214) 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 -1px 0 rgba(9, 41, 87, 0.28), 0 0 0 1px rgba(255, 255, 255, 0.45), 0 1px 3px rgba(0, 0, 0, 0.22), 0 0 14px rgba(96, 180, 255, 0.28);
+  border-color: var(--bar-accent);
+  background: linear-gradient(180deg, var(--bar-accent-light) 0%, var(--bar-accent) 42%, var(--bar-accent-dark) 100%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 60%, transparent), inset 0 -1px 0 rgba(9, 41, 87, 0.28), 0 0 0 1px color-mix(in srgb, #ffffff 35%, transparent), 0 1px 3px rgba(0, 0, 0, 0.22), 0 0 14px color-mix(in srgb, var(--bar-accent) 28%, transparent);
 }
 
 button.round-icon.power-toggle.active {
-  border-color: rgba(183, 102, 94, 0.82);
-  background: linear-gradient(180deg, rgba(255, 245, 239, 0.98) 0%, rgba(255, 176, 145, 0.96) 40%, rgb(212, 78, 53) 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.88), inset 0 -1px 0 rgba(107, 25, 16, 0.32), 0 0 0 1px rgba(255, 255, 255, 0.45), 0 1px 3px rgba(0, 0, 0, 0.24), 0 0 16px rgba(255, 132, 108, 0.24);
+  border-color: var(--bar-accent);
+  background: linear-gradient(180deg, var(--bar-accent-light) 0%, var(--bar-accent) 42%, var(--bar-accent-dark) 100%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 60%, transparent), inset 0 -1px 0 rgba(9, 41, 87, 0.32), 0 0 0 1px color-mix(in srgb, #ffffff 35%, transparent), 0 1px 3px rgba(0, 0, 0, 0.24), 0 0 16px color-mix(in srgb, var(--bar-accent) 24%, transparent);
 }
 
 .control-actions-section {
@@ -542,24 +602,24 @@ button.power-action-button.danger:hover {
 }
 
 label.control-action-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
-  color: #17314d;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.82);
+  color: var(--bar-text);
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--bar-text) 20%, transparent);
 }
 
 label.power-action-glyph {
   font-family: "Symbols Nerd Font", "Noto Sans Symbols 2", "Noto Sans Symbols", "Noto Sans", sans-serif;
   font-size: 20px;
   font-weight: 800;
-  color: #17314d;
-  text-shadow: 0 0 7px rgba(136, 207, 255, 0.52), 0 1px 0 rgba(255, 255, 255, 0.9);
+  color: var(--bar-accent);
+  text-shadow: 0 0 7px color-mix(in srgb, var(--bar-accent) 52%, transparent), 0 1px 0 color-mix(in srgb, var(--bar-accent) 30%, transparent);
 }
 
 image.symbol-icon {
-  color: #102236;
+  color: var(--bar-accent);
   margin: 0;
-  -gtk-icon-shadow: 0 0 7px rgba(128, 204, 255, 0.7);
+  -gtk-icon-shadow: 0 0 7px color-mix(in srgb, var(--bar-accent) 70%, transparent);
 }
 
 label.signal-icon {
@@ -569,21 +629,42 @@ label.signal-icon {
   letter-spacing: -1px;
   line-height: 1;
   margin: 0;
-  color: #163250;
-  text-shadow: 0 0 7px rgba(124, 201, 255, 0.55);
+  color: var(--bar-accent);
+  text-shadow: 0 0 7px color-mix(in srgb, var(--bar-accent) 55%, transparent);
+}
+
+/* Glyphs switch to the widget background when their round button is hovered or toggled */
+button.mini-gear:hover label.gear-icon,
+button.mini-gear:active label.gear-icon,
+button.mini-gear.active label.gear-icon,
+button.round-icon:hover label.power-icon,
+button.round-icon:hover label.signal-icon,
+button.round-icon:hover label.power-action-glyph,
+button.round-icon:hover image.symbol-icon,
+button.round-icon.active label.power-icon,
+button.round-icon.active label.signal-icon,
+button.round-icon.active label.power-action-glyph,
+button.round-icon.active image.symbol-icon {
+  color: var(--bar-bg);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+button.round-icon:hover image.symbol-icon,
+button.round-icon.active image.symbol-icon {
+  -gtk-icon-shadow: 0 0 7px color-mix(in srgb, var(--bar-accent) 70%, transparent);
 }
 
 label.events-title {
   margin-top: 4px;
   font-weight: 700;
-  color: #2e4866;
+  color: var(--bar-text-dim);
 }
 
 label.events {
-  font-family: "Symbols Nerd Font Mono", "Liberation Mono", monospace;
+  font-family: "Liberation Sans", sans-serif;
   font-size: 11px;
   line-height: 1.25;
-  color: #2d3137;
+  color: var(--bar-text);
+  font-weight: 600;
 }
 
 /* Calendar account button (top-right of calendar header) */
@@ -592,29 +673,45 @@ button.calendar-account-btn {
   min-height: 22px;
   padding: 2px 6px;
   border-radius: 4px;
-  border: 1px solid #b0bfcf;
-  border-top-color: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--bar-bg-dark);
+  border-top-color: color-mix(in srgb, #ffffff 40%, var(--bar-bg-light));
   border-bottom-color: rgba(50, 72, 96, 0.5);
-  background: linear-gradient(180deg, #ffffff 0%, #e4eaf3 40%, #c8d3e2 100%);
-  color: #0d1c2a;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 -1px 0 rgba(0, 0, 0, 0.18), 0 1px 3px rgba(0, 0, 0, 0.22);
+  background: linear-gradient(180deg, var(--bar-bg-light) 0%, var(--bar-bg-dark) 100%);
+  color: var(--bar-text);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, color-mix(in srgb, #ffffff 40%, var(--bar-bg-light)) 85%, transparent), inset 0 -1px 0 rgba(0, 0, 0, 0.18), 0 1px 3px rgba(0, 0, 0, 0.22);
   font-size: 9px;
   font-weight: 600;
   transition: background 120ms var(--curve), box-shadow 120ms var(--curve);
 }
 
 button.calendar-account-btn:hover {
-  background: linear-gradient(180deg, #ffffff 0%, #c7d1df 100%);
+  border-color: var(--bar-accent);
+  background: linear-gradient(180deg, var(--bar-accent-light) 0%, var(--bar-accent-dark) 100%);
 }
 
 button.calendar-account-btn:active {
-  background: linear-gradient(180deg, #c7d1df 0%, #ffffff 100%);
+  border-color: var(--bar-accent-dark);
+  background: linear-gradient(180deg, var(--bar-accent) 0%, var(--bar-accent-dark) 100%);
   box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.18), inset 0 -1px 0 rgba(255, 255, 255, 0.55);
+}
+
+button.calendar-account-btn:hover label.calendar-account-icon,
+button.calendar-account-btn:active label.calendar-account-icon {
+  color: var(--bar-bg);
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--bar-bg) 72%, transparent);
 }
 
 button.calendar-account-btn label {
   font-size: 9px;
   font-weight: 600;
+}
+
+button.calendar-account-btn label.calendar-account-icon {
+  font-family: "Symbols Nerd Font", "Noto Sans Symbols 2", "Noto Sans Symbols", "Noto Sans", sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--bar-accent);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--bar-accent) 55%, transparent);
 }
 
 /* Calendar auth dialog */
@@ -628,20 +725,20 @@ button.calendar-account-btn label {
 
 .calendar-auth-dialog .auth-instructions label {
   font-size: 11px;
-  color: #1a3050;
+  color: var(--bar-text-dim);
 }
 
 .calendar-auth-dialog .auth-code {
   font-size: 20px;
   font-weight: 800;
   letter-spacing: 3px;
-  color: #0e2033;
+  color: var(--bar-text);
 }
 
 .calendar-auth-dialog .auth-url {
   font-size: 10px;
   font-weight: 600;
-  color: #2e4866;
+  color: var(--bar-text-dim);
 }
 
 .calendar-auth-dialog .auth-error {
@@ -656,18 +753,18 @@ button.calendar-account-btn label {
 
 .calendar-auth-dialog .auth-setup label {
   font-size: 11px;
-  color: #1a3050;
+  color: var(--bar-text-dim);
 }
 
 .calendar-auth-dialog .auth-entry {
   min-width: 320px;
   padding: 5px 8px;
   border-radius: 4px;
-  border: 1px solid rgba(180, 195, 215, 0.7);
-  background: rgba(255, 255, 255, 0.85);
-  color: #0e2033;
+  border: 1px solid var(--bar-bg-dark);
+  background: var(--bar-bg-light);
+  color: var(--bar-text);
   font-size: 11px;
-  caret-color: #2e4866;
+  caret-color: var(--bar-text-dim);
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
@@ -681,7 +778,7 @@ button.calendar-account-btn label {
 
 .settings-flyout label {
   font-size: 11px;
-  color: #1a3050;
+  color: var(--bar-text-dim);
   font-weight: 600;
 }
 
@@ -689,32 +786,69 @@ button.calendar-account-btn label {
   padding: 4px 0;
 }
 
+.settings-custom-panel {
+  padding: 6px;
+  border-radius: 5px;
+  border: 1px solid var(--bar-bg-dark);
+  background: linear-gradient(180deg, var(--bar-bg-light) 0%, var(--bar-bg-dark) 100%);
+}
+
+.settings-channel-button {
+  min-height: 24px;
+  padding: 3px 7px;
+  border-radius: 4px;
+  border: 1px solid var(--bar-bg-dark);
+  background: linear-gradient(180deg, var(--bar-bg-light) 0%, var(--bar-bg-dark) 100%);
+  color: var(--bar-text);
+}
+
+.settings-channel-button.active,
+.settings-channel-button:hover {
+  border-color: var(--bar-accent);
+  background: linear-gradient(180deg, var(--bar-accent-light) 0%, var(--bar-accent-dark) 100%);
+}
+
+.settings-color-preview {
+  min-width: 34px;
+  min-height: 24px;
+  border-radius: 4px;
+  border: 1px solid var(--bar-bg-dark);
+}
+
+.settings-custom-row {
+  min-height: 24px;
+}
+
+.settings-custom-row scale {
+  min-width: 180px;
+}
+
 button.settings-dropdown {
   min-height: 26px;
   padding: 4px 8px;
   border-radius: 4px;
-  border: 1px solid #b0bfcf;
-  border-top-color: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--bar-bg-dark);
+  border-top-color: color-mix(in srgb, #ffffff 40%, var(--bar-bg-light));
   border-bottom-color: rgba(50, 72, 96, 0.5);
-  background: linear-gradient(180deg, #ffffff 0%, #e4eaf3 40%, #c8d3e2 100%);
-  color: #0d1c2a;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 -1px 0 rgba(0, 0, 0, 0.18), 0 1px 3px rgba(0, 0, 0, 0.22);
+  background: linear-gradient(180deg, var(--bar-bg-light) 0%, var(--bar-bg-dark) 100%);
+  color: var(--bar-text);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, color-mix(in srgb, #ffffff 40%, var(--bar-bg-light)) 85%, transparent), inset 0 -1px 0 rgba(0, 0, 0, 0.18), 0 1px 3px rgba(0, 0, 0, 0.22);
   transition: background 120ms var(--curve), box-shadow 120ms var(--curve);
 }
 
 button.settings-dropdown:hover {
-  background: linear-gradient(180deg, #ffffff 0%, #c7d1df 100%);
+  background: linear-gradient(180deg, var(--bar-bg-light) 0%, var(--bar-bg-dark) 100%);
 }
 
 button.settings-dropdown:active {
-  background: linear-gradient(180deg, #c7d1df 0%, #ffffff 100%);
+  background: linear-gradient(180deg, var(--bar-bg-dark) 0%, var(--bar-bg-light) 100%);
   box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.18), inset 0 -1px 0 rgba(255, 255, 255, 0.55);
 }
 
 box.settings-list {
   border-radius: 4px;
-  border: 1px solid #b0bfcf;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(239, 247, 255, 0.95) 100%);
+  border: 1px solid var(--bar-bg-dark);
+  background: linear-gradient(180deg, var(--bar-bg-light) 0%, var(--bar-bg-dark) 100%);
 }
 
 button.settings-item {
@@ -724,7 +858,7 @@ button.settings-item {
   border-radius: 0;
   border-bottom: 1px solid rgba(180, 195, 215, 0.35);
   background: transparent;
-  color: #0d1c2a;
+  color: var(--bar-text);
   box-shadow: none;
   transition: background 100ms var(--curve);
 }
@@ -734,21 +868,43 @@ button.settings-item:last-child {
 }
 
 button.settings-item:hover {
-  background: linear-gradient(180deg, rgba(200, 220, 245, 0.7) 0%, rgba(160, 195, 235, 0.6) 100%);
+  background: linear-gradient(180deg, var(--bar-accent-light) 0%, var(--bar-accent) 100%);
 }
 
 button.settings-item:active {
-  background: linear-gradient(180deg, rgba(120, 170, 232, 0.6) 0%, rgba(184, 216, 255, 0.7) 100%);
+  background: linear-gradient(180deg, var(--bar-accent) 0%, var(--bar-accent-dark) 100%);
 }
 
 .settings-entry {
   min-height: 24px;
   padding: 4px 8px;
   border-radius: 4px;
-  border: 1px solid rgba(180, 195, 215, 0.7);
-  background: rgba(255, 255, 255, 0.85);
-  color: #0e2033;
+  border: 1px solid var(--bar-bg-dark);
+  background: var(--bar-bg-light);
+  color: var(--bar-text);
   font-size: 11px;
+}
+
+.settings-swatch {
+  min-width: 20px;
+  min-height: 20px;
+  padding: 0;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  transition: border-color 120ms var(--curve), box-shadow 120ms var(--curve);
+}
+
+.settings-swatch:hover {
+  border-color: var(--bar-accent);
+  box-shadow: 0 0 0 1px var(--bar-accent);
+}
+
+.settings-custom-swatch {
+  color: var(--bar-text);
+}
+
+.settings-custom-swatch:hover {
+  border-color: var(--bar-accent);
 }
 
 .settings-size-entry {

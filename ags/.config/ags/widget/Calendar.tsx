@@ -22,8 +22,7 @@ export default function CalendarWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
     })()
   }
 
-  return (
-    <>
+  return [
       <window
         visible={s.calendarOpen}
         name={`ags-calendar-${monitorIndex}`}
@@ -44,10 +43,7 @@ export default function CalendarWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
               <label $type="center" class="flyout-title" label="Calendar" xalign={0.5} />
               <button $type="end" class="calendar-account-btn" onClicked={s.handleAccountClick}
                 tooltipText={s.calendarAccountEmail((e) => e ? "Sign out" : "Sign in to Google Calendar")}>
-                <label label={s.calendarAccountEmail((e) => {
-                  if (!e) return "Sign in"
-                  return e.length > 20 ? e.slice(0, 18) + "..." : e
-                })} />
+                <label class="calendar-account-icon" label={"\u{F007}"} />
               </button>
             </centerbox>
             <Gtk.Calendar class="calendar-widget" />
@@ -58,7 +54,7 @@ export default function CalendarWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
           </box>
           <button class="DismissSurface" hexpand vexpand canTarget onClicked={s.closeFlyouts} />
         </box>
-      </window>
+      </window>,
 
       <window
         visible={s.authDialogOpen}
@@ -127,7 +123,6 @@ export default function CalendarWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
           </box>
           <button class="DismissSurface" hexpand vexpand canTarget onClicked={s.closeAuthDialog} />
         </box>
-      </window>
-    </>
-  )
+      </window>,
+  ]
 }

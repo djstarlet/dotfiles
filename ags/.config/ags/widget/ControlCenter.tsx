@@ -47,10 +47,20 @@ export default function ControlCenterWindow(gdkmonitor: Gdk.Monitor, monitorInde
   const liveVolume = createPoll(0.5, 1200, ["bash", "-c", "wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null || echo '0.5'"], (out) =>
     parseVolume(out),
   )
+  const [brightnessReady, setBrightnessReady] = createState(false)
+  const liveBrightness = createPoll(100, 5000, ["bash", "-c", "shader=\"$HOME/.config/hypr/shaders/ags-dim.frag\"; dim=$(grep -oE '1\\.0 - [0-9]+(\\.[0-9]+)?' \"$shader\" 2>/dev/null | head -n1 | awk '{print $3}'); awk -v d=\"${dim:-0}\" 'BEGIN { p = 100 - (d * 100); if (p < 5) p = 5; if (p > 100) p = 100; printf \"%d\\n\", p }'"], (out) => {
+    setBrightnessReady(true)
+    const n = Number(String(out).trim())
+    return Number.isFinite(n) ? Math.max(5, Math.min(100, n)) : 100
+  })
 
   // ── CC-local state ─────────────────────────────────────────────────────────
-  const [brightnessPercent, setBrightnessPercent] = createState(100)
+  const [brightnessPercent, setBrightnessPercent] = createState(50)
   const [manualVolume, setManualVolume] = createState(0.5)
+  let volumeScaleRef: Gtk.Scale | null = null
+  let brightnessScaleRef: Gtk.Scale | null = null
+  let syncingVolume = false
+  let syncingBrightness = false
 
   // ── CC-local computeds ─────────────────────────────────────────────────────
   const effectiveBrightness = createComputed(() => Math.max(5, Math.min(100, Math.round(brightnessPercent()))))
@@ -68,6 +78,7 @@ export default function ControlCenterWindow(gdkmonitor: Gdk.Monitor, monitorInde
   // ── CC-local effects ───────────────────────────────────────────────────────
   // Brightness effect
   createEffect(() => {
+    if (!brightnessReady()) return
     const pct = brightnessPercent()
     execAsync(["bash", "-lc", `$HOME/.config/ags/brightness-dim.sh ${Math.round(pct)}`]).catch(() => null)
   })
@@ -76,6 +87,33 @@ export default function ControlCenterWindow(gdkmonitor: Gdk.Monitor, monitorInde
   createEffect(() => {
     if (config.controlCenter) {
       setManualVolume(liveVolume())
+    }
+  })
+
+  // Brightness sync
+  createEffect(() => {
+    if (config.controlCenter) {
+      setBrightnessPercent(liveBrightness())
+    }
+  })
+
+  // GTK4 emits value-changed synchronously from set_value(); the guard must bracket the call
+  createEffect(() => {
+    const value = Math.round(manualVolume() * 100)
+    if (volumeScaleRef && !syncingVolume) {
+      syncingVolume = true
+      volumeScaleRef.set_value(value)
+      syncingVolume = false
+    }
+  })
+
+  // GTK4 emits value-changed synchronously from set_value(); the guard must bracket the call
+  createEffect(() => {
+    const value = Math.round(brightnessPercent())
+    if (brightnessScaleRef && !syncingBrightness) {
+      syncingBrightness = true
+      brightnessScaleRef.set_value(value)
+      syncingBrightness = false
     }
   })
 
@@ -137,6 +175,9 @@ export default function ControlCenterWindow(gdkmonitor: Gdk.Monitor, monitorInde
             orientation={Gtk.Orientation.HORIZONTAL}
             drawValue={false}
             hexpand
+            $={(self) => {
+              volumeScaleRef = self
+            }}
             adjustment={new Gtk.Adjustment({
               lower: 0,
               upper: 100,
@@ -145,6 +186,7 @@ export default function ControlCenterWindow(gdkmonitor: Gdk.Monitor, monitorInde
               value: Math.round(manualVolume() * 100),
             })}
             onValueChanged={(self) => {
+              if (syncingVolume) return
               const next = clamp01(self.get_value() / 100)
               setManualVolume(next)
               execAsync(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", String(next)]).catch(() => null)
@@ -158,14 +200,18 @@ export default function ControlCenterWindow(gdkmonitor: Gdk.Monitor, monitorInde
             orientation={Gtk.Orientation.HORIZONTAL}
             drawValue={false}
             hexpand
+            $={(self) => {
+              brightnessScaleRef = self
+            }}
             adjustment={new Gtk.Adjustment({
               lower: 5,
               upper: 100,
               stepIncrement: 1,
               pageIncrement: 5,
-              value: 100,
+              value: Math.round(brightnessPercent()),
             })}
             onValueChanged={(self) => {
+              if (syncingBrightness) return
               const next = Math.round(self.get_value())
               setBrightnessPercent(Math.max(5, Math.min(100, next)))
             }}

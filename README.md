@@ -23,8 +23,6 @@
 - PRINT - screenshot (copy screen)
 - SHIFT + PRINT - screenshot (save area)
 - SUPER + SHIFT + S - screenshot (copy area)
-- SUPER + SHIFT + H - hyprshade toggle (frutiger_aero)
-- SUPER + CTRL + H - hyprshade on (chrome_bloom)
 - SUPER + L - layout: dwindle
 - SUPER + SHIFT + L - layout: master
 
@@ -116,4 +114,4 @@ pipewire / wireplumber
 
 grim, slurp, wl-copy, libnotify (hypr/hypr/scripts/take-screenshot.sh)
 
-fonts (ags/.config/ags/style.css - font-family declarations: Trebuchet MS, Verdana, Liberation Sans, Noto Sans, Noto Sans Symbols, Noto Sans Symbols 2, Symbols Nerd Font, Symbols Nerd Font Mono)
+fonts (ags/.config/ags/style.css - font-family declarations: Liberation Sans, Liberation Mono, Liberation Serif, Symbols Nerd Font, Symbols Nerd Font Mono)
