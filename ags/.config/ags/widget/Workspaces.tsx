@@ -3,7 +3,8 @@ import { execAsync } from "ags/process"
 import { createComputed, createEffect } from "gnim"
 import { timeout } from "ags/time"
 import type { Store } from "./store"
-import { workspaceColorClass } from "./store"
+import { DEFAULT_WS_DOT_COLORS } from "./store"
+import { darken, mixHex } from "./color-utils"
 import config from "./widgets.config"
 
 const workspaceSlots = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
@@ -90,7 +91,12 @@ export function WorkspacesElement(s: Store) {
             const fx = s.workspaceFx()
             const isActive = current === ws
             const phase = fx[ws] === "born" || fx[ws] === "dying" ? ` ${fx[ws]}` : ""
-            return `ws-core ${workspaceColorClass(ws)}${isActive ? " active" : ""}${phase}`
+            return `ws-core${isActive ? " active" : ""}${phase}`
+          })}
+          css={createComputed(() => {
+            const colors = s.wsDotColors()
+            const base = colors[(ws - 1) % 8] || DEFAULT_WS_DOT_COLORS[(ws - 1) % 8]
+            return `background: radial-gradient(circle at 32% 28%, ${mixHex(base, "#ffffff", 0.55)} 0%, ${mixHex(base, "#ffffff", 0.25)} 28%, ${base} 62%, ${darken(base, 0.55)} 100%);`
           })}
         />
       </button>

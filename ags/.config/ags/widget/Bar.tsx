@@ -204,7 +204,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
                   class={s.controlOpen((open) => (open ? "bar-cap-button active" : "bar-cap-button"))}
                   onClicked={s.toggleControl}
                 >
-                  <box class="gear-icon-box" widthRequest={14} heightRequest={14} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
+                  <label class="gear-icon" label={"\u{F013}"} />
                 </button>
               )}
               {config.powerMenu && (
@@ -216,7 +216,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
                   class={s.powerMenuOpen((open) => (open ? "bar-cap-button active" : "bar-cap-button"))}
                   onClicked={s.togglePowerMenu}
                 >
-                  <box class="power-icon-box" widthRequest={14} heightRequest={14} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
+                  <label class="power-icon" label={"\u{F011}"} />
                 </button>
               )}
             </box>

@@ -8,6 +8,8 @@ command -v gsettings >/dev/null 2>&1 || { echo '{"error": "gsettings not found â
 command -v hyprctl >/dev/null 2>&1 || { echo '{"error": "hyprctl not found â€” is Hyprland running?"}' >&2; exit 1; }
 
 cmd="${1:-}"
+# SYNC WITH widget/theme.config.ts workspaceDotColors
+DEFAULT_WS_DOTS='{"dots":["#ef3d34","#f0a114","#24a337","#3b83e6","#9b5ad7","#28a9a0","#e96f3a","#cf5398"]}'
 
 case "$cmd" in
   list-themes)
@@ -73,6 +75,24 @@ case "$cmd" in
           cmp -s "$f" "$current" && basename "$f" && exit 0
         done
         echo "current-wallpaper"
+        ;;
+
+      colors)
+        colorsfile="$HOME/.config/ags/theme-colors.json"
+        if [ -f "$colorsfile" ]; then
+          python3 -c "import json,sys; d=json.load(open('$colorsfile')); print(json.dumps(d))"
+        else
+          echo '{"background":"#f4f7fc","accent":"#55adff","text":"#2d3137"}'
+        fi
+        ;;
+
+      ws-dots)
+        dotsfile="$HOME/.config/ags/ws-dot-colors.json"
+        if [ -f "$dotsfile" ]; then
+          python3 -c "import json; print(json.dumps(json.load(open('$dotsfile'))))"
+        else
+          printf '%s\n' "$DEFAULT_WS_DOTS"
+        fi
         ;;
 
       *)
@@ -141,6 +161,82 @@ case "$cmd" in
         sleep 0.2
         hyprctl dispatch exec "swaybg -i $pngdest -m fill" >/dev/null 2>&1
         echo "ok"
+        ;;
+
+      color)
+        name="${3:-}"
+        hex="${4:-}"
+        [ -z "$name" ] && { echo '{"error": "missing color name"}' >&2; exit 1; }
+        [ -z "$hex" ] && { echo '{"error": "missing hex value"}' >&2; exit 1; }
+        case "$name" in
+          background|accent|text) ;;
+          *) echo '{"error": "unknown color: '"$name"'"}' >&2; exit 1 ;;
+        esac
+        [[ "$hex" =~ ^#[0-9a-fA-F]{6}$ ]] || { echo '{"error": "invalid color: '"$hex"'"}' >&2; exit 1; }
+        colorsfile="$HOME/.config/ags/theme-colors.json"
+        if [ -f "$colorsfile" ]; then
+          # Read existing, merge the one field, write atomically
+          bg=$(python3 -c "import json,sys; d=json.load(open('$colorsfile')); print(d.get('background','#f4f7fc'))")
+          ac=$(python3 -c "import json,sys; d=json.load(open('$colorsfile')); print(d.get('accent','#55adff'))")
+          tx=$(python3 -c "import json,sys; d=json.load(open('$colorsfile')); print(d.get('text','#2d3137'))")
+          case "$name" in
+            background) bg="$hex" ;;
+            accent)     ac="$hex" ;;
+            text)       tx="$hex" ;;
+          esac
+        else
+          bg="#f4f7fc"; ac="#55adff"; tx="#2d3137"
+          case "$name" in
+            background) bg="$hex" ;;
+            accent)     ac="$hex" ;;
+            text)       tx="$hex" ;;
+          esac
+        fi
+        tmp="${colorsfile}.tmp.$$"
+        printf '{"background":"%s","accent":"%s","text":"%s"}\n' "$bg" "$ac" "$tx" > "$tmp"
+        chmod 600 "$tmp"
+        mv -f "$tmp" "$colorsfile"
+        echo "ok"
+        ;;
+
+      ws-dot)
+        index="${3:-}"
+        hex="${4:-}"
+        [[ "$index" =~ ^[1-8]$ ]] || { echo '{"error": "invalid workspace dot index"}' >&2; exit 1; }
+        [[ "$hex" =~ ^#[0-9a-fA-F]{6}$ ]] || { echo '{"error": "invalid workspace dot color"}' >&2; exit 1; }
+        dotsfile="$HOME/.config/ags/ws-dot-colors.json"
+        tmp="${dotsfile}.tmp.$$"
+        python3 - "$dotsfile" "$index" "$hex" <<'PY' > "$tmp"
+import json
+import os
+import re
+import sys
+
+path, index, color = sys.argv[1:]
+defaults = ["#ef3d34", "#f0a114", "#24a337", "#3b83e6", "#9b5ad7", "#28a9a0", "#e96f3a", "#cf5398"]
+try:
+    with open(path) as handle:
+        dots = json.load(handle).get("dots", defaults)
+    if not isinstance(dots, list) or len(dots) != 8 or not all(isinstance(dot, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", dot) for dot in dots):
+        dots = defaults
+except (OSError, ValueError, TypeError):
+    dots = defaults
+dots[int(index) - 1] = color
+print(json.dumps({"dots": dots}, separators=(",", ":")))
+PY
+        chmod 600 "$tmp"
+        mv -f "$tmp" "$dotsfile"
+        echo "ok"
+        ;;
+
+      reset)
+        if [ "${3:-}" = "ws-dots" ]; then
+          rm -f "$HOME/.config/ags/ws-dot-colors.json"
+          echo "ok"
+        else
+          echo '{"error": "unknown reset target"}' >&2
+          exit 1
+        fi
         ;;
 
       *)
