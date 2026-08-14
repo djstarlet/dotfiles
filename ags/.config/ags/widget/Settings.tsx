@@ -3,7 +3,7 @@ import { Astal, Gtk, Gdk } from "ags/gtk4"
 const { TOP, RIGHT } = Astal.WindowAnchor
 import { execAsync } from "ags/process"
 import { createComputed, createEffect, createState, For } from "gnim"
-import type { Store } from "./store"
+import type { SavedPreset, Store } from "./store"
 import { DEFAULT_WS_DOT_COLORS } from "./store"
 import { theme } from "./theme.config"
 import type { ThemeConfig } from "./theme.config"
@@ -21,6 +21,8 @@ export default function SettingsWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
   const [customOpen, setCustomOpen] = createState(false)
   const [customChannel, setCustomChannel] = createState<ColorName>("background")
   const [customDotIndex, setCustomDotIndex] = createState<number | null>(null)
+  const [savedNameOpen, setSavedNameOpen] = createState(false)
+  const [savedNameInput, setSavedNameInput] = createState("")
   const [customRed, setCustomRed] = createState(246)
   const [customGreen, setCustomGreen] = createState(250)
   const [customBlue, setCustomBlue] = createState(255)
@@ -88,7 +90,7 @@ export default function SettingsWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
   }
 
   const activePreset = createComputed(() =>
-    theme.presets.find((preset) =>
+    [...theme.presets, ...s.savedPresets()].find((preset) =>
       preset.background.toLowerCase() === bgInput().toLowerCase() && preset.accent.toLowerCase() === accentInput().toLowerCase() && preset.text.toLowerCase() === textInput().toLowerCase()
     )?.name || null
   )
@@ -102,6 +104,29 @@ export default function SettingsWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
       await execAsync(["bash", "-c", `$HOME/.config/ags/settings.sh set ws-dot ${index + 1} '${hex}'`])
     }
     s.setSettingsStatus(`${preset.name} applied`)
+  }
+
+  const shellQuote = (value: string) => `'${value.replace(/'/g, "'\\''")}'`
+
+  const saveCurrentPreset = () => {
+    const name = savedNameInput().trim()
+    if (!name) {
+      s.setSettingsStatus("Enter a preset name")
+      return
+    }
+    const preset: SavedPreset = {
+      name,
+      background: bgInput(),
+      accent: accentInput(),
+      text: textInput(),
+      dots: [...s.wsDotColors()],
+    }
+    const next = [...s.savedPresets().filter((item) => item.name !== name), preset]
+    s.addSavedPreset(preset)
+    setSavedNameOpen(false)
+    execAsync(["bash", "-c", `$HOME/.config/ags/settings.sh set saved-presets ${shellQuote(JSON.stringify({ presets: next }))}`])
+      .then(() => s.setSettingsStatus(`Saved preset "${name}"`))
+      .catch(() => s.setSettingsStatus("Failed to save preset"))
   }
 
   const selectCustomChannel = (name: ColorName) => {
@@ -150,7 +175,7 @@ export default function SettingsWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
         layer={Astal.Layer.OVERLAY}
         keymode={Astal.Keymode.ON_DEMAND}
         exclusivity={Astal.Exclusivity.IGNORE}
-        marginTop={48}
+        marginTop={42}
         application={app}
       >
         <box hexpand halign={Gtk.Align.END} marginEnd={controlFlyoutMarginEnd}>
@@ -284,17 +309,39 @@ export default function SettingsWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
 
             <box class="settings-row" orientation={Gtk.Orientation.VERTICAL} spacing={4}>
               <label label="Color Presets" xalign={0} />
-              <button class="settings-dropdown" onClicked={() => {
-                if (s.activeList() === "preset" && s.listPopupOpen()) {
-                  s.setListPopupOpen(false)
-                  s.setActiveList(null)
-                } else {
-                  s.setActiveList("preset")
-                  s.setListPopupOpen(true)
-                }
-              }}>
-                <label label={activePreset((name) => name || "Custom...")} xalign={0} hexpand />
-              </button>
+              <box orientation={Gtk.Orientation.HORIZONTAL} spacing={4}>
+                <button class="settings-dropdown" hexpand onClicked={() => {
+                  if (s.activeList() === "preset" && s.listPopupOpen()) {
+                    s.setListPopupOpen(false)
+                    s.setActiveList(null)
+                  } else {
+                    s.setActiveList("preset")
+                    s.setListPopupOpen(true)
+                  }
+                }}>
+                  <label label={activePreset((name) => name || "Custom...")} xalign={0} hexpand />
+                </button>
+                <button class="action" onClicked={() => {
+                  setSavedNameInput(activePreset() || "My Preset")
+                  setSavedNameOpen(true)
+                }}>
+                  <label label="Save" />
+                </button>
+              </box>
+              <box
+                orientation={Gtk.Orientation.HORIZONTAL}
+                spacing={4}
+                visible={createComputed(() => savedNameOpen())}
+              >
+                <Gtk.Entry
+                  class="settings-entry"
+                  hexpand
+                  placeholderText="Preset name"
+                  text={savedNameInput()}
+                  onNotifyText={(self) => setSavedNameInput(self.text)}
+                  onActivate={saveCurrentPreset}
+                />
+              </box>
             </box>
 
             <Gtk.Separator orientation={Gtk.Orientation.HORIZONTAL} />
@@ -548,38 +595,52 @@ export default function SettingsWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
                   if (kind === "icon") return s.iconList()
                   if (kind === "font") return s.fontList()
                   if (kind === "cursor") return s.cursorList()
-                  if (kind === "preset") return theme.presets.map((preset) => preset.name)
+                  if (kind === "preset") return [...theme.presets, ...s.savedPresets()].map((preset) => preset.name)
                   return []
                 })}>
                   {(item) => (
-                    <button class="settings-item" onClicked={() => {
-                      const kind = s.activeList()
-                      if (kind === "theme") {
-                        execAsync(["bash", "-c", `$HOME/.config/ags/settings.sh set theme '${item}'`])
-                          .then(() => s.setCurrentTheme(item))
-                          .catch(() => null)
-                      } else if (kind === "icon") {
-                        execAsync(["bash", "-c", `$HOME/.config/ags/settings.sh set icon '${item}'`])
-                          .then(() => s.setCurrentIcon(item))
-                          .catch(() => null)
-                      } else if (kind === "font") {
-                        execAsync(["bash", "-c", `$HOME/.config/ags/settings.sh set font '${item}'`])
-                          .then(() => s.setCurrentFont(item))
-                          .catch(() => null)
-                      } else if (kind === "cursor") {
-                        const size = s.cursorSizeInput()
-                        execAsync(["bash", "-c", `$HOME/.config/ags/settings.sh set cursor '${item}' ${size}`])
-                          .then(() => s.setCurrentCursor(item))
-                          .catch(() => null)
-                      } else if (kind === "preset") {
-                        const preset = theme.presets.find((candidate) => candidate.name === item)
-                        if (preset) void applyPreset(preset).catch(() => s.setSettingsStatus("Failed to apply preset"))
-                      }
-                      s.setListPopupOpen(false)
-                      s.setActiveList(null)
-                    }}>
-                      <label label={item} xalign={0} hexpand />
-                    </button>
+                    <box orientation={Gtk.Orientation.HORIZONTAL} spacing={4}>
+                      <button class="settings-item" hexpand onClicked={() => {
+                        const kind = s.activeList()
+                        if (kind === "theme") {
+                          execAsync(["bash", "-c", `$HOME/.config/ags/settings.sh set theme '${item}'`])
+                            .then(() => s.setCurrentTheme(item))
+                            .catch(() => null)
+                        } else if (kind === "icon") {
+                          execAsync(["bash", "-c", `$HOME/.config/ags/settings.sh set icon '${item}'`])
+                            .then(() => s.setCurrentIcon(item))
+                            .catch(() => null)
+                        } else if (kind === "font") {
+                          execAsync(["bash", "-c", `$HOME/.config/ags/settings.sh set font '${item}'`])
+                            .then(() => s.setCurrentFont(item))
+                            .catch(() => null)
+                        } else if (kind === "cursor") {
+                          const size = s.cursorSizeInput()
+                          execAsync(["bash", "-c", `$HOME/.config/ags/settings.sh set cursor '${item}' ${size}`])
+                            .then(() => s.setCurrentCursor(item))
+                            .catch(() => null)
+                        } else if (kind === "preset") {
+                          const preset = [...theme.presets, ...s.savedPresets()].find((candidate) => candidate.name === item)
+                          if (preset) void applyPreset(preset).catch(() => s.setSettingsStatus("Failed to apply preset"))
+                        }
+                        s.setListPopupOpen(false)
+                        s.setActiveList(null)
+                      }}>
+                        <label label={item} xalign={0} hexpand />
+                      </button>
+                      <button
+                        class="settings-preset-delete"
+                        visible={createComputed(() => s.activeList() === "preset" && s.savedPresets().some((preset) => preset.name === item))}
+                        onClicked={() => {
+                          s.removeSavedPreset(item)
+                          execAsync(["bash", "-c", `$HOME/.config/ags/settings.sh remove saved-preset ${shellQuote(item)}`])
+                            .then(() => s.setSettingsStatus(`Deleted preset "${item}"`))
+                            .catch(() => s.setSettingsStatus("Failed to delete preset"))
+                        }}
+                      >
+                        <label label={"\u{F014}"} />
+                      </button>
+                    </box>
                   )}
                 </For>
               </box>

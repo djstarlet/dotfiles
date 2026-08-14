@@ -10,25 +10,26 @@ import config from "./widgets.config"
 const workspaceSlots = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
 export function WorkspacesElement(s: Store) {
-  let lastWorkspaceIds: number[] = []
+  let lastKnownIds: number[] = []
   createEffect(() => {
     const ids = s.workspaceIds()
-    const born = ids.filter((id) => !lastWorkspaceIds.includes(id))
-    const dying = lastWorkspaceIds.filter((id) => !ids.includes(id))
+    const born = ids.filter((id) => !lastKnownIds.includes(id))
+    const dying = lastKnownIds.filter((id) => !ids.includes(id))
 
     if (born.length === 0 && dying.length === 0) {
-      lastWorkspaceIds = [...ids]
+      lastKnownIds = [...ids]
       return
     }
 
     if (born.length > 0) {
-      s.setWorkspaceFx((prev) => {
-        const next = { ...prev }
-        for (const id of born) next[id] = "born"
-        return next
+      timeout(16, () => {
+        s.setWorkspaceFx((prev) => {
+          const next = { ...prev }
+          for (const id of born) next[id] = "born"
+          return next
+        })
       })
-
-      timeout(560, () => {
+      timeout(576, () => {
         s.setWorkspaceFx((prev) => {
           const next = { ...prev }
           for (const id of born) {
@@ -57,19 +58,16 @@ export function WorkspacesElement(s: Store) {
       })
     }
 
-    lastWorkspaceIds = [...ids]
+    lastKnownIds = [...ids]
   })
 
   return (
     <>{workspaceSlots.map((ws) => (
       <button
-        visible={createComputed(() => {
-          const fx = s.workspaceFx()
-          return fx[ws] === "born" || fx[ws] === "settled" || fx[ws] === "dying"
-        })}
         widthRequest={22}
         heightRequest={22}
         class="ws-dot"
+        canTarget={createComputed(() => s.workspaceIds().includes(ws))}
         $={(self) => {
           const middleClick = new Gtk.GestureClick({ button: 2 })
           middleClick.connect("pressed", () => {
@@ -90,13 +88,21 @@ export function WorkspacesElement(s: Store) {
             const current = s.activeWorkspace()
             const fx = s.workspaceFx()
             const isActive = current === ws
-            const phase = fx[ws] === "born" || fx[ws] === "dying" ? ` ${fx[ws]}` : ""
+            const phase = fx[ws] === "born" || fx[ws] === "dying" ? ` ${fx[ws]}` : fx[ws] === undefined ? " unused" : ""
             return `ws-core${isActive ? " active" : ""}${phase}`
           })}
           css={createComputed(() => {
             const colors = s.wsDotColors()
             const base = colors[(ws - 1) % 8] || DEFAULT_WS_DOT_COLORS[(ws - 1) % 8]
-            return `background: radial-gradient(circle at 32% 28%, ${mixHex(base, "#ffffff", 0.55)} 0%, ${mixHex(base, "#ffffff", 0.25)} 28%, ${base} 62%, ${darken(base, 0.55)} 100%);`
+            const bg = `background: radial-gradient(circle at 32% 28%, ${mixHex(base, "#ffffff", 0.55)} 0%, ${mixHex(base, "#ffffff", 0.25)} 28%, ${base} 62%, ${darken(base, 0.55)} 100%);`
+            const fx = s.workspaceFx()
+            if (fx[ws] === "born") {
+              return `${bg}transform: scale(0.85) translateY(2px); opacity: 0.65;`
+            }
+            if (fx[ws] === "dying") {
+              return `${bg}transform: scale(0.22) translateY(3px); opacity: 0;`
+            }
+            return bg
           })}
         />
       </button>

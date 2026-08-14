@@ -2,6 +2,8 @@ import app from "ags/gtk4/app"
 import { Astal, Gtk, Gdk } from "ags/gtk4"
 import { createComputed, createEffect } from "gnim"
 import type { Store } from "./store"
+import { DEFAULT_WS_DOT_COLORS } from "./store"
+import { darken, mixHex } from "./color-utils"
 
 export default function PowerMenuWindow(gdkmonitor: Gdk.Monitor, monitorIndex: number, s: Store) {
   const { TOP, RIGHT } = Astal.WindowAnchor
@@ -23,7 +25,7 @@ export default function PowerMenuWindow(gdkmonitor: Gdk.Monitor, monitorIndex: n
       layer={Astal.Layer.OVERLAY}
       keymode={Astal.Keymode.ON_DEMAND}
       exclusivity={Astal.Exclusivity.IGNORE}
-      marginTop={44}
+      marginTop={42}
       application={app}
     >
         <box
@@ -49,25 +51,37 @@ export default function PowerMenuWindow(gdkmonitor: Gdk.Monitor, monitorIndex: n
             visible={createComputed(() => s.pendingPowerAction() === null)}
           >
             <box class="control-action-tile" widthRequest={68} orientation={Gtk.Orientation.VERTICAL} spacing={3} halign={Gtk.Align.CENTER}>
-              <button widthRequest={44} heightRequest={44} hexpand={false} vexpand={false} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} class="round-icon power-action-button" onClicked={() => s.runPowerAction("lock")}>
+              <button widthRequest={44} heightRequest={44} hexpand={false} vexpand={false} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} class="round-icon power-action-button" css={createComputed(() => {
+                const c = s.wsDotColors()[3] || DEFAULT_WS_DOT_COLORS[3]
+                return `background: radial-gradient(circle at 30% 26%, ${mixHex(c, "#ffffff", 0.55)} 0%, ${mixHex(c, "#ffffff", 0.25)} 28%, ${c} 62%, ${darken(c, 0.55)} 100%);`
+              })} onClicked={() => s.runPowerAction("lock")}>
                 <label class="power-action-glyph" label={s.powerGlyph("lock")} />
               </button>
               <label class="control-action-label" label="Lock" />
             </box>
             <box class="control-action-tile" widthRequest={68} orientation={Gtk.Orientation.VERTICAL} spacing={3} halign={Gtk.Align.CENTER}>
-              <button widthRequest={44} heightRequest={44} hexpand={false} vexpand={false} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} class="round-icon power-action-button" onClicked={() => s.runPowerAction("logout")}>
+              <button widthRequest={44} heightRequest={44} hexpand={false} vexpand={false} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} class="round-icon power-action-button" css={createComputed(() => {
+                const c = s.wsDotColors()[2] || DEFAULT_WS_DOT_COLORS[2]
+                return `background: radial-gradient(circle at 30% 26%, ${mixHex(c, "#ffffff", 0.55)} 0%, ${mixHex(c, "#ffffff", 0.25)} 28%, ${c} 62%, ${darken(c, 0.55)} 100%);`
+              })} onClicked={() => s.runPowerAction("logout")}>
                 <label class="power-action-glyph" label={s.powerGlyph("logout")} />
               </button>
               <label class="control-action-label" label="Logout" />
             </box>
             <box class="control-action-tile" widthRequest={68} orientation={Gtk.Orientation.VERTICAL} spacing={3} halign={Gtk.Align.CENTER}>
-              <button widthRequest={44} heightRequest={44} hexpand={false} vexpand={false} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} class="round-icon power-action-button warm" onClicked={() => s.runPowerAction("reboot")}>
+              <button widthRequest={44} heightRequest={44} hexpand={false} vexpand={false} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} class="round-icon power-action-button warm" css={createComputed(() => {
+                const c = s.wsDotColors()[1] || DEFAULT_WS_DOT_COLORS[1]
+                return `background: radial-gradient(circle at 30% 26%, ${mixHex(c, "#ffffff", 0.55)} 0%, ${mixHex(c, "#ffffff", 0.25)} 28%, ${c} 62%, ${darken(c, 0.55)} 100%);`
+              })} onClicked={() => s.runPowerAction("reboot")}>
                 <label class="power-action-glyph" label={s.powerGlyph("reboot")} />
               </button>
               <label class="control-action-label" label="Reboot" />
             </box>
             <box class="control-action-tile" widthRequest={68} orientation={Gtk.Orientation.VERTICAL} spacing={3} halign={Gtk.Align.CENTER}>
-              <button widthRequest={44} heightRequest={44} hexpand={false} vexpand={false} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} class="round-icon power-action-button danger" onClicked={() => s.runPowerAction("shutdown")}>
+              <button widthRequest={44} heightRequest={44} hexpand={false} vexpand={false} halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} class="round-icon power-action-button danger" css={createComputed(() => {
+                const c = s.wsDotColors()[0] || DEFAULT_WS_DOT_COLORS[0]
+                return `background: radial-gradient(circle at 30% 26%, ${mixHex(c, "#ffffff", 0.55)} 0%, ${mixHex(c, "#ffffff", 0.25)} 28%, ${c} 62%, ${darken(c, 0.55)} 100%);`
+              })} onClicked={() => s.runPowerAction("shutdown")}>
                 <label class="power-action-glyph" label={s.powerGlyph("shutdown")} />
               </button>
               <label class="control-action-label" label="Shutdown" />
