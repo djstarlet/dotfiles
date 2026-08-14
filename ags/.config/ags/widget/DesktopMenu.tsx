@@ -15,7 +15,7 @@ export default function DesktopMenuWindow(gdkmonitor: Gdk.Monitor, monitorIndex:
       layer={Astal.Layer.OVERLAY}
       keymode={Astal.Keymode.ON_DEMAND}
       exclusivity={Astal.Exclusivity.IGNORE}
-      marginTop={44}
+      marginTop={42}
       marginStart={0}
       application={app}
     >

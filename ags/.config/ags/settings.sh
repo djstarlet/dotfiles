@@ -95,6 +95,15 @@ case "$cmd" in
         fi
         ;;
 
+      saved-presets)
+        presetsfile="$HOME/.config/ags/saved-presets.json"
+        if [ -f "$presetsfile" ]; then
+          python3 -c "import json; print(json.dumps(json.load(open('$presetsfile'))))"
+        else
+          printf '%s\n' '{"presets":[]}'
+        fi
+        ;;
+
       *)
         echo '{"error": "unknown get subcommand: '"$sub"'"}' >&2
         exit 1
@@ -239,8 +248,74 @@ PY
         fi
         ;;
 
+      saved-presets)
+        payload="${3:-}"
+        [ -n "$payload" ] || { echo '{"error": "missing saved presets json"}' >&2; exit 1; }
+        presetsfile="$HOME/.config/ags/saved-presets.json"
+        tmp="${presetsfile}.tmp.$$"
+        python3 - "$payload" <<'PY' > "$tmp"
+import json
+import re
+import sys
+
+try:
+    value = json.loads(sys.argv[1])
+    presets = value.get("presets") if isinstance(value, dict) else None
+    valid = isinstance(presets, list) and all(
+        isinstance(preset, dict) and
+        isinstance(preset.get("name"), str) and preset["name"].strip() and
+        all(isinstance(preset.get(key), str) and re.fullmatch(r"#[0-9a-fA-F]{6}", preset[key]) for key in ("background", "accent", "text")) and
+        isinstance(preset.get("dots"), list) and len(preset["dots"]) == 8 and
+        all(isinstance(dot, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", dot) for dot in preset["dots"])
+        for preset in presets
+    )
+    if not valid:
+        raise ValueError("invalid saved presets")
+except (ValueError, TypeError, json.JSONDecodeError, KeyError):
+    print('{"error": "invalid saved presets"}', file=sys.stderr)
+    raise SystemExit(1)
+
+print(json.dumps({"presets": presets}, separators=(",", ":")))
+PY
+        chmod 600 "$tmp"
+        mv -f "$tmp" "$presetsfile"
+        echo "ok"
+        ;;
+
       *)
         echo '{"error": "unknown set subcommand: '"$sub"'"}' >&2
+        exit 1
+        ;;
+    esac
+    ;;
+
+  remove)
+    sub="${2:-}"
+    case "$sub" in
+      saved-preset)
+        name="${3:-}"
+        [ -n "$name" ] || { echo '{"error": "missing saved preset name"}' >&2; exit 1; }
+        presetsfile="$HOME/.config/ags/saved-presets.json"
+        tmp="${presetsfile}.tmp.$$"
+        python3 - "$presetsfile" "$name" <<'PY' > "$tmp"
+import json
+import sys
+
+path, name = sys.argv[1:]
+try:
+    with open(path) as handle:
+        value = json.load(handle)
+    presets = value.get("presets", []) if isinstance(value, dict) else []
+except (OSError, ValueError, TypeError):
+    presets = []
+print(json.dumps({"presets": [preset for preset in presets if preset.get("name") != name]}, separators=(",", ":")))
+PY
+        chmod 600 "$tmp"
+        mv -f "$tmp" "$presetsfile"
+        echo "ok"
+        ;;
+      *)
+        echo '{"error": "unknown remove target"}' >&2
         exit 1
         ;;
     esac

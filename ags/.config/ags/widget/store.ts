@@ -2,6 +2,7 @@ import { execAsync } from "ags/process"
 import { createPoll, timeout } from "ags/time"
 import { createComputed, createEffect, createState } from "gnim"
 import { theme } from "./theme.config"
+import type { ThemeConfig } from "./theme.config"
 
 // ─── Parser helpers ───────────────────────────────────────────────────────────
 
@@ -125,11 +126,26 @@ function parseWorkspaceIds(raw: string) {
 }
 
 export const DEFAULT_WS_DOT_COLORS = theme.workspaceDotColors
+export type SavedPreset = ThemeConfig["presets"][number]
 
 function parseWsDotColors(raw: string | undefined) {
   if (!raw) return null
   const colors = raw.split(",").map((color) => color.trim())
   return colors.length === 8 && colors.every((color) => /^#[0-9a-fA-F]{6}$/.test(color)) ? colors : null
+}
+
+function parseSavedPresets(raw: unknown): SavedPreset[] | null {
+  if (!Array.isArray(raw)) return null
+  const valid = raw.every((preset) =>
+    preset &&
+    typeof preset.name === "string" &&
+    preset.name.trim().length > 0 &&
+    [preset.background, preset.accent, preset.text].every((color) => typeof color === "string" && /^#[0-9a-fA-F]{6}$/.test(color)) &&
+    Array.isArray(preset.dots) &&
+    preset.dots.length === 8 &&
+    preset.dots.every((color: unknown) => typeof color === "string" && /^#[0-9a-fA-F]{6}$/.test(color))
+  )
+  return valid ? raw as SavedPreset[] : null
 }
 
 // ─── Store factory ────────────────────────────────────────────────────────────
@@ -200,6 +216,7 @@ export function createStore() {
 
   const [workspaceFx, setWorkspaceFx] = createState<Record<number, "born" | "dying" | "settled">>({})
   const [wsDotColors, setWsDotColors] = createState<string[]>(envWsDotColors ?? [...DEFAULT_WS_DOT_COLORS])
+  const [savedPresets, setSavedPresets] = createState<SavedPreset[]>([])
 
   if (!envWsDotColors) {
     execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh get ws-dots"])
@@ -215,6 +232,18 @@ export function createStore() {
       .catch(() => null)
   }
 
+  execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh get saved-presets"])
+    .then((out) => {
+      try {
+        const parsed = JSON.parse(out)
+        const presets = parseSavedPresets(parsed?.presets)
+        if (presets) setSavedPresets(presets)
+      } catch {
+        // Keep saved presets empty when runtime state is unavailable.
+      }
+    })
+    .catch(() => null)
+
   function setWsDotColor(index: number, hex: string) {
     if (index < 0 || index >= 8 || !/^#[0-9a-fA-F]{6}$/.test(hex)) return
     setWsDotColors((current) => current.map((color, i) => i === index ? hex : color))
@@ -222,6 +251,14 @@ export function createStore() {
 
   function resetWsDotColors() {
     setWsDotColors([...DEFAULT_WS_DOT_COLORS])
+  }
+
+  function addSavedPreset(preset: SavedPreset) {
+    setSavedPresets((current) => [...current.filter((item) => item.name !== preset.name), preset])
+  }
+
+  function removeSavedPreset(name: string) {
+    setSavedPresets((current) => current.filter((preset) => preset.name !== name))
   }
 
   // ── Computeds ──────────────────────────────────────────────────────────────
@@ -534,7 +571,8 @@ export function createStore() {
   function createNewDesktop() {
     const ids = workspaceIds()
     const maxId = ids.length > 0 ? Math.max(...ids) : 1
-    execAsync(["hyprctl", "dispatch", "workspace", String(maxId + 1)]).catch(() => null)
+    const newId = maxId + 1
+    execAsync(["hyprctl", "dispatch", "workspace", String(newId)]).catch(() => null)
     setDesktopMenuOpen(false)
   }
 
@@ -616,6 +654,10 @@ export function createStore() {
     setWsDotColors,
     setWsDotColor,
     resetWsDotColors,
+    savedPresets,
+    setSavedPresets,
+    addSavedPreset,
+    removeSavedPreset,
 
     // Computeds
     popupOpen,

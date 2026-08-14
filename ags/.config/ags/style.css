@@ -197,6 +197,7 @@ button.clock:active .clock-label {
 
 button.ws-dot:focus,
 button.ws-dot:focus-visible,
+button.ws-dot:active,
 button.clock:focus,
 button.clock:focus-visible,
 button.mini-gear:focus,
@@ -215,6 +216,7 @@ button.ws-dot {
   border: 0;
   border-radius: 0;
   background: transparent;
+  background-image: none;
   box-shadow: none;
 }
 
@@ -237,61 +239,32 @@ button.ws-dot:active box.ws-core {
   border-color: rgba(255, 255, 255, 0.6);
 }
 
-button.ws-dot:hover box.ws-core {
+button.ws-dot:hover box.ws-core:not(.unused) {
   opacity: 1;
   transform: scale(1.12) translateY(-1px);
-  filter: saturate(1.18) brightness(1.14);
   border-color: rgba(255, 255, 255, 0.92);
 }
 
-@keyframes wsMitosisIn {
-  0% {
-    transform: scale(0.2) translateY(3px);
-    opacity: 0.16;
-  }
-  50% {
-    transform: scale(1.28) translateY(-2px);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(0.96) translateY(0);
-    opacity: 0.97;
-  }
+box.ws-core.unused {
+  opacity: 0;
 }
-@keyframes wsMitosisOut {
-  0% {
-    transform: scale(0.96) translateY(0);
-    opacity: 0.97;
-  }
-  40% {
-    transform: scale(1.22) translateY(-1px);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(0.22) translateY(3px);
-    opacity: 0;
-  }
-}
+
 box.ws-core.active {
   opacity: 1;
   transform: scale(1.08) translateY(-1px);
   min-width: 22px;
   min-height: 22px;
-  filter: saturate(1.18) brightness(1.12);
   border-color: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 2px 10px 0 color-mix(in srgb, var(--bar-accent) 35%, transparent), 0 1px 3px 0 rgba(255, 255, 255, 0.25);
 }
 
 box.ws-core.born {
-  transform: scale(0.2) translateY(3px);
-  opacity: 0.16;
-  animation: wsMitosisIn 540ms var(--aero-bounce) both;
-}
+   transform: scale(0.85) translateY(2px);
+   opacity: 0.65;
+ }
 
 box.ws-core.dying {
-  transform: scale(0.96) translateY(0);
-  opacity: 0.97;
-  animation: wsMitosisOut 620ms var(--aero-bounce) both;
+  opacity: 0;
+  transform: scale(0.88) translateY(3px);
 }
 
 .flyout {
@@ -583,24 +556,6 @@ button.power-action-button:active {
   transform: translateY(1px);
 }
 
-button.power-action-button.warm {
-  border-color: rgba(196, 150, 97, 0.74);
-  background: radial-gradient(circle at 30% 26%, rgba(255, 250, 240, 0.98) 0%, rgba(255, 222, 157, 0.94) 34%, rgba(223, 162, 57, 0.98) 76%, rgba(181, 118, 24, 0.98) 100%);
-}
-
-button.power-action-button.warm:hover {
-  background: radial-gradient(circle at 30% 26%, rgb(255, 253, 246) 0%, rgba(255, 230, 170, 0.98) 34%, rgb(235, 178, 72) 76%, rgb(198, 135, 36) 100%);
-}
-
-button.power-action-button.danger {
-  border-color: rgba(187, 102, 92, 0.8);
-  background: radial-gradient(circle at 30% 26%, rgba(255, 246, 242, 0.98) 0%, rgba(255, 194, 171, 0.94) 34%, rgba(221, 90, 67, 0.98) 76%, rgba(164, 49, 34, 0.98) 100%);
-}
-
-button.power-action-button.danger:hover {
-  background: radial-gradient(circle at 30% 26%, rgb(255, 249, 246) 0%, rgba(255, 204, 184, 0.98) 34%, rgb(232, 106, 84) 76%, rgb(180, 58, 42) 100%);
-}
-
 label.control-action-label {
   font-size: 11px;
   font-weight: 800;
@@ -873,6 +828,29 @@ button.settings-item:hover {
 
 button.settings-item:active {
   background: linear-gradient(180deg, var(--bar-accent) 0%, var(--bar-accent-dark) 100%);
+}
+
+button.settings-preset-delete {
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0 5px;
+  border: 0;
+  border-bottom: 1px solid rgba(180, 195, 215, 0.35);
+  border-radius: 0;
+  background: transparent;
+  color: var(--bar-text-dim);
+}
+
+button.settings-preset-delete label {
+  font-family: "Symbols Nerd Font", "Noto Sans Symbols 2", "Noto Sans Symbols", "Noto Sans", sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+button.settings-preset-delete:hover,
+button.settings-preset-delete:active {
+  color: var(--bar-bg);
+  background: linear-gradient(180deg, var(--bar-accent-light) 0%, var(--bar-accent-dark) 100%);
 }
 
 .settings-entry {
