@@ -251,16 +251,14 @@ box.ws-core.unused {
 
 box.ws-core.active {
   opacity: 1;
-  transform: scale(1.08) translateY(-1px);
-  min-width: 22px;
-  min-height: 22px;
+  transform: scale(1.25) translateY(-1px);
   border-color: rgba(255, 255, 255, 0.92);
 }
 
 box.ws-core.born {
-   transform: scale(0.85) translateY(2px);
-   opacity: 0.65;
- }
+  transform: scale(0.94) translateY(2px);
+  opacity: 0.75;
+}
 
 box.ws-core.dying {
   opacity: 0;
