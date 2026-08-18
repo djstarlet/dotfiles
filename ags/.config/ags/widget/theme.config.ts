@@ -32,12 +32,12 @@ export const theme: ThemeConfig = {
   ],
   presets: [
     {
-      name: "Dots",
-      background: "#dbe7f5",
-      accent: "#76abff",
-      text: "#4c4f69",
-      dots: ["#d20f39", "#fe640b", "#df8e1d", "#40a02b", "#179299", "#04a5e5", "#7287fd", "#ea76cb"],
-    },
+          name: "Dots",
+          background: "#dbe7f5",
+          accent: "#5c8eff",
+          text: "#4c4f69",
+          dots: ["#d23542", "#ff820b", "#ffd81d", "#41d72f", "#07bce0", "#0497f0", "#9c87fd", "#ea76cb"],
+        },
     {
       name: "Colorblind Safe (Light)",
       background: "#ffffff",
@@ -81,12 +81,12 @@ export const theme: ThemeConfig = {
       dots: ["#f38ba8", "#fab387", "#f9e2af", "#a6e3a1", "#94e2d5", "#74c7ec", "#cba6f7", "#f5c2e7"],
     },
     {
-      name: "Catppuccin Latte",
-      background: "#eff1f5",
-      accent: "#1e66f5",
-      text: "#4c4f69",
-      dots: ["#d20f39", "#fe640b", "#df8e1d", "#40a02b", "#179299", "#04a5e5", "#7287fd", "#ea76cb"],
-    },
+          name: "Catppuccin Latte",
+          background: "#eff1f5",
+          accent: "#1e66f5",
+          text: "#4c4f69",
+          dots: ["#d20f39", "#fe640b", "#df8e1d", "#40a02b", "#179299", "#04a5e5", "#7287fd", "#ea76cb"],
+        },
     {
       name: "Gruvbox Dark",
       background: "#282828",

@@ -157,9 +157,25 @@ export function createStore() {
 
   // ── Polls ──────────────────────────────────────────────────────────────────
   const clock = createPoll("", 1000, ["bash", "-lc", "date '+%a %d %b  %H:%M:%S'"])
-  const activeWorkspace = createPoll(1, 1200, ["hyprctl", "activeworkspace", "-j"], (out) =>
+  const activeWorkspacePoll = createPoll(1, 1200, ["hyprctl", "activeworkspace", "-j"], (out) =>
     parseActiveWorkspace(out),
   )
+  const [activeWorkspaceOverride, setActiveWorkspaceOverride] = createState<number | null>(null)
+  const activeWorkspace = createComputed(() => activeWorkspaceOverride() ?? activeWorkspacePoll())
+    createEffect(() => {
+      const override = activeWorkspaceOverride()
+      if (override !== null) {
+        if (activeWorkspacePoll() === override) {
+          setActiveWorkspaceOverride(null)
+        } else {
+          timeout(3000, () => {
+            if (activeWorkspaceOverride() === override && activeWorkspacePoll() !== override) {
+              setActiveWorkspaceOverride(null)
+            }
+          })
+        }
+      }
+    })
   const focusedWindowTitle = createPoll("Desktop", 900, ["hyprctl", "activewindow", "-j"], (out) =>
     parseFocusedWindowTitle(out),
   )
@@ -168,7 +184,7 @@ export function createStore() {
     return cls !== "" ? cls : prev
   })
   const cursorY = createPoll(9999, 120, ["hyprctl", "cursorpos"], (out) => parseCursorY(out))
-  const workspaceListRaw = createPoll([1], 1300, ["hyprctl", "workspaces", "-j"], (out) =>
+  const workspaceListRaw = createPoll([1], 300, ["hyprctl", "workspaces", "-j"], (out) =>
     parseWorkspaceIds(out),
   )
   const gcalEvents = createPoll(
@@ -214,7 +230,7 @@ export function createStore() {
   const [clientIdInput, setClientIdInput] = createState("")
   let authPollStop: (() => void) | null = null
 
-  const [workspaceFx, setWorkspaceFx] = createState<Record<number, "born" | "dying" | "settled">>({})
+  const [workspaceFx, setWorkspaceFx] = createState<Record<number, "born" | "dying" | "collapsing" | "settled">>({})
   const [wsDotColors, setWsDotColors] = createState<string[]>(envWsDotColors ?? [...DEFAULT_WS_DOT_COLORS])
   const [savedPresets, setSavedPresets] = createState<SavedPreset[]>([])
 
@@ -576,6 +592,11 @@ export function createStore() {
     setDesktopMenuOpen(false)
   }
 
+  function switchToWorkspace(id: number) {
+    setActiveWorkspaceOverride(id)
+    execAsync(["hyprctl", "dispatch", "workspace", String(id)]).catch(() => null)
+  }
+
   function moveWindowToNewDesktop() {
     const ids = workspaceIds()
     const maxId = ids.length > 0 ? Math.max(...ids) : 1
@@ -595,6 +616,8 @@ export function createStore() {
     // Polls
     clock,
     activeWorkspace,
+    setActiveWorkspaceOverride,
+    switchToWorkspace,
     focusedWindowTitle,
     focusedWindowClass,
     cursorY,
