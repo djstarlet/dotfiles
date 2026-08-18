@@ -7,8 +7,6 @@ import { DEFAULT_WS_DOT_COLORS } from "./store"
 import { darken, mixHex } from "./color-utils"
 import config from "./widgets.config"
 
-const workspaceSlots = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-
 export function WorkspacesElement(s: Store) {
   let lastKnownIds: number[] = []
   createEffect(() => {
@@ -29,7 +27,7 @@ export function WorkspacesElement(s: Store) {
           return next
         })
       })
-      timeout(576, () => {
+      timeout(280, () => {
         s.setWorkspaceFx((prev) => {
           const next = { ...prev }
           for (const id of born) {
@@ -61,8 +59,18 @@ export function WorkspacesElement(s: Store) {
     lastKnownIds = [...ids]
   })
 
+  const visibleWorkspaceIds = createComputed(() => {
+    const ids = s.workspaceIds()
+    const fx = s.workspaceFx()
+    const dying = Object.entries(fx)
+      .filter(([id, phase]) => phase === "dying" && !ids.includes(Number(id)))
+      .map(([id]) => Number(id))
+
+    return [...new Set([...ids, ...dying])].sort((a, b) => a - b)
+  })
+
   return (
-    <>{workspaceSlots.map((ws) => (
+    <>{visibleWorkspaceIds().map((ws) => (
       <button
         widthRequest={22}
         heightRequest={22}
@@ -97,7 +105,7 @@ export function WorkspacesElement(s: Store) {
             const bg = `background: radial-gradient(circle at 32% 28%, ${mixHex(base, "#ffffff", 0.55)} 0%, ${mixHex(base, "#ffffff", 0.25)} 28%, ${base} 62%, ${darken(base, 0.55)} 100%);`
             const fx = s.workspaceFx()
             if (fx[ws] === "born") {
-              return `${bg}transform: scale(0.85) translateY(2px); opacity: 0.65;`
+              return `${bg}transform: scale(0.94) translateY(2px); opacity: 0.75;`
             }
             if (fx[ws] === "dying") {
               return `${bg}transform: scale(0.22) translateY(3px); opacity: 0;`

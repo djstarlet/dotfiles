@@ -1,3 +1,4 @@
 # Runtime state files (generated, not source of truth)
 ags/.config/ags/theme-colors.json
 ags/.config/ags/ws-dot-colors.json
+ags/.config/ags/saved-presets.json
