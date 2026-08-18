@@ -218,7 +218,26 @@ button.ws-dot {
   background: transparent;
   background-image: none;
   box-shadow: none;
+  transform: translateX(var(--ws-shift, 0px));
+  transition: transform 180ms var(--curve);
 }
+
+button.ws-dot.ws-shift-0 { --ws-shift: 0px; }
+button.ws-dot.ws-shift-1 { --ws-shift: -30px; }
+button.ws-dot.ws-shift-2 { --ws-shift: -60px; }
+button.ws-dot.ws-shift-3 { --ws-shift: -90px; }
+button.ws-dot.ws-shift-4 { --ws-shift: -120px; }
+button.ws-dot.ws-shift-5 { --ws-shift: -150px; }
+button.ws-dot.ws-shift-6 { --ws-shift: -180px; }
+button.ws-dot.ws-shift-7 { --ws-shift: -210px; }
+button.ws-dot.ws-shift-8 { --ws-shift: -240px; }
+button.ws-dot.ws-shift-9 { --ws-shift: -270px; }
+button.ws-dot.ws-shift-10 { --ws-shift: -300px; }
+button.ws-dot.ws-shift-11 { --ws-shift: -330px; }
+
+/* dot states are transition-driven; no keyframes (keyframe machinery caused born blink) */
+
+/* (keyframes removed; states are transition-driven) */
 
 box.ws-core {
   min-width: 16px;
@@ -229,20 +248,22 @@ box.ws-core {
   opacity: 0.96;
   transform: scale(0.88) translateY(0);
   transform-origin: center center;
-  transition: transform 210ms var(--aero-bounce), opacity 160ms ease-out, filter 160ms ease-out, border-color 210ms var(--aero-bounce);
-}
-
-button.ws-dot:active box.ws-core {
-  transform: scale(0.84) translateY(1px);
-  opacity: 0.94;
-  filter: saturate(0.96) brightness(0.94);
-  border-color: rgba(255, 255, 255, 0.6);
+  transition: border-color 210ms var(--aero-bounce), transform 170ms var(--aero-bounce), opacity 170ms ease-out;
 }
 
 button.ws-dot:hover box.ws-core:not(.unused) {
   opacity: 1;
-  transform: scale(1.12) translateY(-1px);
   border-color: rgba(255, 255, 255, 0.92);
+  transform: scale(1.05) translateY(-1px);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--bar-accent) 40%, transparent);
+}
+
+button.ws-dot:active box.ws-core {
+  opacity: 0.88;
+  transform: scale(0.9) translateY(1px);
+  filter: brightness(0.92);
+  border-color: rgba(255, 255, 255, 0.6);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.35), inset 0 -1px 0 rgba(255, 255, 255, 0.4);
 }
 
 box.ws-core.unused {
@@ -256,13 +277,22 @@ box.ws-core.active {
 }
 
 box.ws-core.born {
-  transform: scale(0.94) translateY(2px);
-  opacity: 0.75;
+  opacity: 0.7;
+  transform: scale(0.94) translateY(1px);
+  border: 0;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.72);
 }
 
 box.ws-core.dying {
   opacity: 0;
-  transform: scale(0.88) translateY(3px);
+  transform: scale(0.6) translateY(3px);
+  border: 0;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.72);
+  transition: transform 280ms var(--aero-bounce), opacity 280ms ease-out;
+}
+
+box.ws-core.collapsing {
+  opacity: 0;
 }
 
 .flyout {
