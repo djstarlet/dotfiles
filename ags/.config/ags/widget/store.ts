@@ -105,11 +105,15 @@ function sanitizeEventText(raw: string) {
     .join("\n")
 }
 
-function parseCursorY(raw: string) {
+function parseCursorPos(raw: string) {
   const m = raw.match(/(-?\d+)\s*,\s*(-?\d+)/)
-  if (!m) return 9999
+  if (!m) return { x: -999999, y: -999999 }
+  const x = Number(m[1])
   const y = Number(m[2])
-  return Number.isFinite(y) ? y : 9999
+  return {
+    x: Number.isFinite(x) ? x : -999999,
+    y: Number.isFinite(y) ? y : -999999,
+  }
 }
 
 function parseWorkspaceIds(raw: string) {
@@ -183,7 +187,10 @@ export function createStore() {
     const cls = parseFocusedWindowClass(out)
     return cls !== "" ? cls : prev
   })
-  const cursorY = createPoll(9999, 120, ["hyprctl", "cursorpos"], (out) => parseCursorY(out))
+  // Global layout coordinates of the cursor (hyprctl cursorpos -> "x, y").
+  // Bar.tsx compares these against each monitor's geometry, since monitors
+  // are rarely positioned at global (0,0).
+  const cursorPos = createPoll({ x: -999999, y: -999999 }, 120, ["hyprctl", "cursorpos"], (out) => parseCursorPos(out))
   const workspaceListRaw = createPoll([1], 300, ["hyprctl", "workspaces", "-j"], (out) =>
     parseWorkspaceIds(out),
   )
@@ -620,7 +627,7 @@ export function createStore() {
     switchToWorkspace,
     focusedWindowTitle,
     focusedWindowClass,
-    cursorY,
+    cursorPos,
     workspaceListRaw,
     gcalEvents,
 

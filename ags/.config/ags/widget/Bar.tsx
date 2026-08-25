@@ -23,6 +23,19 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
   const [barRevealed, setBarRevealed] = createState(true)
   const [barReserved, setBarReserved] = createState(true)
 
+  // hyprctl cursorpos reports the cursor in GLOBAL layout coordinates, and
+  // monitors are rarely positioned at (0,0) - e.g. a second screen placed at
+  // Y=2077 has its top edge at global Y=2077. The reveal/hide bands must be
+  // relative to THIS monitor's geometry, otherwise the bar can never react to
+  // the cursor on any monitor whose top edge is not at global Y=0.
+  function cursorInTopBand(bandHeight: number) {
+    const { x: cx, y: cy } = s.cursorPos()
+    const geo = gdkmonitor.get_geometry()
+    const withinX = cx >= geo.x && cx <= geo.x + geo.width
+    const relY = cy - geo.y
+    return withinX && relY >= 0 && relY <= bandHeight
+  }
+
   const effectiveBarVisible = createComputed(() => barVisible() || s.popupOpen())
 
   let hideTimer: ReturnType<typeof timeout> | null = null
@@ -39,7 +52,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
     if (hideTimer) return
     hideTimer = timeout(380, () => {
       hideTimer = null
-      if (!s.popupOpen() && !s.chooserOpen() && s.cursorY() > 40) setBarVisible(false)
+      if (!s.popupOpen() && !s.chooserOpen() && !cursorInTopBand(40)) setBarVisible(false)
     })
   }
 
@@ -51,9 +64,9 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
   }
 
   createEffect(() => {
-    const revealEdge = s.cursorY() <= 8
-    const onBarBand = s.cursorY() <= 40
-    const revealBand = s.cursorY() <= 20
+    const revealEdge = cursorInTopBand(8)
+    const onBarBand = cursorInTopBand(40)
+    const revealBand = cursorInTopBand(20)
     const hasPopup = s.popupOpen() || s.chooserOpen()
     if (hasPopup) {
       cancelHide()
