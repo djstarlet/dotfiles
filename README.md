@@ -35,25 +35,25 @@
 # Manual:
 - drop `hypr/` into `~/.config/` - for hyprland config
 - drop `ags/.config/ags/` into `~/.config/` - for the taskbar
-- `cd ~/.config/ags && npm install` (the bar is typescript + gnim)
+- no npm install needed: the AGS CLI bundles the `ags` + `gnim` modules itself (the bar is typescript + gnim, compiled at runtime by `ags run`)
 - then install the dependencies listed below on your package manager & reboot/logout then login
 - more about the widgets: widgets.md
 
 ## Install Dependencies
 
-Gentoo - hyprland-plugins, ags, albert, librewolf, wl-clip-persist are in GURU/overlays
+Gentoo - hyprland-plugins, ags, albert, librewolf, wl-clip-persist, grimblast, nwg-displays are in GURU/overlays
 
 `emerge hyprland gui-libs/gtk4-layer-shell net-libs/nodejs net-misc/curl dev-lang/python x11-terms/kitty x11-misc/pcmanfm gui-apps/swaybg gui-apps/wl-clipboard media-video/wireplumber media-video/pipewire net-misc/networkmanager xfce-base/xfce4-settings media-sound/pavucontrol gui-apps/grim gui-apps/slurp x11-libs/libnotify media-fonts/symbols-nerd-font`
 
-Arch - ags, albert, hyprland-plugins are in the AUR
+Arch - ags, albert, hyprland-plugins, grimblast are in the AUR
 
-`sudo pacman -S --needed hyprland gtk4 gtk4-layer-shell nodejs npm curl python wtype kitty librewolf pcmanfm swaybg wl-clipboard wl-clip-persist wireplumber pipewire networkmanager xfce4-settings pavucontrol grim slurp libnotify ttf-nerd-fonts-symbols`
+`sudo pacman -S --needed hyprland gtk4 gtk4-layer-shell nodejs npm curl python wtype kitty librewolf pcmanfm swaybg wl-clipboard wl-clip-persist wireplumber pipewire networkmanager xfce4-settings pavucontrol grim slurp libnotify ttf-nerd-fonts-symbols nwg-displays`
 
-Debian / Ubuntu (hyprland needs trixie+/universe) - albert: OBS repo, librewolf: flatpak
+Debian / Ubuntu (hyprland needs trixie+/universe) - albert: OBS repo, librewolf: flatpak, grimblast: install script from https://github.com/hyprwm/contrib (needs jq, put it in PATH), nwg-displays: manual install from https://github.com/nwg-piotr/nwg-displays
 
-`sudo apt install hyprland hyprland-plugins gtk4-layer-shell-dev libgtk-4-dev wtype nodejs npm curl python3 kitty pcmanfm swaybg wl-clipboard wireplumber pipewire network-manager xfce4-settings pavucontrol grim slurp libnotify-bin`
+`sudo apt install hyprland hyprland-plugins gtk4-layer-shell-dev libgtk-4-dev wtype nodejs npm curl python3 kitty pcmanfm swaybg wl-clipboard wireplumber pipewire network-manager xfce4-settings pavucontrol grim slurp libnotify-bin jq`
 
-Fedora (hyprland 41+) - hyprland-plugins: COPR, albert: OBS, librewolf: flatpak, wl-clip-persist must be compiled from source: https://github.com/Linus789/wl-clip-persist.git
+Fedora (hyprland 41+) - hyprland-plugins & hyprland-contrib (grimblast): COPR, nwg-displays: community COPR (e.g. tofik/nwg-shell) or manual from https://github.com/nwg-piotr/nwg-displays, albert: OBS, librewolf: flatpak, wl-clip-persist must be compiled from source: https://github.com/Linus789/wl-clip-persist.git
 
 `sudo dnf install hyprland gtk4 gtk4-layer-shell gtk4-layer-shell-devel wtype nodejs npm curl python3 kitty pcmanfm swaybg wl-clipboard wireplumber pipewire NetworkManager xfce4-settings pavucontrol grim slurp libnotify`
 
@@ -77,7 +77,7 @@ node / npm
 
 typescript (npm)
 
-gnim (npm)
+gnim (bundled with ags - the AGS CLI provides the ags/* + gnim JS modules itself)
 
 hyprctl 
 
@@ -86,6 +86,8 @@ curl
 python3
 
 wtype
+
+grimblast (screenshot keybinds - Print)
 
 ## Changeable deps
 kitty (hyprland.conf - terminal emulator)
@@ -97,6 +99,8 @@ pcmanfm (hyprland.conf - file explorer)
 swaybg (start-wallpaper.sh - wallpaper)
 
 albert (hyprland.conf, ags/.config/ags/widget/Bar.tsx for quick actions button)
+
+nwg-displays (GUI monitor layout tool - recommended for arranging multiple outputs)
 
 wl-clipboard + wl-clip-persist (hyprland.conf)
 
@@ -112,6 +116,6 @@ pavucontrol (ags/.config/ags/widget/Bar.tsx - volume button)
 
 pipewire / wireplumber
 
-grim, slurp, wl-copy, libnotify (hypr/hypr/scripts/take-screenshot.sh)
+grim, slurp, wl-copy, libnotify (hypr/hypr/scripts/take-screenshot.sh), grimblast (hyprland.conf screenshot keybinds)
 
 fonts (ags/.config/ags/style.css - font-family declarations: Liberation Sans, Liberation Mono, Liberation Serif, Symbols Nerd Font, Symbols Nerd Font Mono)
