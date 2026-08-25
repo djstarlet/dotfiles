@@ -5,6 +5,7 @@ import { createPoll } from "ags/time"
 import { createComputed, createEffect, createState } from "gnim"
 import type { Store } from "./store"
 import config from "./widgets.config"
+import { DisplaySettingsTile } from "./DisplaySettings"
 
 // ─── Parser helpers ───────────────────────────────────────────────────────────
 
@@ -247,6 +248,7 @@ export default function ControlCenterWindow(gdkmonitor: Gdk.Monitor, monitorInde
               </button>
               <label class="control-action-label" label="Network" />
             </box>
+            {DisplaySettingsTile(s)}
             {config.powerMenu && (
               <box class="control-action-tile" widthRequest={68} orientation={Gtk.Orientation.VERTICAL} spacing={3} halign={Gtk.Align.CENTER}>
                 <button

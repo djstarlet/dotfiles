@@ -153,7 +153,7 @@ button.mini-gear {
 label.gear-icon,
 label.power-icon {
   font-family: "Symbols Nerd Font", "Noto Sans Symbols 2", "Noto Sans Symbols", "Noto Sans", sans-serif;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 400;
   color: var(--bar-accent);
   text-shadow: 0 0 5px color-mix(in srgb, var(--bar-accent) 55%, transparent), 0 1px 0 color-mix(in srgb, var(--bar-accent) 30%, transparent);
@@ -596,7 +596,16 @@ label.power-action-glyph {
   font-size: 20px;
   font-weight: 800;
   color: var(--bar-accent);
-  text-shadow: 0 0 7px color-mix(in srgb, var(--bar-accent) 52%, transparent), 0 1px 0 color-mix(in srgb, var(--bar-accent) 30%, transparent);
+  /* Outline in the flyout background colour so glyphs read against the
+     bright power-action dots (GTK CSS has no text-stroke; fake it with
+     8-direction text-shadows, then keep the soft accent glow). */
+  text-shadow:
+    1px 0 0 var(--bar-bg-light), -1px 0 0 var(--bar-bg-light),
+    0 1px 0 var(--bar-bg-light), 0 -1px 0 var(--bar-bg-light),
+    1px 1px 0 var(--bar-bg-light), -1px 1px 0 var(--bar-bg-light),
+    1px -1px 0 var(--bar-bg-light), -1px -1px 0 var(--bar-bg-light),
+    0 0 7px color-mix(in srgb, var(--bar-accent) 52%, transparent),
+    0 1px 0 color-mix(in srgb, var(--bar-accent) 30%, transparent);
 }
 
 image.symbol-icon {
@@ -616,16 +625,29 @@ label.signal-icon {
   text-shadow: 0 0 7px color-mix(in srgb, var(--bar-accent) 55%, transparent);
 }
 
+/* Display monitor icon (Nerd Font); same sizing pipeline as power-icon. */
+label.display-icon {
+  font-family: "Symbols Nerd Font", "Noto Sans Symbols 2", "Noto Sans Symbols", sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1;
+  margin: 0;
+  color: var(--bar-accent);
+  text-shadow: 0 0 5px color-mix(in srgb, var(--bar-accent) 55%, transparent);
+}
+
 /* Glyphs switch to the widget background when their round button is hovered or toggled */
 button.mini-gear:hover label.gear-icon,
 button.mini-gear:active label.gear-icon,
 button.mini-gear.active label.gear-icon,
 button.round-icon:hover label.power-icon,
 button.round-icon:hover label.signal-icon,
+button.round-icon:hover label.display-icon,
 button.round-icon:hover label.power-action-glyph,
 button.round-icon:hover image.symbol-icon,
 button.round-icon.active label.power-icon,
 button.round-icon.active label.signal-icon,
+button.round-icon.active label.display-icon,
 button.round-icon.active label.power-action-glyph,
 button.round-icon.active image.symbol-icon {
   color: var(--bar-bg);
