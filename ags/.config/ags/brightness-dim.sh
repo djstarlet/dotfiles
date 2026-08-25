@@ -35,7 +35,7 @@ else
 fi
 
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}"
-MODE_FILE="$CACHE_DIR/ags-brightness-mode"
+MODE_FILE="$CACHE_DIR/ags-brightness-mode-v2"
 LAST_FILE="$CACHE_DIR/ags-brightness-last"
 FAIL_FILE="$CACHE_DIR/ags-brightness-failures"
 LOCK_FILE="$CACHE_DIR/ags-brightness-ddcutil.lock"
@@ -45,16 +45,22 @@ MAX_HW_FAILURES=3
 
 # Serialize and time-limit every ddcutil invocation (i2c is not safe to
 # hammer, and a wedged bus would otherwise hang the call forever).
-# Reads fail fast (the caller falls back to the last known value), writes
-# wait briefly so drags do not pile up i2c transactions.
 # --sleep-multiplier shrinks ddcutil's mandatory post-write settle delays
 # (the default 1.0 makes every setvcp take seconds).
+# Detection waits for the lock (it is rare, and a collision with the bar's
+# own 5s poll must not bail out and mis-cache "shader"); the frequent
+# getvcp reads fail fast instead, and setvcp waits briefly so drags do not
+# pile up i2c transactions.
+run_ddcutil_detect() {
+  flock -w 20 "$LOCK_FILE" timeout 30 ddcutil --sleep-multiplier 0.5 --brief detect 2>/dev/null
+}
+
 run_ddcutil_get() {
-  flock -n "$LOCK_FILE" timeout 20 ddcutil --sleep-multiplier 0.5 "$@" 2>/dev/null
+  flock -n "$LOCK_FILE" timeout 20 ddcutil --sleep-multiplier 0.5 --brief getvcp "$@" 2>/dev/null
 }
 
 run_ddcutil_set() {
-  flock -w 10 "$LOCK_FILE" timeout 20 ddcutil --sleep-multiplier 0.5 "$@" 2>/dev/null
+  flock -w 10 "$LOCK_FILE" timeout 20 ddcutil --sleep-multiplier 0.5 setvcp "$@" 2>/dev/null
 }
 
 clear_shader() {
@@ -77,29 +83,32 @@ brightnessctl_percent() {
 }
 
 ddcutil_percent() {
-  local display="$1" cur
-  cur=$(run_ddcutil_get --brief getvcp 10 --display "$display" | awk '$1 == "VCP" && $2 == 10 { print $4; exit }')
+  local bus="$1" cur
+  cur=$(run_ddcutil_get 10 --bus "$bus" | awk '$1 == "VCP" && $2 == 10 { print $4; exit }')
   [[ -n $cur ]] || return 1
   awk -v c="$cur" 'BEGIN { if (c < 5) c = 5; if (c > 100) c = 100; printf "%d", c }'
 }
 
-# Parse `ddcutil --brief detect` into "display-index connector" lines,
+# Parse `ddcutil --brief detect` into "i2c-bus connector" lines,
 # skipping blocks without a Monitor: line (e.g. "Invalid display" ghosts).
 detect_display_map() {
   awk '
-    /^Display / { if (idx != "" && conn != "" && mon) print idx, conn; idx = $2; conn = ""; mon = 0; next }
+    /^Display / { if (bus != "" && conn != "" && mon) print bus, conn; bus = ""; conn = ""; mon = 0; next }
+    /I2C bus:/ { b = $NF; sub(/^\/dev\/i2c-/, "", b); bus = b; next }
     /DRM connector:/ { conn = $3; next }
     /Monitor:/ { mon = 1; next }
-    /^[[:space:]]*$/ { if (idx != "" && conn != "" && mon) print idx, conn; idx = ""; next }
-    END { if (idx != "" && conn != "" && mon) print idx, conn }
+    /^[[:space:]]*$/ { if (bus != "" && conn != "" && mon) print bus, conn; bus = ""; next }
+    END { if (bus != "" && conn != "" && mon) print bus, conn }
   '
 }
 
-# Pick the display index to control: the one on the primary monitor's
+# Pick the i2c bus to control: the one on the primary monitor's DRM
 # connector when several displays exist, else the only display.
-detect_ddcutil_display() {
-  local map primary idx conn p
-  map="$(run_ddcutil_get --brief detect | detect_display_map)"
+# NOTE: use --bus (not --display) for every call - --display makes ddcutil
+# re-match displays on each invocation, costing seconds per slider move.
+detect_ddcutil_bus() {
+  local map primary bus conn p
+  map="$(run_ddcutil_detect | detect_display_map)"
   [[ -n $map ]] || return 1
   if [[ $(wc -l <<< "$map") -eq 1 ]]; then
     printf '%s' "${map%% *}"
@@ -108,10 +117,10 @@ detect_ddcutil_display() {
   primary=$(hyprctl monitors -j 2>/dev/null | sed -n 's/.*"name": *"\([^"]*\)".*/\1/p' | head -1)
   [[ -n $primary ]] || return 1
   while IFS= read -r p; do
-    idx="${p%% *}"
+    bus="${p%% *}"
     conn="${p#* }"
     if [[ $conn == *"$primary"* ]]; then
-      printf '%s' "$idx"
+      printf '%s' "$bus"
       return
     fi
   done <<< "$map"
@@ -127,10 +136,10 @@ detect_mode() {
   fi
   # 2) ddcutil over i2c
   if command -v ddcutil >/dev/null 2>&1; then
-    local disp
-    disp=$(detect_ddcutil_display) || disp=""
-    if [[ -n $disp ]]; then
-      printf 'ddcutil %s' "$disp"
+    local bus
+    bus=$(detect_ddcutil_bus) || bus=""
+    if [[ -n $bus ]]; then
+      printf 'ddcutil %s' "$bus"
       return
     fi
   fi
@@ -225,7 +234,7 @@ case "$mode" in
     exit 0
     ;;
   ddcutil)
-    run_ddcutil_set setvcp 10 "$BRIGHTNESS" --display "$spec" >/dev/null 2>&1 || true
+    run_ddcutil_set 10 "$BRIGHTNESS" --bus "$spec" >/dev/null 2>&1 || true
     clear_shader
     exit 0
     ;;

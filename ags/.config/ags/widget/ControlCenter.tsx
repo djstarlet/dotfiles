@@ -227,7 +227,7 @@ export default function ControlCenterWindow(gdkmonitor: Gdk.Monitor, monitorInde
               if (brightnessApplyTimer) brightnessApplyTimer.cancel()
               brightnessApplyTimer = timeout(250, () => {
                 brightnessApplyTimer = null
-                execAsync(["bash", "-lc", `$HOME/.config/ags/brightness-dim.sh ${next}`]).catch(() => null)
+                execAsync(["bash", "-c", `$HOME/.config/ags/brightness-dim.sh ${next}`]).catch(() => null)
               })
             }}
           />
