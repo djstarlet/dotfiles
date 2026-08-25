@@ -301,7 +301,7 @@ box.ws-core.collapsing {
   border-radius: 8px;
   border: 1px solid var(--bar-bg-light);
   background: linear-gradient(180deg, var(--bar-bg-light) 0%, var(--bar-bg-dark) 100%);
-  box-shadow: 0 16px 34px rgba(7, 12, 20, 0.38), 0 6px 14px rgba(17, 31, 49, 0.22), 0 0 24px color-mix(in srgb, var(--bar-accent) 12%, transparent);
+  box-shadow: 0 12px 22px rgba(7, 12, 20, 0.34), 0 5px 12px rgba(17, 31, 49, 0.22), 0 0 16px color-mix(in srgb, var(--bar-accent) 12%, transparent);
   color: var(--bar-text);
   font-family: "Liberation Sans", sans-serif;
 }
