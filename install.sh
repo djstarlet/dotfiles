@@ -472,27 +472,20 @@ resolve_source_dir() {
 
 deploy_dotfiles() {
 	if (( DRY_RUN )); then
-		info "[dry-run] deploy ~/.config/hypr and ~/.config/ags (existing dirs backed up as *.bak.<timestamp>)"
+		info "[dry-run] merge-copy repo configs into ~/.config/hypr and ~/.config/ags (user-generated files preserved)"
 		return 0
 	fi
 
-	local backup ts
-	deploy_dir() {
-		local src="$1" dst="$2" label="$3"
-		mkdir -p "$(dirname "$dst")"
-		if [[ -e $dst ]]; then
-			ts="$(date +%Y%m%d-%H%M%S)"
-			backup="${dst}.bak.${ts}"
-			warn "Existing ${label} found - moving it to ${backup}"
-			mv "$dst" "$backup"
-		fi
-		cp -r "$src" "$dst"
-		info "Installed ${label} -> ${dst}"
-	}
-
-	deploy_dir "$SRC_PATH/hypr" "$HOME/.config/hypr" "Hyprland config"
-	deploy_dir "$SRC_PATH/ags/.config/ags" "$HOME/.config/ags" "AGS bar"
-	SUMMARY_ACTIONS+=("deployed configs to ~/.config/hypr and ~/.config/ags (previous versions backed up)")
+	# Merge-copy: repo files overwrite the tracked configs, while
+	# user-generated files survive every run - e.g. nwg-displays'
+	# monitors.conf, current-wallpaper.png, ags' ws-dot-colors.json and
+	# calendar auth. (A wholesale dir swap here used to wipe monitors.conf
+	# and reset the monitor layout on every re-run.)
+	mkdir -p "$HOME/.config/hypr" "$HOME/.config/ags"
+	cp -R "$SRC_PATH/hypr/." "$HOME/.config/hypr/"
+	cp -R "$SRC_PATH/ags/.config/ags/." "$HOME/.config/ags/"
+	info "Installed Hyprland + AGS configs (user-generated files preserved)"
+	SUMMARY_ACTIONS+=("deployed configs to ~/.config/hypr and ~/.config/ags (user files preserved)")
 }
 
 # -------------------------------------------------- convenience helper (bashrc)
@@ -545,7 +538,7 @@ ensure_blesh() {
 		return 0
 	fi
 	info "Enabling ble.sh as-you-type completion in ${bashrc}..."
-	printf '\n# ble.sh - live completion suggestions (like CachyOS); no history suggestions\nif [ -f /usr/share/blesh/ble.sh ]; then\n  source /usr/share/blesh/ble.sh\n  bleopt complete_auto_history=0\nfi\n' >> "$bashrc"
+	printf '\n# ble.sh - live completion suggestions (like CachyOS); no history suggestions\nif [ -f /usr/share/blesh/ble.sh ]; then\n  source /usr/share/blesh/ble.sh\n  bleopt complete_auto_history=\nfi\n' >> "$bashrc"
 	SUMMARY_ACTIONS+=("enabled ble.sh in ~/.bashrc")
 }
 
