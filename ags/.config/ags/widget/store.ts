@@ -615,7 +615,7 @@ export function createStore() {
   }
 
   function openOverview() {
-    execAsync(["hyprswitch", "gui", "--action", "switch"]).catch(() => null)
+    execAsync(["hyprctl", "dispatch", "workspace", "+1"]).catch(() => null)
     setDesktopMenuOpen(false)
   }
 

@@ -597,7 +597,7 @@ verify_installation() {
 	done
 
 	local missing_soft=()
-	for cmd in albert librewolf pavucontrol notify-send nwg-displays hyprswitch; do
+	for cmd in albert librewolf pavucontrol notify-send nwg-displays; do
 		command_exists "$cmd" || missing_soft+=("$cmd")
 	done
 
@@ -649,7 +649,7 @@ load_package_tables() {
 	arch)
 		# From README; wl-clip-persist, librewolf and nwg-displays are in the official repos.
 		MAIN_PKGS=(hyprland gtk4 gtk4-layer-shell nodejs npm curl python git wtype kitty librewolf pcmanfm swaybg wl-clipboard wl-clip-persist wireplumber pipewire networkmanager xfce4-settings pavucontrol grim slurp libnotify ttf-nerd-fonts-symbols nwg-displays)
-		AUR_PKGS=(hyprswitch grimblast-git) # hyprswitch = SUPER+TAB window switcher; hyprexpo was retired from official plugins and is not packaged
+		AUR_PKGS=(grimblast-git)
 		OPTIONAL_PKGS=(albert)                    # AUR-only
 		;;
 	debian)
