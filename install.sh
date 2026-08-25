@@ -650,7 +650,7 @@ load_package_tables() {
 		# From README; wl-clip-persist, librewolf and nwg-displays are in the official repos.
 		MAIN_PKGS=(hyprland gtk4 gtk4-layer-shell nodejs npm curl python git wtype kitty librewolf pcmanfm swaybg wl-clipboard wl-clip-persist wireplumber pipewire networkmanager xfce4-settings pavucontrol grim slurp libnotify ttf-nerd-fonts-symbols nwg-displays)
 		AUR_PKGS=(grimblast-git)
-		OPTIONAL_PKGS=(albert)                    # AUR-only
+		OPTIONAL_PKGS=(albert-bin) # prebuilt launcher; avoid the heavy Qt/C++ source build
 		;;
 	debian)
 		MAIN_PKGS=(hyprland gtk4-layer-shell-dev libgtk-4-dev wtype nodejs npm curl python3 git kitty pcmanfm swaybg wl-clipboard wireplumber pipewire network-manager xfce4-settings pavucontrol grim slurp libnotify-bin jq)
