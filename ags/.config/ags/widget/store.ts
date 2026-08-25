@@ -544,6 +544,11 @@ export function createStore() {
     setDesktopMenuOpen(false)
   }
 
+  function openDisplaySettings() {
+    execAsync(["nwg-displays"]).catch(() => null)
+    setControlOpen(false)
+  }
+
   function runPowerAction(action: "lock" | "logout" | "reboot" | "shutdown") {
     setPendingPowerAction(action)
   }
@@ -705,6 +710,7 @@ export function createStore() {
     openAudioSettings,
     openLauncher,
     openNetworkSettings,
+    openDisplaySettings,
     runPowerAction,
     confirmPowerAction,
     cancelPowerAction,
