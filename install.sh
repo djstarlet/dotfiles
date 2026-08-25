@@ -31,8 +31,9 @@
 #     node_modules), so no npm install step is needed for the bar config.
 #   - emerge may prompt for license/config changes; portage has no universal -y flag.
 #
-#   - Adds an 'ags-restart()' helper and bash tab completion (bash-completion)
-#     to ~/.bashrc - both idempotent.
+#   - Adds an 'ags-restart()' helper, bash tab completion (bash-completion)
+#     and ble.sh as-you-type suggestions (AUR 'blesh' / Debian 'ble.sh') to
+#     ~/.bashrc - all idempotent.
 # Set INSTALL_DRY_RUN=1 to print every mutating command instead of running it.
 
 set -euo pipefail
@@ -529,6 +530,25 @@ ensure_bash_completion() {
 	SUMMARY_ACTIONS+=("enabled bash tab completion in ~/.bashrc")
 }
 
+# ble.sh - bash line editor with as-you-type suggestions and syntax
+# highlighting (the CachyOS bash experience). Available via AUR on Arch and
+# the ble.sh package on Debian/Ubuntu trixie+; elsewhere the guarded source
+# block below simply stays dormant.
+ensure_blesh() {
+	local bashrc="$HOME/.bashrc"
+	if grep -q "/usr/share/blesh/ble.sh" "$bashrc" 2>/dev/null; then
+		info "ble.sh already enabled in ${bashrc}."
+		return 0
+	fi
+	if (( DRY_RUN )); then
+		info "[dry-run] append ble.sh source block to ${bashrc}"
+		return 0
+	fi
+	info "Enabling ble.sh as-you-type suggestions in ${bashrc}..."
+	printf '\n# ble.sh - as-you-type suggestions + syntax highlighting (like CachyOS)\nif [ -f /usr/share/blesh/ble.sh ]; then\n  source /usr/share/blesh/ble.sh\nfi\n' >> "$bashrc"
+	SUMMARY_ACTIONS+=("enabled ble.sh in ~/.bashrc")
+}
+
 # ------------------------------------------------------ bar bundle verification
 
 # The AGS CLI ships and bundles the 'ags/*' and 'gnim' JS modules itself (e.g.
@@ -686,11 +706,11 @@ load_package_tables() {
 	arch)
 		# From README; wl-clip-persist, librewolf and nwg-displays are in the official repos.
 		MAIN_PKGS=(hyprland gtk4 gtk4-layer-shell nodejs npm curl python git wtype kitty librewolf pcmanfm swaybg wl-clipboard wl-clip-persist wireplumber pipewire networkmanager xfce4-settings pavucontrol grim slurp libnotify ttf-nerd-fonts-symbols nwg-displays bash-completion)
-		AUR_PKGS=(grimblast-git)
+		AUR_PKGS=(grimblast-git blesh) # blesh = bash line editor with as-you-type suggestions
 		OPTIONAL_PKGS=(albert-bin) # prebuilt launcher; avoid the heavy Qt/C++ source build
 		;;
 	debian)
-		MAIN_PKGS=(hyprland gtk4-layer-shell-dev libgtk-4-dev wtype nodejs npm curl python3 git kitty pcmanfm swaybg wl-clipboard wireplumber pipewire network-manager xfce4-settings pavucontrol grim slurp libnotify-bin jq bash-completion)
+		MAIN_PKGS=(hyprland gtk4-layer-shell-dev libgtk-4-dev wtype nodejs npm curl python3 git kitty pcmanfm swaybg wl-clipboard wireplumber pipewire network-manager xfce4-settings pavucontrol grim slurp libnotify-bin jq bash-completion ble.sh)
 		# nwg-displays is not packaged in Debian; install manually (see README).
 		OPTIONAL_PKGS=(albert librewolf nwg-displays) # OBS repo / librewolf.net repo
 		;;
@@ -747,6 +767,7 @@ main() {
 	deploy_dotfiles
 	ensure_bashrc_helper
 	ensure_bash_completion
+	ensure_blesh
 	verify_bar_bundle
 
 	info "Verifying installed commands..."
