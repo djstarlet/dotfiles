@@ -47,12 +47,14 @@ MAX_HW_FAILURES=3
 # hammer, and a wedged bus would otherwise hang the call forever).
 # Reads fail fast (the caller falls back to the last known value), writes
 # wait briefly so drags do not pile up i2c transactions.
+# --sleep-multiplier shrinks ddcutil's mandatory post-write settle delays
+# (the default 1.0 makes every setvcp take seconds).
 run_ddcutil_get() {
-  flock -n "$LOCK_FILE" timeout 20 ddcutil "$@" 2>/dev/null
+  flock -n "$LOCK_FILE" timeout 20 ddcutil --sleep-multiplier 0.5 "$@" 2>/dev/null
 }
 
 run_ddcutil_set() {
-  flock -w 10 "$LOCK_FILE" timeout 20 ddcutil "$@" 2>/dev/null
+  flock -w 10 "$LOCK_FILE" timeout 20 ddcutil --sleep-multiplier 0.5 "$@" 2>/dev/null
 }
 
 clear_shader() {
