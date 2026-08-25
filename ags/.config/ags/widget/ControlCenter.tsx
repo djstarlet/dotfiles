@@ -49,7 +49,9 @@ export default function ControlCenterWindow(gdkmonitor: Gdk.Monitor, monitorInde
     parseVolume(out),
   )
   const [brightnessReady, setBrightnessReady] = createState(false)
-  const liveBrightness = createPoll(100, 5000, ["bash", "-c", "shader=\"$HOME/.config/hypr/shaders/ags-dim.frag\"; dim=$(grep -oE '1\\.0 - [0-9]+(\\.[0-9]+)?' \"$shader\" 2>/dev/null | head -n1 | awk '{print $3}'); awk -v d=\"${dim:-0}\" 'BEGIN { p = 100 - (d * 100); if (p < 5) p = 5; if (p > 100) p = 100; printf \"%d\\n\", p }'"], (out) => {
+  // brightness-dim.sh --get handles hardware (brightnessctl/ddcutil) and
+  // shader-overlay backends transparently.
+  const liveBrightness = createPoll(100, 5000, ["bash", "-c", "$HOME/.config/ags/brightness-dim.sh --get 2>/dev/null || echo 100"], (out) => {
     setBrightnessReady(true)
     const n = Number(String(out).trim())
     return Number.isFinite(n) ? Math.max(5, Math.min(100, n)) : 100

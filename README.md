@@ -47,15 +47,15 @@ Gentoo - ags, albert, librewolf, wl-clip-persist, grimblast, nwg-displays are in
 
 Arch - ags, albert-bin, grimblast, blesh are in the AUR
 
-`sudo pacman -S --needed hyprland gtk4 gtk4-layer-shell nodejs npm curl python wtype kitty librewolf pcmanfm swaybg wl-clipboard wl-clip-persist wireplumber pipewire networkmanager xfce4-settings pavucontrol grim slurp libnotify ttf-nerd-fonts-symbols nwg-displays bash-completion`
+`sudo pacman -S --needed hyprland gtk4 gtk4-layer-shell nodejs npm curl python wtype kitty librewolf pcmanfm swaybg wl-clipboard wl-clip-persist wireplumber pipewire networkmanager xfce4-settings pavucontrol grim slurp libnotify ttf-nerd-fonts-symbols nwg-displays bash-completion brightnessctl ddcutil`
 
 Debian / Ubuntu (hyprland needs trixie+/universe) - albert: OBS repo, librewolf: flatpak, grimblast: install script from https://github.com/hyprwm/contrib (needs jq, put it in PATH), nwg-displays: manual install from https://github.com/nwg-piotr/nwg-displays
 
-`sudo apt install hyprland gtk4-layer-shell-dev libgtk-4-dev wtype nodejs npm curl python3 kitty pcmanfm swaybg wl-clipboard wireplumber pipewire network-manager xfce4-settings pavucontrol grim slurp libnotify-bin jq bash-completion ble.sh`
+`sudo apt install hyprland gtk4-layer-shell-dev libgtk-4-dev wtype nodejs npm curl python3 kitty pcmanfm swaybg wl-clipboard wireplumber pipewire network-manager xfce4-settings pavucontrol grim slurp libnotify-bin jq bash-completion ble.sh brightnessctl ddcutil`
 
 Fedora (hyprland 41+) - hyprland-contrib (grimblast): COPR, nwg-displays: community COPR (e.g. tofik/nwg-shell) or manual from https://github.com/nwg-piotr/nwg-displays, albert: OBS, librewolf: flatpak, wl-clip-persist must be compiled from source: https://github.com/Linus789/wl-clip-persist.git
 
-`sudo dnf install hyprland gtk4 gtk4-layer-shell gtk4-layer-shell-devel wtype nodejs npm curl python3 kitty pcmanfm swaybg wl-clipboard wireplumber pipewire NetworkManager xfce4-settings pavucontrol grim slurp libnotify bash-completion`
+`sudo dnf install hyprland gtk4 gtk4-layer-shell gtk4-layer-shell-devel wtype nodejs npm curl python3 kitty pcmanfm swaybg wl-clipboard wireplumber pipewire NetworkManager xfce4-settings pavucontrol grim slurp libnotify bash-completion brightnessctl ddcutil`
 
 
 for Debian/Fedora repos: install Nerd Fonts manually from https://github.com/ryanoasis/nerd-fonts
@@ -82,6 +82,8 @@ curl
 bash-completion (bash tab completion, enabled in ~/.bashrc)
 
 ble.sh (live command/argument completion as you type, like CachyOS - AUR blesh / Debian ble.sh; history suggestions disabled, enabled in ~/.bashrc)
+
+brightnessctl / ddcutil (Control Center brightness slider - hardware brightness for capable panels; otherwise a screen-shader overlay is used; external monitors need the ddcci kernel module for brightnessctl or /dev/i2c-* for ddcutil)
 
 python3
 
