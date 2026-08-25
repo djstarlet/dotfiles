@@ -49,6 +49,10 @@ export default function ControlCenterWindow(gdkmonitor: Gdk.Monitor, monitorInde
     parseVolume(out),
   )
   const [brightnessReady, setBrightnessReady] = createState(false)
+  // Only the primary monitor's Control Center controls brightness: with
+  // hardware (ddcutil) backends there is one shared display, and two
+  // sliders/polls would fight over the i2c bus.
+  const isBrightnessController = monitorIndex === 0
   // brightness-dim.sh --get handles hardware (brightnessctl/ddcutil) and
   // shader-overlay backends transparently.
   const liveBrightness = createPoll(100, 5000, ["bash", "-c", "$HOME/.config/ags/brightness-dim.sh --get 2>/dev/null || echo 100"], (out) => {
@@ -81,7 +85,7 @@ export default function ControlCenterWindow(gdkmonitor: Gdk.Monitor, monitorInde
   // ── CC-local effects ───────────────────────────────────────────────────────
   // Brightness effect
   createEffect(() => {
-    if (!brightnessReady()) return
+    if (!isBrightnessController || !brightnessReady()) return
     const pct = brightnessPercent()
     execAsync(["bash", "-lc", `$HOME/.config/ags/brightness-dim.sh ${Math.round(pct)}`]).catch(() => null)
   })
@@ -93,9 +97,9 @@ export default function ControlCenterWindow(gdkmonitor: Gdk.Monitor, monitorInde
     }
   })
 
-  // Brightness sync
+  // Brightness sync (primary monitor's CC only)
   createEffect(() => {
-    if (config.controlCenter) {
+    if (config.controlCenter && isBrightnessController) {
       setBrightnessPercent(liveBrightness())
     }
   })
@@ -197,6 +201,7 @@ export default function ControlCenterWindow(gdkmonitor: Gdk.Monitor, monitorInde
           />
         </box>
 
+        {isBrightnessController && (
         <box class="slider-row" orientation={Gtk.Orientation.VERTICAL} spacing={4}>
           <label label={effectiveBrightness((v) => `Brightness ${v}%`)} xalign={0} />
           <Gtk.Scale
@@ -220,6 +225,7 @@ export default function ControlCenterWindow(gdkmonitor: Gdk.Monitor, monitorInde
             }}
           />
         </box>
+        )}
 
         <box class="control-actions-section" orientation={Gtk.Orientation.VERTICAL} spacing={6} halign={Gtk.Align.CENTER}>
           <box class="control-actions-row" orientation={Gtk.Orientation.HORIZONTAL} spacing={10} halign={Gtk.Align.CENTER}>

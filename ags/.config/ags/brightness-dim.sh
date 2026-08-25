@@ -6,14 +6,23 @@ set -uo pipefail
 #   brightness-dim.sh --get       print the current brightness percent
 #
 # Prefers real hardware brightness and falls back to a Hyprland screen
-# shader overlay for panels without brightness control (e.g. an old DVI
-# monitor). Detection order:
+# shader overlay for panels without brightness control. Detection order:
 #   1. brightnessctl - a backlight device, or an external monitor exposed
 #      through the ddcci kernel driver (type "ddc")
-#   2. ddcutil - DDC/CI over i2c (requires /dev/i2c-* and permissions)
-#   3. shader overlay - a dimming shader applied via decoration:screen_shader
-# The detected mode is cached for 5 minutes in ~/.cache/ags-brightness-mode
-# so the slider does not re-probe i2c on every move.
+#   2. ddcutil - DDC/CI over i2c. With several DDC displays the one whose
+#      DRM connector matches the first monitor in `hyprctl monitors -j`
+#      (the primary) is chosen, so an ultrawide + side monitor setup
+#      controls the main screen; a single display is used directly.
+#   3. shader overlay - a dimming shader via decoration:screen_shader
+# The detected mode is cached for 5 minutes in
+# ~/.cache/ags-brightness-mode ("mode spec timestamp") so the slider does
+# not re-probe i2c on every move.
+#
+# All ddcutil access is serialized with flock - multiple bars/sliders
+# polling and setting at once would otherwise fight over the i2c bus and
+# fail with flock contention, making the brightness "tweak" erratically.
+# In hardware mode a failed read returns the last known value instead of
+# the (possibly stale) shader value, so the slider never jumps.
 
 BRIGHTNESS=""
 if [[ ${1:-} == "--get" ]]; then
@@ -25,9 +34,26 @@ else
   if (( BRIGHTNESS > 100 )); then BRIGHTNESS=100; fi
 fi
 
-MODE_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/ags-brightness-mode"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}"
+MODE_FILE="$CACHE_DIR/ags-brightness-mode"
+LAST_FILE="$CACHE_DIR/ags-brightness-last"
+FAIL_FILE="$CACHE_DIR/ags-brightness-failures"
+LOCK_FILE="$CACHE_DIR/ags-brightness-ddcutil.lock"
 SHADER_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/shaders"
 SHADER_FILE="$SHADER_DIR/ags-dim.frag"
+MAX_HW_FAILURES=3
+
+# Serialize and time-limit every ddcutil invocation (i2c is not safe to
+# hammer, and a wedged bus would otherwise hang the call forever).
+# Reads fail fast (the caller falls back to the last known value), writes
+# wait briefly so drags do not pile up i2c transactions.
+run_ddcutil_get() {
+  flock -n "$LOCK_FILE" timeout 20 ddcutil "$@" 2>/dev/null
+}
+
+run_ddcutil_set() {
+  flock -w 10 "$LOCK_FILE" timeout 20 ddcutil "$@" 2>/dev/null
+}
 
 clear_shader() {
   hyprctl keyword decoration:screen_shader "" >/dev/null 2>&1 || true
@@ -49,10 +75,45 @@ brightnessctl_percent() {
 }
 
 ddcutil_percent() {
-  local cur
-  cur=$(timeout 8 ddcutil --brief getvcp 10 2>/dev/null | awk '$1 == "VCP" && $2 == 10 { print $4; exit }')
+  local display="$1" cur
+  cur=$(run_ddcutil_get --brief getvcp 10 --display "$display" | awk '$1 == "VCP" && $2 == 10 { print $4; exit }')
   [[ -n $cur ]] || return 1
   awk -v c="$cur" 'BEGIN { if (c < 5) c = 5; if (c > 100) c = 100; printf "%d", c }'
+}
+
+# Parse `ddcutil --brief detect` into "display-index connector" lines,
+# skipping blocks without a Monitor: line (e.g. "Invalid display" ghosts).
+detect_display_map() {
+  awk '
+    /^Display / { if (idx != "" && conn != "" && mon) print idx, conn; idx = $2; conn = ""; mon = 0; next }
+    /DRM connector:/ { conn = $3; next }
+    /Monitor:/ { mon = 1; next }
+    /^[[:space:]]*$/ { if (idx != "" && conn != "" && mon) print idx, conn; idx = ""; next }
+    END { if (idx != "" && conn != "" && mon) print idx, conn }
+  '
+}
+
+# Pick the display index to control: the one on the primary monitor's
+# connector when several displays exist, else the only display.
+detect_ddcutil_display() {
+  local map primary idx conn p
+  map="$(run_ddcutil_get --brief detect | detect_display_map)"
+  [[ -n $map ]] || return 1
+  if [[ $(wc -l <<< "$map") -eq 1 ]]; then
+    printf '%s' "${map%% *}"
+    return
+  fi
+  primary=$(hyprctl monitors -j 2>/dev/null | sed -n 's/.*"name": *"\([^"]*\)".*/\1/p' | head -1)
+  [[ -n $primary ]] || return 1
+  while IFS= read -r p; do
+    idx="${p%% *}"
+    conn="${p#* }"
+    if [[ $conn == *"$primary"* ]]; then
+      printf '%s' "$idx"
+      return
+    fi
+  done <<< "$map"
+  return 1
 }
 
 detect_mode() {
@@ -64,22 +125,34 @@ detect_mode() {
   fi
   # 2) ddcutil over i2c
   if command -v ddcutil >/dev/null 2>&1; then
-    if timeout 8 ddcutil --brief getvcp 10 >/dev/null 2>&1; then printf 'ddcutil'; return; fi
+    local disp
+    disp=$(detect_ddcutil_display) || disp=""
+    if [[ -n $disp ]]; then
+      printf 'ddcutil %s' "$disp"
+      return
+    fi
   fi
   # 3) shader overlay
   printf 'shader'
 }
 
 cached_mode() {
-  local mode="" ts=0 now
-  [[ -f $MODE_FILE ]] && read -r mode ts < "$MODE_FILE" 2>/dev/null
+  local mode="" spec="" ts=0 now
+  if [[ -f $MODE_FILE ]]; then
+    read -r mode spec ts < "$MODE_FILE" 2>/dev/null || { mode=""; spec=""; ts=0; }
+  fi
   now=$(date +%s)
   if [[ -z $mode || $((now - ts)) -gt 300 ]]; then
     mode=$(detect_mode)
-    mkdir -p "$(dirname "$MODE_FILE")"
-    printf '%s %s\n' "$mode" "$now" > "$MODE_FILE"
+    spec=""
+    case "$mode" in
+      brightnessctl\ *) spec="${mode#brightnessctl }"; mode="brightnessctl" ;;
+      ddcutil\ *) spec="${mode#ddcutil }"; mode="ddcutil" ;;
+    esac
+    mkdir -p "$CACHE_DIR"
+    printf '%s %s %s\n' "$mode" "$spec" "$now" > "$MODE_FILE"
   fi
-  printf '%s' "$mode"
+  printf '%s %s\n' "$mode" "$spec"
 }
 
 apply_shader() {
@@ -107,30 +180,52 @@ SHADER
 }
 
 if [[ $BRIGHTNESS == "--get" ]]; then
-  mode="$(cached_mode)"
+  mode=""; spec=""; pct=""
+  read -r mode spec <<< "$(cached_mode)"
   pct=""
   case "$mode" in
-    brightnessctl\ *) pct=$(brightnessctl_percent "${mode#brightnessctl }") || pct="" ;;
-    ddcutil) pct=$(ddcutil_percent) || pct="" ;;
+    brightnessctl) pct=$(brightnessctl_percent "$spec") || pct="" ;;
+    ddcutil) pct=$(ddcutil_percent "$spec") || pct="" ;;
   esac
-  [[ -n $pct ]] || pct=$(shader_percent)
-  printf '%s\n' "$pct"
+  if [[ -n $pct ]]; then
+    printf '%s\n' "$pct"
+    rm -f "$FAIL_FILE"
+    mkdir -p "$CACHE_DIR"
+    printf '%s\n' "$pct" > "$LAST_FILE"
+  elif [[ $mode == shader ]]; then
+    shader_percent
+  else
+    # Hardware read failed (bus busy/wedged). After several consecutive
+    # failures, demote to the shader overlay so a flaky i2c bus cannot keep
+    # hanging the slider; until then report the last known value.
+    fails=0
+    [[ -f $FAIL_FILE ]] && read -r fails < "$FAIL_FILE" 2>/dev/null
+    fails=$((fails + 1))
+    if (( fails >= MAX_HW_FAILURES )); then
+      printf 'shader %s\n' "$(date +%s)" > "$MODE_FILE"
+      rm -f "$FAIL_FILE"
+    else
+      printf '%s\n' "$fails" > "$FAIL_FILE"
+    fi
+    cat "$LAST_FILE" 2>/dev/null || echo 100
+  fi
   exit 0
 fi
 
-mode="$(cached_mode)"
+mode=""; spec=""
+read -r mode spec <<< "$(cached_mode)"
 case "$mode" in
-  brightnessctl\ *)
-    if brightnessctl --device="${mode#brightnessctl }" set "${BRIGHTNESS}%" >/dev/null 2>&1; then
-      clear_shader # hardware path: the dim overlay must not linger
-      exit 0
-    fi
+  brightnessctl)
+    # Hardware mode: a failed write must NOT fall back to the shader overlay,
+    # or the dim layer would flicker on and off during i2c contention.
+    brightnessctl --device="$spec" set "${BRIGHTNESS}%" >/dev/null 2>&1 || true
+    clear_shader
+    exit 0
     ;;
   ddcutil)
-    if ddcutil setvcp 10 "$BRIGHTNESS" >/dev/null 2>&1; then
-      clear_shader
-      exit 0
-    fi
+    run_ddcutil_set setvcp 10 "$BRIGHTNESS" --display "$spec" >/dev/null 2>&1 || true
+    clear_shader
+    exit 0
     ;;
 esac
 
