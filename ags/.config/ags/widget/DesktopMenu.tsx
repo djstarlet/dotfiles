@@ -11,7 +11,7 @@ export default function DesktopMenuWindow(gdkmonitor: Gdk.Monitor, monitorIndex:
       name={`ags-desktop-menu-${monitorIndex}`}
       class="FlyoutWindow"
       gdkmonitor={gdkmonitor}
-      anchor={Astal.WindowAnchor.TOP | Astal.WindowAnchor.LEFT}
+      anchor={Astal.WindowAnchor.TOP | Astal.WindowAnchor.LEFT | Astal.WindowAnchor.RIGHT}
       layer={Astal.Layer.OVERLAY}
       keymode={Astal.Keymode.ON_DEMAND}
       exclusivity={Astal.Exclusivity.IGNORE}
@@ -19,6 +19,8 @@ export default function DesktopMenuWindow(gdkmonitor: Gdk.Monitor, monitorIndex:
       marginStart={0}
       application={app}
     >
+      <box hexpand>
+      <box halign={Gtk.Align.START}>
       <box
         class="flyout desktop-menu-flyout"
         orientation={Gtk.Orientation.VERTICAL}
@@ -57,6 +59,9 @@ export default function DesktopMenuWindow(gdkmonitor: Gdk.Monitor, monitorIndex:
         <button class="action" onClicked={s.takeScreenshot}>
           <label label="Screenshot" />
         </button>
+      </box>
+      </box>
+      <button class="DismissSurface" hexpand vexpand canTarget onClicked={s.closeFlyouts} />
       </box>
     </window>
   )

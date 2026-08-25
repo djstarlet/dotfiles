@@ -193,6 +193,8 @@ export default function SettingsWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
               hexpand
               heightRequest={640}
               overlayScrolling={false}
+              vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+              hscrollbarPolicy={Gtk.PolicyType.NEVER}
             >
               <box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <centerbox>
@@ -591,7 +593,7 @@ export default function SettingsWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
               return ""
             })} xalign={0.5} />
             <Gtk.Separator orientation={Gtk.Orientation.HORIZONTAL} />
-            <Gtk.ScrolledWindow heightRequest={220} widthRequest={300} overlayScrolling={false}>
+            <Gtk.ScrolledWindow heightRequest={220} widthRequest={300} overlayScrolling={false} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC} hscrollbarPolicy={Gtk.PolicyType.NEVER}>
               <box class="settings-list" orientation={Gtk.Orientation.VERTICAL}>
                 <For each={createComputed(() => {
                   const kind = s.activeList()

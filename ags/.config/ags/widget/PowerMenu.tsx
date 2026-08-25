@@ -6,7 +6,7 @@ import { DEFAULT_WS_DOT_COLORS } from "./store"
 import { darken, mixHex } from "./color-utils"
 
 export default function PowerMenuWindow(gdkmonitor: Gdk.Monitor, monitorIndex: number, s: Store) {
-  const { TOP, RIGHT } = Astal.WindowAnchor
+  const { TOP, LEFT, RIGHT } = Astal.WindowAnchor
 
   createEffect(() => {
     if (s.pendingPowerAction() !== null && !s.powerMenuOpen()) {
@@ -21,13 +21,16 @@ export default function PowerMenuWindow(gdkmonitor: Gdk.Monitor, monitorIndex: n
       namespace="ags-power-menu"
       class="FlyoutWindow"
       gdkmonitor={gdkmonitor}
-      anchor={TOP | RIGHT}
+      anchor={TOP | LEFT | RIGHT}
       layer={Astal.Layer.OVERLAY}
       keymode={Astal.Keymode.ON_DEMAND}
       exclusivity={Astal.Exclusivity.IGNORE}
       marginTop={42}
       application={app}
     >
+        <box hexpand>
+          <button class="DismissSurface" hexpand vexpand canTarget onClicked={s.closeFlyouts} />
+          <box halign={Gtk.Align.END}>
         <box
           class="flyout power-menu-flyout standalone"
           orientation={Gtk.Orientation.VERTICAL}
@@ -116,6 +119,8 @@ export default function PowerMenuWindow(gdkmonitor: Gdk.Monitor, monitorIndex: n
                 <label label="Confirm" />
               </button>
             </box>
+          </box>
+          </box>
           </box>
         </box>
     </window>

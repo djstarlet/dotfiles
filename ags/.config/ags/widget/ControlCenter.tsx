@@ -1,7 +1,7 @@
 import app from "ags/gtk4/app"
 import { Astal, Gtk, Gdk } from "ags/gtk4"
 import { execAsync } from "ags/process"
-import { createPoll } from "ags/time"
+import { createPoll, timeout } from "ags/time"
 import { createComputed, createEffect, createState } from "gnim"
 import type { Store } from "./store"
 import config from "./widgets.config"
@@ -53,6 +53,7 @@ export default function ControlCenterWindow(gdkmonitor: Gdk.Monitor, monitorInde
   // hardware (ddcutil) backends there is one shared display, and two
   // sliders/polls would fight over the i2c bus.
   const isBrightnessController = monitorIndex === 0
+  let brightnessApplyTimer: ReturnType<typeof timeout> | null = null
   // brightness-dim.sh --get handles hardware (brightnessctl/ddcutil) and
   // shader-overlay backends transparently.
   const liveBrightness = createPoll(100, 5000, ["bash", "-c", "$HOME/.config/ags/brightness-dim.sh --get 2>/dev/null || echo 100"], (out) => {
@@ -83,12 +84,11 @@ export default function ControlCenterWindow(gdkmonitor: Gdk.Monitor, monitorInde
   })
 
   // ── CC-local effects ───────────────────────────────────────────────────────
-  // Brightness effect
-  createEffect(() => {
-    if (!isBrightnessController || !brightnessReady()) return
-    const pct = brightnessPercent()
-    execAsync(["bash", "-lc", `$HOME/.config/ags/brightness-dim.sh ${Math.round(pct)}`]).catch(() => null)
-  })
+  // Brightness effect: the slider's onValueChanged applies user changes with a
+// short debounce (one hardware write per drag gesture - ddcutil setvcp takes
+// seconds over i2c, so per-tick writes would queue up and feel sluggish).
+// The poll sync below is skipped while an apply is pending so a hardware
+// read can neither clobber a drag nor re-trigger a write.
 
   // Manual volume sync
   createEffect(() => {
@@ -97,9 +97,9 @@ export default function ControlCenterWindow(gdkmonitor: Gdk.Monitor, monitorInde
     }
   })
 
-  // Brightness sync (primary monitor's CC only)
+  // Brightness sync (primary monitor's CC only; paused mid-drag)
   createEffect(() => {
-    if (config.controlCenter && isBrightnessController) {
+    if (config.controlCenter && isBrightnessController && !brightnessApplyTimer) {
       setBrightnessPercent(liveBrightness())
     }
   })
@@ -220,8 +220,15 @@ export default function ControlCenterWindow(gdkmonitor: Gdk.Monitor, monitorInde
             })}
             onValueChanged={(self) => {
               if (syncingBrightness) return
-              const next = Math.round(self.get_value())
-              setBrightnessPercent(Math.max(5, Math.min(100, next)))
+              const next = Math.max(5, Math.min(100, Math.round(self.get_value())))
+              setBrightnessPercent(next)
+              // Debounce: one hardware write per drag gesture (ddcutil setvcp
+              // takes seconds over i2c - per-tick writes queue up and lag).
+              if (brightnessApplyTimer) brightnessApplyTimer.cancel()
+              brightnessApplyTimer = timeout(250, () => {
+                brightnessApplyTimer = null
+                execAsync(["bash", "-lc", `$HOME/.config/ags/brightness-dim.sh ${next}`]).catch(() => null)
+              })
             }}
           />
         </box>
