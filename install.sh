@@ -698,17 +698,17 @@ load_package_tables() {
 	case "$DISTRO" in
 	arch)
 		# From README; wl-clip-persist, librewolf and nwg-displays are in the official repos.
-		MAIN_PKGS=(hyprland gtk4 gtk4-layer-shell nodejs npm curl python git wtype kitty librewolf pcmanfm swaybg wl-clipboard wl-clip-persist wireplumber pipewire networkmanager xfce4-settings pavucontrol grim slurp libnotify ttf-nerd-fonts-symbols nwg-displays bash-completion)
+		MAIN_PKGS=(hyprland gtk4 gtk4-layer-shell nodejs npm curl python git wtype kitty librewolf pcmanfm swaybg wl-clipboard wl-clip-persist wireplumber pipewire networkmanager xfce4-settings pavucontrol grim slurp libnotify ttf-nerd-fonts-symbols nwg-displays bash-completion brightnessctl ddcutil)
 		AUR_PKGS=(grimblast-git blesh) # blesh = bash line editor with as-you-type suggestions
 		OPTIONAL_PKGS=(albert-bin) # prebuilt launcher; avoid the heavy Qt/C++ source build
 		;;
 	debian)
-		MAIN_PKGS=(hyprland gtk4-layer-shell-dev libgtk-4-dev wtype nodejs npm curl python3 git kitty pcmanfm swaybg wl-clipboard wireplumber pipewire network-manager xfce4-settings pavucontrol grim slurp libnotify-bin jq bash-completion ble.sh)
+		MAIN_PKGS=(hyprland gtk4-layer-shell-dev libgtk-4-dev wtype nodejs npm curl python3 git kitty pcmanfm swaybg wl-clipboard wireplumber pipewire network-manager xfce4-settings pavucontrol grim slurp libnotify-bin jq bash-completion ble.sh brightnessctl ddcutil)
 		# nwg-displays is not packaged in Debian; install manually (see README).
 		OPTIONAL_PKGS=(albert librewolf nwg-displays) # OBS repo / librewolf.net repo
 		;;
 	fedora)
-		MAIN_PKGS=(hyprland gtk4 gtk4-layer-shell gtk4-layer-shell-devel wtype nodejs npm curl python3 git kitty pcmanfm swaybg wl-clipboard wireplumber pipewire NetworkManager xfce4-settings pavucontrol grim slurp libnotify bash-completion)
+		MAIN_PKGS=(hyprland gtk4 gtk4-layer-shell gtk4-layer-shell-devel wtype nodejs npm curl python3 git kitty pcmanfm swaybg wl-clipboard wireplumber pipewire NetworkManager xfce4-settings pavucontrol grim slurp libnotify bash-completion brightnessctl ddcutil)
 		# hyprland-contrib (grimblast) ships in the solopasha COPR enabled below.
 		COPR_PKGS=(hyprland-contrib)
 		# Not in the COPR we enable - community COPRs (e.g. tofik/nwg-shell) or manual.
@@ -717,7 +717,7 @@ load_package_tables() {
 	gentoo)
 		MAIN_PKGS=(hyprland gui-libs/gtk4-layer-shell net-libs/nodejs net-misc/curl dev-lang/python dev-vcs/git x11-terms/kitty x11-misc/pcmanfm gui-apps/swaybg gui-apps/wl-clipboard media-video/wireplumber media-video/pipewire net-misc/networkmanager xfce-base/xfce4-settings media-sound/pavucontrol gui-apps/grim gui-apps/slurp x11-libs/libnotify media-fonts/symbols-nerd-font app-shells/bash-completion)
 		# These need GURU or other overlays; best-effort only.
-		OPTIONAL_PKGS=(gui-apps/wtype app-misc/grimblast gui-apps/nwg-displays www-client/librewolf-bin x11-misc/albert)
+		OPTIONAL_PKGS=(gui-apps/wtype app-misc/grimblast gui-apps/nwg-displays www-client/librewolf-bin x11-misc/albert app-misc/ddcutil)
 		;;
 	esac
 }
