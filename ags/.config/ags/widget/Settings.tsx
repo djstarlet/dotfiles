@@ -1,6 +1,6 @@
 import app from "ags/gtk4/app"
 import { Astal, Gtk, Gdk } from "ags/gtk4"
-const { TOP, RIGHT } = Astal.WindowAnchor
+const { TOP, LEFT, RIGHT } = Astal.WindowAnchor
 import { execAsync } from "ags/process"
 import { createComputed, createEffect, createState, For } from "gnim"
 import type { SavedPreset, Store } from "./store"
@@ -171,14 +171,16 @@ export default function SettingsWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
         name={`ags-settings-${monitorIndex}`}
         class="FlyoutWindow"
         gdkmonitor={gdkmonitor}
-        anchor={TOP | RIGHT}
+        anchor={TOP | LEFT | RIGHT}
         layer={Astal.Layer.OVERLAY}
         keymode={Astal.Keymode.ON_DEMAND}
         exclusivity={Astal.Exclusivity.IGNORE}
         marginTop={42}
         application={app}
       >
-        <box hexpand halign={Gtk.Align.END} marginEnd={controlFlyoutMarginEnd}>
+        <box hexpand>
+          <button class="DismissSurface" hexpand vexpand canTarget onClicked={s.closeFlyouts} />
+          <box halign={Gtk.Align.END} marginEnd={controlFlyoutMarginEnd}>
           <box
             class="flyout settings-flyout"
             orientation={Gtk.Orientation.VERTICAL}
@@ -190,7 +192,7 @@ export default function SettingsWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
               vexpand
               hexpand
               heightRequest={640}
-              overlayScrolling
+              overlayScrolling={false}
             >
               <box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <centerbox>
@@ -552,6 +554,7 @@ export default function SettingsWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
               visible={createComputed(() => s.settingsStatus() !== "")}
             />
           </box>
+          </box>
         </box>
       </window>,
       <window
@@ -559,18 +562,19 @@ export default function SettingsWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
         name={`ags-settings-list-${monitorIndex}`}
         class="FlyoutWindow"
         gdkmonitor={gdkmonitor}
-        anchor={TOP | RIGHT}
+        anchor={TOP | LEFT | RIGHT}
         layer={Astal.Layer.OVERLAY}
         keymode={Astal.Keymode.ON_DEMAND}
         exclusivity={Astal.Exclusivity.IGNORE}
         marginTop={120}
         application={app}
       >
-        <box hexpand halign={Gtk.Align.END} marginEnd={controlFlyoutMarginEnd}>
+        <box hexpand>
           <button class="DismissSurface" hexpand vexpand canTarget onClicked={() => {
             s.setListPopupOpen(false)
             s.setActiveList(null)
           }} />
+          <box halign={Gtk.Align.END} marginEnd={controlFlyoutMarginEnd}>
           <box
             class="flyout settings-list-popup"
             orientation={Gtk.Orientation.VERTICAL}
@@ -646,10 +650,7 @@ export default function SettingsWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
               </box>
             </Gtk.ScrolledWindow>
           </box>
-          <button class="DismissSurface" hexpand vexpand canTarget onClicked={() => {
-            s.setListPopupOpen(false)
-            s.setActiveList(null)
-          }} />
+          </box>
         </box>
       </window>
   ]
