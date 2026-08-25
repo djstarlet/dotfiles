@@ -8,8 +8,7 @@
 - SUPER + SHIFT + C - force kill window
 - SUPER + mouse button 1 - move window
 - SUPER + mouse button 2 - resize window
-- SUPER + TAB - next workspace (alt-tab cycle, no extra packages)
-- SUPER + SHIFT + TAB - previous workspace
+- SUPER + TAB - hyprexpo toggle (workspace overview)
 - SUPER + SHIFT + GRAVE - reload hyprland
 - SUPER + 1 - workspace 1
 - SUPER + 2 - workspace 2
