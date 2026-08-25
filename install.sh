@@ -544,8 +544,8 @@ ensure_blesh() {
 		info "[dry-run] append ble.sh source block to ${bashrc}"
 		return 0
 	fi
-	info "Enabling ble.sh as-you-type suggestions in ${bashrc}..."
-	printf '\n# ble.sh - as-you-type suggestions + syntax highlighting (like CachyOS)\nif [ -f /usr/share/blesh/ble.sh ]; then\n  source /usr/share/blesh/ble.sh\nfi\n' >> "$bashrc"
+	info "Enabling ble.sh as-you-type completion in ${bashrc}..."
+	printf '\n# ble.sh - live completion suggestions (like CachyOS); no history suggestions\nif [ -f /usr/share/blesh/ble.sh ]; then\n  source /usr/share/blesh/ble.sh\n  bleopt complete_auto_history=0\nfi\n' >> "$bashrc"
 	SUMMARY_ACTIONS+=("enabled ble.sh in ~/.bashrc")
 }
 

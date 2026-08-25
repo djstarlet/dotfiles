@@ -81,7 +81,7 @@ curl
 
 bash-completion (bash tab completion, enabled in ~/.bashrc)
 
-ble.sh (as-you-type suggestions + syntax highlighting, like CachyOS - AUR blesh / Debian ble.sh, enabled in ~/.bashrc)
+ble.sh (live command/argument completion as you type, like CachyOS - AUR blesh / Debian ble.sh; history suggestions disabled, enabled in ~/.bashrc)
 
 python3
 
