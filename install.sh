@@ -350,7 +350,7 @@ Install it manually, then re-run this script:
 
 enable_fedora_copr() {
 	(( COPR_ENABLED )) && return 0
-	info "Enabling COPR '${FEDORA_COPR}' (provides aylurs-gtk-shell, hyprland-plugins and hyprland-contrib)..."
+	info "Enabling COPR '${FEDORA_COPR}' (provides aylurs-gtk-shell and hyprland-contrib)..."
 	install_repo_packages 'dnf-command(copr)'
 	run_step sudo dnf -y copr enable "$FEDORA_COPR"
 	COPR_ENABLED=1
@@ -597,7 +597,7 @@ verify_installation() {
 	done
 
 	local missing_soft=()
-	for cmd in albert librewolf pavucontrol notify-send nwg-displays; do
+	for cmd in albert librewolf pavucontrol notify-send nwg-displays hyprswitch; do
 		command_exists "$cmd" || missing_soft+=("$cmd")
 	done
 
@@ -649,26 +649,25 @@ load_package_tables() {
 	arch)
 		# From README; wl-clip-persist, librewolf and nwg-displays are in the official repos.
 		MAIN_PKGS=(hyprland gtk4 gtk4-layer-shell nodejs npm curl python git wtype kitty librewolf pcmanfm swaybg wl-clipboard wl-clip-persist wireplumber pipewire networkmanager xfce4-settings pavucontrol grim slurp libnotify ttf-nerd-fonts-symbols nwg-displays)
-		AUR_PKGS=(hyprland-plugins grimblast-git) # hyprland-contrib is not in the official repos
+		AUR_PKGS=(hyprswitch grimblast-git) # hyprswitch = SUPER+TAB window switcher; hyprexpo was retired from official plugins and is not packaged
 		OPTIONAL_PKGS=(albert)                    # AUR-only
 		;;
 	debian)
-		MAIN_PKGS=(hyprland hyprland-plugins gtk4-layer-shell-dev libgtk-4-dev wtype nodejs npm curl python3 git kitty pcmanfm swaybg wl-clipboard wireplumber pipewire network-manager xfce4-settings pavucontrol grim slurp libnotify-bin jq)
+		MAIN_PKGS=(hyprland gtk4-layer-shell-dev libgtk-4-dev wtype nodejs npm curl python3 git kitty pcmanfm swaybg wl-clipboard wireplumber pipewire network-manager xfce4-settings pavucontrol grim slurp libnotify-bin jq)
 		# nwg-displays is not packaged in Debian; install manually (see README).
 		OPTIONAL_PKGS=(albert librewolf nwg-displays) # OBS repo / librewolf.net repo
 		;;
 	fedora)
 		MAIN_PKGS=(hyprland gtk4 gtk4-layer-shell gtk4-layer-shell-devel wtype nodejs npm curl python3 git kitty pcmanfm swaybg wl-clipboard wireplumber pipewire NetworkManager xfce4-settings pavucontrol grim slurp libnotify)
-		# Both ship in the solopasha COPR enabled below; grimblast comes from
-		# hyprland-contrib there.
-		COPR_PKGS=(hyprland-plugins hyprland-contrib)
+		# hyprland-contrib (grimblast) ships in the solopasha COPR enabled below.
+		COPR_PKGS=(hyprland-contrib)
 		# Not in the COPR we enable - community COPRs (e.g. tofik/nwg-shell) or manual.
 		OPTIONAL_PKGS=(nwg-displays)
 		;;
 	gentoo)
 		MAIN_PKGS=(hyprland gui-libs/gtk4-layer-shell net-libs/nodejs net-misc/curl dev-lang/python dev-vcs/git x11-terms/kitty x11-misc/pcmanfm gui-apps/swaybg gui-apps/wl-clipboard media-video/wireplumber media-video/pipewire net-misc/networkmanager xfce-base/xfce4-settings media-sound/pavucontrol gui-apps/grim gui-apps/slurp x11-libs/libnotify media-fonts/symbols-nerd-font)
 		# These need GURU or other overlays; best-effort only.
-		OPTIONAL_PKGS=(gui-apps/wtype gui-apps/hyprland-plugins app-misc/grimblast gui-apps/nwg-displays www-client/librewolf-bin x11-misc/albert)
+		OPTIONAL_PKGS=(gui-apps/wtype app-misc/grimblast gui-apps/nwg-displays www-client/librewolf-bin x11-misc/albert)
 		;;
 	esac
 }
