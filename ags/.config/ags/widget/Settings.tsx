@@ -8,7 +8,7 @@ import { DEFAULT_WS_DOT_COLORS } from "./store"
 import { theme } from "./theme.config"
 import type { ThemeConfig } from "./theme.config"
 import type { Rgb } from "./color-utils"
-import { hexToRgb, rgbToHex, mixHex, lighten, darken } from "./color-utils"
+import { hexToRgb, rgbToHex, mixHex, lighten, darken, hyprAccentGlow } from "./color-utils"
 
 const controlFlyoutMarginEnd = 18
 type ColorName = "background" | "accent" | "text" | "dot"
@@ -84,6 +84,9 @@ export default function SettingsWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
             --bar-text-dim: ${mixHex(text, "#6a7a8c", 0.35)};
           }
         `, false)
+        if (name === "accent") {
+          execAsync(["hyprctl", "keyword", "decoration:shadow:color", hyprAccentGlow(hex)]).catch(() => null)
+        }
         s.setSettingsStatus("Colors applied")
       })
       .catch(() => s.setSettingsStatus("Failed to set color"))
@@ -196,7 +199,7 @@ export default function SettingsWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
               vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
               hscrollbarPolicy={Gtk.PolicyType.NEVER}
             >
-              <box orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+              <box orientation={Gtk.Orientation.VERTICAL} spacing={8} marginEnd={4}>
                 <centerbox>
                   <box $type="start" widthRequest={34} />
                   <label $type="center" class="flyout-title" label="Theme" xalign={0.5} />

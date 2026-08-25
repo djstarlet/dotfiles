@@ -3,7 +3,7 @@ import style from "./style.css"
 import { execAsync } from "ags/process"
 
 import Bar from "./widget/Bar"
-import { lighten, darken, mixHex } from "./widget/color-utils"
+import { lighten, darken, mixHex, hyprAccentGlow } from "./widget/color-utils"
 import { theme } from "./widget/theme.config"
 
 function isHexColor(value: unknown): value is string {
@@ -24,6 +24,8 @@ function injectThemeColors(background: string, accent: string, text: string) {
       --bar-text-dim: ${mixHex(text, "#6a7a8c", 0.35)};
     }
   `, false)
+  // Match the Hyprland window "glow" (decoration:shadow:color) to the accent.
+  execAsync(["hyprctl", "keyword", "decoration:shadow:color", hyprAccentGlow(accent)]).catch(() => null)
 }
 
 app.start({
