@@ -774,7 +774,8 @@ button.calendar-account-btn label.calendar-account-icon {
 }
 
 .settings-flyout {
-  min-width: 340px;
+  min-width: 352px;
+  padding-right: 6px;
 }
 
 .settings-list-popup {

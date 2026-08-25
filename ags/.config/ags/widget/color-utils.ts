@@ -30,3 +30,11 @@ export function lighten(hex: string, amount = 0.2) {
 export function darken(hex: string, amount = 0.2) {
   return mixHex(hex, "#000000", amount)
 }
+
+// Hyprland window-shadow "glow" (decoration:shadow:color) follows the theme
+// accent. AGS_GLOW_ALPHA (two hex digits, default `18` ≈ 9% opacity) controls
+// the intensity — raise it for a stronger glow, lower it to soften further.
+export function hyprAccentGlow(accent: string): string {
+  const alpha = (typeof process !== "undefined" && process.env.AGS_GLOW_ALPHA) || "18"
+  return `rgba(${accent.replace(/^#/, "")}${String(alpha).replace(/^#/, "")})`
+}
