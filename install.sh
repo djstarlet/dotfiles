@@ -31,6 +31,8 @@
 #     node_modules), so no npm install step is needed for the bar config.
 #   - emerge may prompt for license/config changes; portage has no universal -y flag.
 #
+#   - Adds an 'ags-restart()' helper to ~/.bashrc for restarting the bar
+#     after config tweaks (idempotent).
 # Set INSTALL_DRY_RUN=1 to print every mutating command instead of running it.
 
 set -euo pipefail
@@ -492,6 +494,24 @@ deploy_dotfiles() {
 	SUMMARY_ACTIONS+=("deployed configs to ~/.config/hypr and ~/.config/ags (previous versions backed up)")
 }
 
+# -------------------------------------------------- convenience helper (bashrc)
+
+# ags-restart: restart the bar from a terminal after config tweaks.
+ensure_bashrc_helper() {
+	local bashrc="$HOME/.bashrc"
+	if grep -q "ags-restart()" "$bashrc" 2>/dev/null; then
+		info "ags-restart() already present in ${bashrc}."
+		return 0
+	fi
+	if (( DRY_RUN )); then
+		info "[dry-run] append ags-restart() helper to ${bashrc}"
+		return 0
+	fi
+	info "Adding ags-restart() helper to ${bashrc}..."
+	printf '\n# Restart the AGS bar (start-bar.sh pkills old bars + execs new one)\nags-restart() { ~/.config/ags/start-bar.sh &disown; }\n' >> "$bashrc"
+	SUMMARY_ACTIONS+=("added ags-restart() helper to ~/.bashrc")
+}
+
 # ------------------------------------------------------ bar bundle verification
 
 # The AGS CLI ships and bundles the 'ags/*' and 'gnim' JS modules itself (e.g.
@@ -708,6 +728,7 @@ main() {
 	ensure_ags
 	resolve_source_dir
 	deploy_dotfiles
+	ensure_bashrc_helper
 	verify_bar_bundle
 
 	info "Verifying installed commands..."
