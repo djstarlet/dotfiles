@@ -456,7 +456,7 @@ resolve_source_dir() {
 			script_dir=""
 	fi
 
-	if [[ -d ${script_dir}/hypr && -d ${script_dir}/ags/.config/ags ]]; then
+	if [[ -d ${script_dir}/hypr && -d ${script_dir}/ags/.config/ags && -d ${script_dir}/albert/.config/albert ]]; then
 		SRC_PATH="$script_dir"
 		SRC_LABEL="${script_dir} (local checkout)"
 	else
@@ -481,11 +481,12 @@ deploy_dotfiles() {
 	# monitors.conf, current-wallpaper.png, ags' ws-dot-colors.json and
 	# calendar auth. (A wholesale dir swap here used to wipe monitors.conf
 	# and reset the monitor layout on every re-run.)
-	mkdir -p "$HOME/.config/hypr" "$HOME/.config/ags"
+	mkdir -p "$HOME/.config/hypr" "$HOME/.config/ags" "$HOME/.config/albert"
 	cp -R "$SRC_PATH/hypr/." "$HOME/.config/hypr/"
 	cp -R "$SRC_PATH/ags/.config/ags/." "$HOME/.config/ags/"
-	info "Installed Hyprland + AGS configs (user-generated files preserved)"
-	SUMMARY_ACTIONS+=("deployed configs to ~/.config/hypr and ~/.config/ags (user files preserved)")
+	cp -R "$SRC_PATH/albert/.config/albert/." "$HOME/.config/albert/"
+	info "Installed Hyprland + AGS + Albert configs (user-generated files preserved)"
+	SUMMARY_ACTIONS+=("deployed configs to ~/.config/hypr, ~/.config/ags and ~/.config/albert (user files preserved)")
 }
 
 # -------------------------------------------------- convenience helper (bashrc)
