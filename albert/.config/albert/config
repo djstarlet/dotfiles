@@ -41,3 +41,8 @@ window_shadow_offset=8
 window_shadow_size=80
 window_spacing=7
 window_width=640
+; Remove the frosted-glass container — keep just the white input box.
+window_background_brush=transparent
+window_border_brush=transparent
+window_shadow_brush=transparent
+input_background_brush=#ffffff
