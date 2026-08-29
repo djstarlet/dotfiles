@@ -374,6 +374,26 @@ label.notif-empty {
   padding: 22px 0;
 }
 
+button.notif-dismiss {
+  min-width: 20px;
+  min-height: 20px;
+  padding: 0;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: transparent;
+}
+
+button.notif-dismiss:hover {
+  border-color: var(--bar-accent);
+  background: color-mix(in srgb, var(--bar-accent) 15%, transparent);
+}
+
+label.notif-dismiss-icon {
+  font-family: "Symbols Nerd Font", "Noto Sans Symbols 2", "Noto Sans Symbols", "Noto Sans", sans-serif;
+  font-size: 12px;
+  color: var(--bar-text-dim);
+}
+
 .power-confirm-row {
   min-width: 1px;
 }
