@@ -12,10 +12,12 @@
 # The distribution is detected automatically via /etc/os-release (no user input).
 # Supported families and package managers:
 #   Arch / Arch-based ....... pacman (+ yay bootstrapped from the AUR when missing)
-#   Debian / Ubuntu ......... apt-get   (AGS is built from source)
+#   Debian / Ubuntu ......... apt-get   (AGS is built from source, including
+#                                        the astal-notifd + quarrel libraries)
 #   Fedora .................. dnf       (AGS comes from the solopasha/hyprland COPR)
-#   Gentoo .................. emerge    (AGS is built from source; GURU only ships AGS v1,
-#                                        which is incompatible with this config)
+#   Gentoo .................. emerge    (AGS is built from source, including the
+#                                        astal-notifd + quarrel libraries; GURU only
+#                                        ships AGS v1, incompatible with this config)
 #
 # Notes / limitations:
 #   - Debian/Ubuntu: hyprland requires trixie or newer / universe enabled.
@@ -384,7 +386,7 @@ build_ags_from_source() {
 	srcdir="$(new_tmp)"
 
 	if (( DRY_RUN )); then
-		info "[dry-run] clone ${ASTAL_REPO_URL}; meson setup + sudo meson install for lib/astal/{io,gtk3,gtk4}"
+		info "[dry-run] clone ${ASTAL_REPO_URL}; meson setup + sudo meson install for lib/astal/{io,gtk3,gtk4,quarrel,notifd}"
 		info "[dry-run] clone ${AGS_REPO_URL}; npm install; meson setup build; sudo meson install -C build"
 	else
 		git clone --depth=1 "$ASTAL_REPO_URL" "$srcdir/astal"
@@ -397,6 +399,18 @@ build_ags_from_source() {
 				sudo meson install -C build
 			)
 		done
+		# astal-notifd (notification daemon lib, needed by the bar) requires
+		# quarrel-0.1, so quarrel must be built and installed first.
+		if [[ -d "$srcdir/astal/lib/quarrel" && -d "$srcdir/astal/lib/notifd" ]]; then
+			for component in lib/quarrel lib/notifd; do
+				info "Building Astal component: ${component##*/}"
+				(
+					cd "$srcdir/astal/$component"
+					meson setup build
+					sudo meson install -C build
+				)
+			done
+		fi
 		if [[ $PKG_MGR != pacman && $PKG_MGR != emerge ]]; then
 			sudo ldconfig
 		fi
