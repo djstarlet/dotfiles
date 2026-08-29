@@ -20,10 +20,10 @@ grimblast copysave "$target" "$out" || exit 1
 # Toast via mako (also lands in the bar's bell over dbus). The action
 # handler waits for the user to pick "Open folder" and opens pcmanfm.
 if command -v notify-send >/dev/null 2>&1; then
-  # Transient toast: -t expires it after 6s (conditions from
-  # notifications-watcher.py stay until dismissed/resolved).
+  # Persistent in the daemon (bell keeps it until dismissed); the popup
+  # auto-slides away after ~6s via Toasts.tsx.
   (
-    choice=$(notify-send -t 6000 -a "dotfiles-bar" -A "open=Open folder" \
+    choice=$(notify-send -a "dotfiles-bar" -A "open=Open folder" \
       "Screenshot saved" "$out" 2>/dev/null)
     [ "$choice" = "open" ] && pcmanfm "$dir"
   ) >/dev/null 2>&1 &
