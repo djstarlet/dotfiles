@@ -10,3 +10,4 @@ update-check.lock
 notifications.json
 notification-spool.jsonl
 dismissed-notifications.json
+notifications-state.json

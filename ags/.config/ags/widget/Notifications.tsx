@@ -60,8 +60,8 @@ function NotificationRow({ item, s }: { item: () => Notification | null; s: Stor
 export default function NotificationsWindow(gdkmonitor: Gdk.Monitor, monitorIndex: number, s: Store) {
   const { TOP, LEFT, RIGHT } = Astal.WindowAnchor
 
-  // Belt-and-braces: refetch from mako whenever the flyout opens (covers a
-  // missed dbus signal while the proxy was still connecting).
+  // Belt-and-braces: refetch from notifd whenever the flyout opens (covers
+  // a missed notified/resolved signal).
   createEffect(() => {
     if (s.notifOpen()) s.refreshNotifications()
   })
