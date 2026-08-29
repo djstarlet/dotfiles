@@ -19,6 +19,12 @@ function slideOutAndDismiss(revealer: Gtk.Revealer, n: Notification, s: Store) {
 // X) animates out then dismisses.
 const TOAST_VISIBLE_MS = 6000
 
+// Each notification's popup shows exactly once per session: once toasted,
+// a re-reveal on a later window remount would re-toast old notifications
+// whenever a new one arrives. (The bar IS the notifd daemon, so a bar
+// restart clears the daemon too - nothing stale survives to re-toast.)
+const toastedIds = new Set<string>()
+
 function ToastRow({ item, s, onAutoHide }: { item: () => Notification | null; s: Store; onAutoHide: (id: string) => void }) {
   let revealer: Gtk.Revealer
   let lastShownId = "_none_"
@@ -27,6 +33,8 @@ function ToastRow({ item, s, onAutoHide }: { item: () => Notification | null; s:
     const n = item()
     if (n && n.id !== lastShownId) {
       lastShownId = n.id
+      if (toastedIds.has(n.id)) return // already popped this session
+      toastedIds.add(n.id)
       revealer.reveal_child = false
       timeout(10, () => {
         if (item()?.id === lastShownId) revealer.reveal_child = true
