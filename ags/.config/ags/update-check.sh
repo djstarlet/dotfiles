@@ -24,14 +24,20 @@ flock -n 9 || exit 0
 # The same excludes must apply to local and remote trees.
 fingerprint() {
   local dir="$1"
-  find "$dir" -type f \
-    -not -path '*/@girs/*' -not -path '*/node_modules/*' \
-    -not -name 'ws-dot-colors.json' -not -name 'saved-presets.json' \
-    -not -name 'theme-colors.json' -not -name 'google-calendar-auth.json' \
-    -not -name 'update-check.json' -not -name 'update-check.cache' -not -name 'update-check.lock' \
-    -not -name 'dismissed-notifications.json' \
-    -not -name '*.tsbuildinfo' -not -name 'package-lock.json' \
-    -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-64
+  # -L: dereference symlinks - on machines where ~/.config/ags is a symlink
+  # into a dotfiles checkout, plain find would hash an empty file list.
+  # Hash from inside the tree so sha256sum sees relative paths: absolute
+  # paths differ between the installed bar and the extracted tarball.
+  (
+    cd "$dir" && find -L . -type f \
+      -not -path '*/@girs/*' -not -path '*/node_modules/*' \
+      -not -name 'ws-dot-colors.json' -not -name 'saved-presets.json' \
+      -not -name 'theme-colors.json' -not -name 'google-calendar-auth.json' \
+      -not -name 'update-check.json' -not -name 'update-check.cache' -not -name 'update-check.lock' \
+      -not -name 'dismissed-notifications.json' \
+      -not -name '*.tsbuildinfo' -not -name 'package-lock.json' \
+      -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-64
+  )
 }
 
 local_sha="$(fingerprint "$AGS_DIR")"
