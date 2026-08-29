@@ -4,23 +4,40 @@ import { execAsync } from "ags/process"
 import { createComputed } from "gnim"
 import type { Store, Notification } from "./store"
 
-// One notification row. `item` is a computed binding so rows appear/disappear
-// as notifications arrive (fixed row slots, matching the Settings presets
-// list pattern - the list itself is not reactive, per-row bindings are).
-function NotificationRow({ item }: { item: () => Notification | null }) {
+// One notification row: body opens the link, the ✕ dismisses this specific
+// notification (until the next check produces a new timestamp). `item` is a
+// computed binding so rows appear/disappear as notifications arrive (fixed
+// row slots, matching the Settings presets list pattern).
+function NotificationRow({ item, s }: { item: () => Notification | null; s: Store }) {
   return (
-    <button
-      class="action notif-row"
+    <box
+      orientation={Gtk.Orientation.HORIZONTAL}
+      spacing={4}
       visible={createComputed(() => item() !== null)}
-      onClicked={() => {
-        execAsync(["bash", "-lc", "xdg-open https://github.com/djstarlet/dotfiles/releases 2>/dev/null"]).catch(() => null)
-      }}
     >
-      <box orientation={Gtk.Orientation.VERTICAL} spacing={2} hexpand>
-        <label class="notif-title" xalign={0} label={createComputed(() => item()?.title ?? "")} />
-        <label class="notif-detail" xalign={0} wrap label={createComputed(() => item()?.detail ?? "")} />
-      </box>
-    </button>
+      <button
+        class="action notif-row"
+        hexpand
+        onClicked={() => {
+          execAsync(["bash", "-lc", "xdg-open https://github.com/djstarlet/dotfiles/releases 2>/dev/null"]).catch(() => null)
+        }}
+      >
+        <box orientation={Gtk.Orientation.VERTICAL} spacing={2} hexpand>
+          <label class="notif-title" xalign={0} label={createComputed(() => item()?.title ?? "")} />
+          <label class="notif-detail" xalign={0} wrap label={createComputed(() => item()?.detail ?? "")} />
+        </box>
+      </button>
+      <button
+        class="notif-dismiss"
+        valign={Gtk.Align.START}
+        onClicked={() => {
+          const n = item()
+          if (n) s.dismissNotification(n.id, n.checkedAt)
+        }}
+      >
+        <label class="notif-dismiss-icon" label={"\u{F00D}"} />
+      </button>
+    </box>
   )
 }
 
@@ -59,7 +76,7 @@ export default function NotificationsWindow(gdkmonitor: Gdk.Monitor, monitorInde
 
             <box orientation={Gtk.Orientation.VERTICAL} spacing={6}>
               {[0, 1, 2].map((i) => (
-                <NotificationRow item={createComputed(() => s.notifications()[i] ?? null)} />
+                <NotificationRow item={createComputed(() => s.notifications()[i] ?? null)} s={s} />
               ))}
             </box>
 

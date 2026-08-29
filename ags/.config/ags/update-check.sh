@@ -11,7 +11,7 @@ AGS_DIR="$HOME/.config/ags"
 OUT="$AGS_DIR/update-check.json"
 CACHE="$AGS_DIR/update-check.cache"          # cached remote fingerprint + mtime
 REPO_TARBALL="https://github.com/djstarlet/dotfiles/archive/refs/heads/main.tar.gz"
-CACHE_TTL=21600                              # 6h between tarball downloads
+CACHE_TTL=900                                # 15min between tarball downloads
 
 [ -d "$AGS_DIR" ] || exit 0
 
@@ -29,6 +29,7 @@ fingerprint() {
     -not -name 'ws-dot-colors.json' -not -name 'saved-presets.json' \
     -not -name 'theme-colors.json' -not -name 'google-calendar-auth.json' \
     -not -name 'update-check.json' -not -name 'update-check.cache' -not -name 'update-check.lock' \
+    -not -name 'dismissed-notifications.json' \
     -not -name '*.tsbuildinfo' -not -name 'package-lock.json' \
     -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-64
 }

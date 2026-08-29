@@ -1,5 +1,0 @@
-This is a test file for the bar's update watcher.
-
-Its presence makes the GitHub repo fingerprint differ from your installed
-bar, so update-check.sh reports update_available=true and the bell widget
-lights up. Delete this file (or run publish.sh again) once tested.
