@@ -61,9 +61,13 @@ export default function NotificationsWindow(gdkmonitor: Gdk.Monitor, monitorInde
   const { TOP, LEFT, RIGHT } = Astal.WindowAnchor
 
   // Belt-and-braces: refetch from notifd whenever the flyout opens (covers
-  // a missed notified/resolved signal).
+  // a missed notified/resolved signal), and mark every current notification
+  // as seen so the bell badge clears.
   createEffect(() => {
-    if (s.notifOpen()) s.refreshNotifications()
+    if (s.notifOpen()) {
+      s.refreshNotifications()
+      s.markAllSeen()
+    }
   })
 
   return (

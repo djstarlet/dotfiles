@@ -802,6 +802,7 @@ export function createStore() {
     toggleNotifications,
     refreshNotifications,
     dismissNotification,
+    markAllSeen,
     togglePowerMenu,
     toggleControl,
     toggleCalendar,
