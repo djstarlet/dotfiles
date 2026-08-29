@@ -388,6 +388,16 @@ label.notif-empty {
   padding: 22px 0;
 }
 
+button.notif-action {
+  min-width: 58px;
+  min-height: 22px;
+  padding: 2px 10px;
+  margin-top: 4px;
+  border-radius: 4px;
+  font-weight: 800;
+  font-size: 11px;
+}
+
 button.notif-dismiss {
   min-width: 20px;
   min-height: 20px;

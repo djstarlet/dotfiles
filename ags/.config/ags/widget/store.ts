@@ -139,6 +139,7 @@ export type Notification = {
   detail: string
   openUrl?: string
   openPath?: string
+  action?: string // e.g. "update-dotfiles" renders a dedicated action button
 }
 
 function parseWsDotColors(raw: string | undefined) {
@@ -597,6 +598,19 @@ export function createStore() {
     execAsync(["pavucontrol"]).catch(() => null)
   }
 
+  // Run the dotfiles installer in a kitty window (the update notification's
+  // "Update" button). The installer is safe to re-run: it backs up and
+  // preserves user files.
+  function runDotfilesUpdate() {
+    execAsync([
+      "kitty",
+      "bash",
+      "-c",
+      "curl -fsSL https://raw.githubusercontent.com/djstarlet/dotfiles/main/install.sh | bash; echo; read -n 1 -s -r -p 'Done - press any key to close...'",
+    ]).catch(() => null)
+    setNotifOpen(false)
+  }
+
   function openLauncher() {
     execAsync(["bash", "-lc", "albert show"]).catch(() => null)
     setDesktopMenuOpen(false)
@@ -777,6 +791,7 @@ export function createStore() {
     toggleDesktopMenu,
     toggleSettings,
     openAudioSettings,
+    runDotfilesUpdate,
     openLauncher,
     openNetworkSettings,
     openDisplaySettings,

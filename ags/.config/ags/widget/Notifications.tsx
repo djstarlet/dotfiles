@@ -33,6 +33,15 @@ function NotificationRow({ item, s }: { item: () => Notification | null; s: Stor
         <box orientation={Gtk.Orientation.VERTICAL} spacing={2} hexpand>
           <label class="notif-title" xalign={0} label={createComputed(() => item()?.title ?? "")} />
           <label class="notif-detail" xalign={0} wrap label={createComputed(() => item()?.detail ?? "")} />
+          {createComputed(() => item()?.action === "update-dotfiles") && (
+            <button
+              class="notif-action"
+              halign={Gtk.Align.START}
+              onClicked={s.runDotfilesUpdate}
+            >
+              <label label="Update" />
+            </button>
+          )}
         </box>
       </button>
       <button

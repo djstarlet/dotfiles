@@ -47,16 +47,15 @@ try:
     with open(os.path.join(AGS, "update-check.json")) as f:
         u = json.load(f)
     if u.get("update_available"):
-        checked = u.get("checked_at", "")
         entries.append({
             "id": "dotfiles-update",
-            "sig": checked,
+            # sig = remote content hash: a dismissal sticks until the remote
+            # actually changes (checked_at would defeat dismissal every run).
+            "sig": u.get("remote_sha", ""),
             "title": "Dotfiles update available",
-            "detail": (
-                "Your bar differs from the latest release (checked %s). Update with: "
-                "curl -fsSL https://raw.githubusercontent.com/djstarlet/dotfiles/main/install.sh | bash"
-            ) % checked,
+            "detail": "Your bar differs from the latest release (checked %s)." % u.get("checked_at", ""),
             "openUrl": "https://github.com/djstarlet/dotfiles/releases",
+            "action": "update-dotfiles",
         })
 except Exception:
     pass
