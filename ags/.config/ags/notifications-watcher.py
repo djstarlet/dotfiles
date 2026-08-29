@@ -49,11 +49,10 @@ try:
     if u.get("update_available"):
         entries.append({
             "id": "dotfiles-update",
-            # sig = remote content hash: a dismissal sticks until the remote
-            # actually changes (checked_at would defeat dismissal every run).
-            "sig": u.get("remote_sha", ""),
+            # sig = released version: a dismissal sticks until a new release.
+            "sig": u.get("remote_version", ""),
             "title": "Dotfiles update available",
-            "detail": "Your bar differs from the latest release (checked %s)." % u.get("checked_at", ""),
+            "detail": "Version %s is out (you have %s)." % (u.get("remote_version", "?"), u.get("local_version", "?")),
             "openUrl": "https://github.com/djstarlet/dotfiles/releases",
             "action": "update-dotfiles",
         })
