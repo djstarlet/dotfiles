@@ -140,6 +140,7 @@ export type Notification = {
   openUrl?: string
   openPath?: string
   action?: string // "update-dotfiles" renders the Update button
+  image?: string // image-path hint (e.g. screenshot thumbnail)
 }
 
 function parseWsDotColors(raw: string | undefined) {
@@ -232,6 +233,8 @@ export function createStore() {
       if (!summary) continue
       const body = String(n.body ?? "")
       const item: Notification = { id: String(n.id), title: summary, detail: body }
+      const img = String(n.image ?? "")
+      if (img && img.startsWith("/")) item.image = img
       if (summary === "Screenshot saved" && body) {
         // body carries the file path; open its folder in pcmanfm
         item.openPath = body.replace(/[^/]*$/, "")

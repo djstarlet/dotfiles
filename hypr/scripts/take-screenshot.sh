@@ -23,7 +23,7 @@ if command -v notify-send >/dev/null 2>&1; then
   # Persistent in the daemon (bell keeps it until dismissed); the popup
   # auto-slides away after ~6s via Toasts.tsx.
   (
-    choice=$(notify-send -a "dotfiles-bar" -A "open=Open folder" \
+    choice=$(notify-send -i "$out" -a "dotfiles-bar" -A "open=Open folder" \
       "Screenshot saved" "$out" 2>/dev/null)
     [ "$choice" = "open" ] && pcmanfm "$dir"
   ) >/dev/null 2>&1 &

@@ -73,6 +73,13 @@ function ToastRow({ item, s, onAutoHide }: { item: () => Notification | null; s:
             <label class="notif-title" xalign={0} label={createComputed(() => item()?.title ?? "")} />
             <label class="notif-detail" xalign={0} wrap label={createComputed(() => item()?.detail ?? "")} />
           </box>
+          <image
+            class="toast-thumb"
+            file={createComputed(() => item()?.image ?? "")}
+            pixelSize={56}
+            valign={Gtk.Align.CENTER}
+            visible={createComputed(() => Boolean(item()?.image))}
+          />
         </button>
         <button
           class="notif-dismiss"
