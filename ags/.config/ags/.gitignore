@@ -1,3 +1,12 @@
 node_modules/
 @girs/
 google-calendar-auth.json
+saved-presets.json
+theme-colors.json
+ws-dot-colors.json
+update-check.json
+update-check.cache
+update-check.lock
+notifications.json
+notification-spool.jsonl
+dismissed-notifications.json
