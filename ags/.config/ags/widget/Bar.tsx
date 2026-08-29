@@ -10,6 +10,7 @@ import SettingsWindows from "./Settings"
 import CalendarWindows from "./Calendar"
 import ControlCenterWindow from "./ControlCenter"
 import NotificationsWindow from "./Notifications"
+import NotificationToasts from "./Toasts"
 import { ClockElement } from "./Clock"
 import { WorkspacesElement } from "./Workspaces"
 
@@ -266,6 +267,8 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
       {config.controlCenter && ControlCenterWindow(gdkmonitor, monitorIndex, s)}
 
       {config.notifications && NotificationsWindow(gdkmonitor, monitorIndex, s)}
+
+      {config.notifications && NotificationToasts(gdkmonitor, monitorIndex, s)}
 
       {config.powerMenu && PowerMenuWindow(gdkmonitor, monitorIndex, s)}
 

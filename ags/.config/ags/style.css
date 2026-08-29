@@ -420,6 +420,35 @@ label.notif-dismiss-icon {
   color: var(--bar-text-dim);
 }
 
+/* Toast popups (Toasts.tsx) - same gradient recipe as .flyout */
+.toast {
+  min-width: 360px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--bar-bg-dark);
+  background: linear-gradient(180deg, var(--bar-bg-light) 0%, var(--bar-bg-dark) 100%);
+  box-shadow: 0 12px 22px rgba(7, 12, 20, 0.34), 0 5px 12px rgba(17, 31, 49, 0.22), 0 0 16px color-mix(in srgb, var(--bar-accent) 12%, transparent);
+  color: var(--bar-text);
+  font-family: "Liberation Sans", sans-serif;
+}
+
+.toast * {
+  font-family: "Liberation Sans", sans-serif;
+}
+
+button.toast-body {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  border-radius: 6px;
+  text-align: left;
+}
+
+button.toast-body:hover {
+  background: color-mix(in srgb, #ffffff 22%, transparent);
+}
+
 .power-confirm-row {
   min-width: 1px;
 }
