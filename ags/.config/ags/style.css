@@ -137,6 +137,21 @@ button.bar-cap-button label.power-icon {
   margin: 0 0 0 1px;
 }
 
+button.bar-cap-button label.notif-bell {
+  font-family: "Symbols Nerd Font", "Noto Sans Symbols 2", "Noto Sans Symbols", "Noto Sans", sans-serif;
+  font-size: 16px;
+  padding: 0;
+  margin: 0 0 0 1px;
+}
+
+label.notif-badge {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--bar-accent);
+  text-shadow: 0 0 5px color-mix(in srgb, var(--bar-accent) 70%, transparent);
+  margin: 1px 1px 0 0;
+}
+
 button.bar-cap-button:active,
 button.bar-cap-button.active {
   border-color: var(--bar-accent);
@@ -162,9 +177,11 @@ label.power-icon {
 button.bar-cap-button:hover label.gear-icon,
 button.bar-cap-button:hover label.power-icon,
 button.bar-cap-button:hover label.desktop-menu-icon,
+button.bar-cap-button:hover label.notif-bell,
 button.bar-cap-button.active label.gear-icon,
 button.bar-cap-button.active label.power-icon,
-button.bar-cap-button.active label.desktop-menu-icon {
+button.bar-cap-button.active label.desktop-menu-icon,
+button.bar-cap-button.active label.notif-bell {
   color: var(--bar-bg);
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.72);
 }
@@ -327,6 +344,34 @@ window.FlyoutWindow .power-menu-flyout {
 
 .control-flyout {
   min-width: 380px;
+}
+
+.notif-flyout {
+  min-width: 380px;
+}
+
+button.notif-row {
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
+label.notif-title {
+  font-weight: 800;
+  font-size: 12px;
+  color: var(--bar-text);
+}
+
+label.notif-detail {
+  font-size: 11px;
+  color: var(--bar-text-dim);
+  line-height: 1.35;
+}
+
+label.notif-empty {
+  font-size: 12px;
+  color: var(--bar-text-dim);
+  padding: 22px 0;
 }
 
 .power-confirm-row {
