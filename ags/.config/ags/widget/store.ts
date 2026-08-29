@@ -132,9 +132,14 @@ function parseWorkspaceIds(raw: string) {
 export const DEFAULT_WS_DOT_COLORS = theme.workspaceDotColors
 export type SavedPreset = ThemeConfig["presets"][number]
 
-export type Notification = { id: string; title: string; detail: string; checkedAt?: string }
-
-type UpdateCheck = { update_available: boolean; checked_at: string; local_sha: string; remote_sha: string }
+export type Notification = {
+  id: string
+  sig?: string // condition fingerprint; a change re-alerts after dismissal
+  title: string
+  detail: string
+  openUrl?: string
+  openPath?: string
+}
 
 function parseWsDotColors(raw: string | undefined) {
   if (!raw) return null
@@ -208,13 +213,14 @@ export function createStore() {
     },
   )
 
-  // update-check.sh (fired from start-bar.sh and re-run by this poll, its
-  // 15min cache keeping that cheap) fingerprints the installed bar against
-  // the latest djstarlet/dotfiles release into update-check.json.
-  const updateCheck = createPoll<UpdateCheck | null>(null, 60000, ["bash", "-c", "$HOME/.config/ags/update-check.sh >/dev/null 2>&1; cat $HOME/.config/ags/update-check.json 2>/dev/null || true"], (out, prev) => {
+  // notifications-watcher.py (fired from start-bar.sh and re-run by this
+  // poll) gathers all notification sources into notifications.json.
+  const notificationPoll = createPoll<Notification[]>([], 60000, ["bash", "-c", "$HOME/.config/ags/notifications-watcher.py >/dev/null 2>&1; cat $HOME/.config/ags/notifications.json 2>/dev/null || true"], (out, prev) => {
     try {
       const parsed = JSON.parse(out)
-      if (parsed && typeof parsed.update_available === "boolean") return parsed as UpdateCheck
+      if (Array.isArray(parsed)) {
+        return parsed.filter((n) => n && typeof n.id === "string" && typeof n.title === "string") as Notification[]
+      }
     } catch {
       // Not written yet (first watcher run still in flight).
     }
@@ -259,8 +265,8 @@ export function createStore() {
   const [wsDotColors, setWsDotColors] = createState<string[]>(envWsDotColors ?? [...DEFAULT_WS_DOT_COLORS])
   const [savedPresets, setSavedPresets] = createState<SavedPreset[]>([])
 
-  // Manually dismissed notifications: id -> checkedAt at dismiss time. A new
-  // check (new timestamp) re-alerts; the map persists across bar restarts.
+  // Manually dismissed notifications: id -> sig at dismiss time. A changed
+  // condition (new sig) re-alerts; the map persists across bar restarts.
   const [dismissed, setDismissed] = createState<Record<string, string>>({})
   execAsync(["bash", "-c", "cat $HOME/.config/ags/dismissed-notifications.json 2>/dev/null || true"])
     .then((out) => {
@@ -318,18 +324,8 @@ export function createStore() {
 
   // ── Computeds ──────────────────────────────────────────────────────────────
   const notifications = createComputed<Notification[]>(() => {
-    const u = updateCheck()
-    const list: Notification[] = []
-    if (u?.update_available) {
-      list.push({
-        id: "dotfiles-update",
-        checkedAt: u.checked_at,
-        title: "Dotfiles update available",
-        detail: `Your bar differs from the latest release (checked ${u.checked_at}). Update with: curl -fsSL https://raw.githubusercontent.com/djstarlet/dotfiles/main/install.sh | bash`,
-      })
-    }
     const gone = dismissed()
-    return list.filter((n) => gone[n.id] !== (n.checkedAt ?? ""))
+    return notificationPoll().filter((n) => gone[n.id] !== (n.sig ?? ""))
   })
   const hasNotifications = createComputed(() => notifications().length > 0)
   const popupOpen = createComputed(() => controlOpen() || notifOpen() || calendarOpen() || desktopMenuOpen() || powerMenuOpen() || settingsOpen())
@@ -420,9 +416,9 @@ export function createStore() {
     }
   }
 
-  function dismissNotification(id: string, checkedAt?: string) {
-    setDismissed((prev) => ({ ...prev, [id]: checkedAt ?? "" }))
-    const payload = JSON.stringify({ ...dismissed(), [id]: checkedAt ?? "" })
+  function dismissNotification(id: string, sig?: string) {
+    setDismissed((prev) => ({ ...prev, [id]: sig ?? "" }))
+    const payload = JSON.stringify({ ...dismissed(), [id]: sig ?? "" })
     execAsync(["bash", "-c", `printf '%s' '${payload}' > $HOME/.config/ags/dismissed-notifications.json`]).catch(() => null)
   }
 
