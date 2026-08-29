@@ -43,19 +43,19 @@
 
 Gentoo - ags, albert, librewolf, wl-clip-persist, grimblast, nwg-displays are in GURU/overlays
 
-`emerge hyprland gui-libs/gtk4-layer-shell net-libs/nodejs net-misc/curl dev-lang/python x11-terms/kitty x11-misc/pcmanfm gui-apps/swaybg gui-apps/wl-clipboard media-video/wireplumber media-video/pipewire net-misc/networkmanager xfce-base/xfce4-settings media-sound/pavucontrol gui-apps/grim gui-apps/slurp x11-libs/libnotify gui-apps/mako media-fonts/symbols-nerd-font app-shells/bash-completion`
+`emerge hyprland gui-libs/gtk4-layer-shell net-libs/nodejs net-misc/curl dev-lang/python x11-terms/kitty x11-misc/pcmanfm gui-apps/swaybg gui-apps/wl-clipboard media-video/wireplumber media-video/pipewire net-misc/networkmanager xfce-base/xfce4-settings media-sound/pavucontrol gui-apps/grim gui-apps/slurp x11-libs/libnotify media-fonts/symbols-nerd-font app-shells/bash-completion`
 
 Arch - ags, albert-bin, grimblast, blesh are in the AUR
 
-`sudo pacman -S --needed hyprland gtk4 gtk4-layer-shell nodejs npm curl python wtype kitty librewolf pcmanfm swaybg wl-clipboard wl-clip-persist wireplumber pipewire networkmanager xfce4-settings pavucontrol grim slurp libnotify mako ttf-nerd-fonts-symbols nwg-displays bash-completion brightnessctl ddcutil`
+`sudo pacman -S --needed hyprland gtk4 gtk4-layer-shell nodejs npm curl python wtype kitty librewolf pcmanfm swaybg wl-clipboard wl-clip-persist wireplumber pipewire networkmanager xfce4-settings pavucontrol grim slurp libnotify ttf-nerd-fonts-symbols nwg-displays bash-completion brightnessctl ddcutil`
 
 Debian / Ubuntu (hyprland needs trixie+/universe) - albert: OBS repo, librewolf: flatpak, grimblast: install script from https://github.com/hyprwm/contrib (needs jq, put it in PATH), nwg-displays: manual install from https://github.com/nwg-piotr/nwg-displays
 
-`sudo apt install hyprland gtk4-layer-shell-dev libgtk-4-dev wtype nodejs npm curl python3 kitty pcmanfm swaybg wl-clipboard wireplumber pipewire network-manager xfce4-settings pavucontrol grim slurp libnotify-bin mako-notifier jq bash-completion ble.sh brightnessctl ddcutil`
+`sudo apt install hyprland gtk4-layer-shell-dev libgtk-4-dev wtype nodejs npm curl python3 kitty pcmanfm swaybg wl-clipboard wireplumber pipewire network-manager xfce4-settings pavucontrol grim slurp libnotify-bin jq bash-completion ble.sh brightnessctl ddcutil`
 
 Fedora (hyprland 41+) - hyprland-contrib (grimblast): COPR, nwg-displays: community COPR (e.g. tofik/nwg-shell) or manual from https://github.com/nwg-piotr/nwg-displays, albert: OBS, librewolf: flatpak, wl-clip-persist must be compiled from source: https://github.com/Linus789/wl-clip-persist.git
 
-`sudo dnf install hyprland gtk4 gtk4-layer-shell gtk4-layer-shell-devel wtype nodejs npm curl python3 kitty pcmanfm swaybg wl-clipboard wireplumber pipewire NetworkManager xfce4-settings pavucontrol grim slurp libnotify mako bash-completion brightnessctl ddcutil`
+`sudo dnf install hyprland gtk4 gtk4-layer-shell gtk4-layer-shell-devel wtype nodejs npm curl python3 kitty pcmanfm swaybg wl-clipboard wireplumber pipewire NetworkManager xfce4-settings pavucontrol grim slurp libnotify bash-completion brightnessctl ddcutil`
 
 
 for Debian/Fedora repos: install Nerd Fonts manually from https://github.com/ryanoasis/nerd-fonts
@@ -91,7 +91,6 @@ wtype
 
 grimblast (screenshot capture; the keybinds route through `~/.config/hypr/scripts/take-screenshot.sh`, which also feeds the bar's notification bell)
 
-mako (notification daemon - started via `exec-once`; shows toast popups for notify-send and grimblast --notify)
 
 hyprswitch (optional GUI window switcher - AUR source build, not installed by default)
 
