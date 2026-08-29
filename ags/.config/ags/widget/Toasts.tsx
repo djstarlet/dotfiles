@@ -13,38 +13,69 @@ function slideOutAndDismiss(revealer: Gtk.Revealer, n: Notification, s: Store) {
 
 const TOAST_VISIBLE_MS = 6000
 
-// Each notification's popup shows exactly once per session: once toasted,
-// a re-reveal on a later window remount would re-toast old notifications
-// whenever a new one arrives.
+// Each notification's popup shows exactly once per session: once toasted, a
+// later remount must not replay it.
 const toastedIds = new Set<string>()
 
-function ToastRow({ item, s, onAutoHide }: { item: () => Notification | null; s: Store; onAutoHide: (id: string) => void }) {
+// `onShown`/`onHidden` report when a toast is actually on screen. The window's
+// `visible` MUST key off this and never off s.notifications(): notifd retains
+// every notification until it is dismissed or its own timeout expires, so a
+// "daemon has notifications" predicate is permanently true and the OVERLAY
+// surface never unmaps - leaving an invisible, click-eating layer.
+function ToastRow({
+  item,
+  s,
+  onShown,
+  onHidden,
+}: {
+  item: () => Notification | null
+  s: Store
+  onShown: (id: string) => void
+  onHidden: (id: string) => void
+}) {
   let revealer: Gtk.Revealer
   let lastShownId = "_none_"
+
+  const clear = () => {
+    const id = lastShownId
+    lastShownId = "_none_"
+    revealer.reveal_child = false
+    // let the slide-out finish before the surface goes away
+    if (id !== "_none_") timeout(260, () => onHidden(id))
+  }
 
   createEffect(() => {
     const n = item()
     if (n && n.id !== lastShownId) {
+      if (lastShownId !== "_none_") onHidden(lastShownId)
       lastShownId = n.id
-      if (toastedIds.has(n.id)) return // already popped this session
+      if (toastedIds.has(n.id)) {
+        revealer.reveal_child = false
+        return // already popped this session
+      }
       toastedIds.add(n.id)
       revealer.reveal_child = false
       timeout(10, () => {
-        if (item()?.id === lastShownId) revealer.reveal_child = true
+        if (item()?.id !== lastShownId) return
+        revealer.reveal_child = true
+        onShown(lastShownId)
       })
-      // Popup-only hide: slide away but leave the notification in the
-      // daemon so the bell keeps it until dismissed.
+      // Popup-only hide: slide away but leave the notification in the daemon
+      // so the bell keeps it until dismissed.
       timeout(TOAST_VISIBLE_MS, () => {
-        if (item()?.id === lastShownId) {
-          revealer.reveal_child = false
-          onAutoHide(n.id)
-        }
+        if (item()?.id === lastShownId) clear()
       })
     } else if (!n) {
-      lastShownId = "_none_"
-      revealer.reveal_child = false
+      clear()
     }
   })
+
+  const dismiss = () => {
+    const n = item()
+    if (!n) return
+    clear()
+    slideOutAndDismiss(revealer, n, s)
+  }
 
   return (
     <revealer
@@ -56,44 +87,35 @@ function ToastRow({ item, s, onAutoHide }: { item: () => Notification | null; s:
       vexpand={false}
     >
       <box class="toast" orientation={Gtk.Orientation.HORIZONTAL} spacing={4}>
-        <button
-          class="toast-body"
-          hexpand
-          onClicked={() => {
-            const n = item()
-            if (n) slideOutAndDismiss(revealer, n, s)
-          }}
-        >
-          <box orientation={Gtk.Orientation.VERTICAL} spacing={2} hexpand>
-            <label class="notif-title" xalign={0} label={createComputed(() => item()?.title ?? "")} />
-            <label class="notif-detail" xalign={0} wrap label={createComputed(() => item()?.detail ?? "")} />
+        {/* GtkButton is a Bin: it holds exactly ONE child. Two children used to
+            silently drop the label box, so text and thumbnail go inside a
+            single wrapper (same shape as the notifications flyout row). */}
+        <button class="toast-body" hexpand onClicked={dismiss}>
+          <box orientation={Gtk.Orientation.HORIZONTAL} spacing={4} hexpand>
+            <box orientation={Gtk.Orientation.VERTICAL} spacing={2} hexpand>
+              <label class="notif-title" xalign={0} label={createComputed(() => item()?.title ?? "")} />
+              <label class="notif-detail" xalign={0} wrap label={createComputed(() => item()?.detail ?? "")} />
+            </box>
+            <box
+              class="toast-thumb"
+              widthRequest={80}
+              heightRequest={80}
+              valign={Gtk.Align.CENTER}
+              visible={createComputed(() => Boolean(item()?.image))}
+              $={(self) => {
+                const pic = new Gtk.Picture()
+                pic.set_content_fit(Gtk.ContentFit.COVER)
+                pic.set_size_request(80, 80)
+                self.append(pic)
+                createEffect(() => {
+                  const f = item()?.image
+                  if (f) pic.set_filename(f)
+                })
+              }}
+            />
           </box>
-          <box
-            class="toast-thumb"
-            widthRequest={80}
-            heightRequest={80}
-            valign={Gtk.Align.CENTER}
-            visible={createComputed(() => Boolean(item()?.image))}
-            $={(self) => {
-              const pic = new Gtk.Picture()
-              pic.set_content_fit(Gtk.ContentFit.COVER)
-              pic.set_size_request(80, 80)
-              self.append(pic)
-              createEffect(() => {
-                const f = item()?.image
-                if (f) pic.set_filename(f)
-              })
-            }}
-          />
         </button>
-        <button
-          class="notif-dismiss"
-          valign={Gtk.Align.START}
-          onClicked={() => {
-            const n = item()
-            if (n) slideOutAndDismiss(revealer, n, s)
-          }}
-        >
+        <button class="notif-dismiss" valign={Gtk.Align.START} onClicked={dismiss}>
           <label class="notif-dismiss-icon" label={"\u{F00D}"} />
         </button>
       </box>
@@ -101,45 +123,48 @@ function ToastRow({ item, s, onAutoHide }: { item: () => Notification | null; s:
   )
 }
 
-// Separate toast window, top-right. The `$` size cap keeps the surface from
-// ballooning to the anchor extent (this GTK layer-shell build sizes anchored
-// windows to their full edge otherwise, which eats clicks).
+// Toast window, top-right. Anchored TOP|RIGHT only: adding LEFT forces the
+// surface to the full anchor extent (a 1280px-wide click sink). Margins use
+// Astal.Window's own margin_* properties - the GtkWidget margin-end would add
+// to the surface size instead of offsetting it.
 export default function NotificationToasts(gdkmonitor: Gdk.Monitor, monitorIndex: number, s: Store) {
-  const { TOP, LEFT, RIGHT } = Astal.WindowAnchor
+  const { TOP, RIGHT } = Astal.WindowAnchor
 
-  const [hidden, setHidden] = createState<Record<string, boolean>>({})
-  const anyVisible = createComputed(() => s.notifications().some((n) => !hidden()[n.id]))
-  // Raw state for the visible prop: computed bindings don't drive window
-  // mapping in this build (the bar's visible uses a state and unmaps fine).
-  const [toastVisible, setToastVisible] = createState(false)
-  createEffect(() => setToastVisible(anyVisible()))
+  const [shown, setShown] = createState<Record<string, boolean>>({})
+  const anyOnScreen = createComputed(() => Object.keys(shown()).length > 0)
+  const mark = (id: string, on: boolean) =>
+    setShown((prev) => {
+      if (Boolean(prev[id]) === on) return prev
+      const next = { ...prev }
+      if (on) next[id] = true
+      else delete next[id]
+      return next
+    })
 
   return (
     <window
-      visible={toastVisible}
+      visible={anyOnScreen}
       name={`ags-toast-${monitorIndex}`}
       namespace="ags-toast"
       class="ToastWindow"
       gdkmonitor={gdkmonitor}
-      anchor={TOP | LEFT | RIGHT}
+      anchor={TOP | RIGHT}
       layer={Astal.Layer.OVERLAY}
       keymode={Astal.Keymode.NONE}
       exclusivity={Astal.Exclusivity.IGNORE}
-      marginTop={42}
-      marginEnd={18}
+      margin={18}
+      margin_top={42}
       application={app}
     >
-      <box hexpand>
-        <button class="DismissSurface" hexpand vexpand canTarget onClicked={s.closeFlyouts} />
-        <box orientation={Gtk.Orientation.VERTICAL} spacing={8} halign={Gtk.Align.END} valign={Gtk.Align.START} vexpand={false} heightRequest={340}>
+      <box orientation={Gtk.Orientation.VERTICAL} spacing={8} valign={Gtk.Align.START} halign={Gtk.Align.END}>
         {[0].map((i) => (
           <ToastRow
             item={createComputed(() => s.notifications()[i] ?? null)}
             s={s}
-            onAutoHide={(id) => setHidden((prev) => ({ ...prev, [id]: true }))}
+            onShown={(id) => mark(id, true)}
+            onHidden={(id) => mark(id, false)}
           />
         ))}
-        </box>
       </box>
     </window>
   )

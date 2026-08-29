@@ -11,10 +11,11 @@ export const config: Record<WidgetId, boolean> = {
   settings: true,
   displaySettings: false,
   notifications: true,
-  // Toast popups: the toast window surface never unmaps in this
-  // gtk4-layer-shell build (leaves a click-eating remnant). Off by default;
-  // the bell + flyout notification center works without it.
-  toasts: false,
+  // Toast popups. The window's `visible` must key off "a toast is on
+  // screen" (reported by ToastRow), never off s.notifications() - notifd
+  // retains notifications until dismissed, so a "has notifications"
+  // predicate keeps the OVERLAY surface mapped forever.
+  toasts: true,
 }
 
 // settings' only launcher is the mini-gear inside Control Center

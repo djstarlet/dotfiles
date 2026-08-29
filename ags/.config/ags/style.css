@@ -361,7 +361,6 @@ button.notif-row-body {
   box-shadow: none;
   padding: 8px 2px 8px 10px;
   border-radius: 6px;
-  text-align: left;
 }
 
 button.notif-row-body:hover {
@@ -442,7 +441,6 @@ button.toast-body {
   box-shadow: none;
   padding: 0;
   border-radius: 6px;
-  text-align: left;
 }
 
 button.toast-body:hover {
