@@ -1,5 +1,6 @@
 import app from "ags/gtk4/app"
 import { Astal, Gtk, Gdk } from "ags/gtk4"
+import GdkPixbuf from "gi://GdkPixbuf"
 import { timeout } from "ags/time"
 import { createComputed, createEffect, createState } from "gnim"
 import type { Store, Notification } from "./store"
@@ -98,18 +99,34 @@ function ToastRow({
             </box>
             <box
               class="toast-thumb"
-              widthRequest={40}
-              heightRequest={40}
+              widthRequest={80}
+              heightRequest={80}
               valign={Gtk.Align.CENTER}
               visible={createComputed(() => Boolean(item()?.image))}
               $={(self) => {
-                const pic = new Gtk.Picture()
-                pic.set_content_fit(Gtk.ContentFit.COVER)
-                pic.set_size_request(40, 40)
-                self.append(pic)
+                // Gtk.Picture ignores size_request for large files in this
+                // GTK build - load + scale the pixbuf explicitly instead.
+                const img = new Gtk.Image()
+                img.set_size_request(80, 80)
+                self.append(img)
                 createEffect(() => {
                   const f = item()?.image
-                  if (f) pic.set_filename(f)
+                  if (!f) return
+                  try {
+                    // Cover-crop into an exact 80x80 square: at_scale with
+                    // preserve_aspect would shrink a wide screenshot to a
+                    // short sliver. Scale to cover, then center-crop.
+                    const pb = GdkPixbuf.Pixbuf.new_from_file(f)
+                    const full = Math.max(80, Math.min(pb.get_width(), pb.get_height()))
+                    const scale = Math.max(80 / pb.get_width(), 80 / pb.get_height())
+                    const w = Math.round(pb.get_width() * scale)
+                    const h = Math.round(pb.get_height() * scale)
+                    const scaled = pb.scale_simple(w, h, GdkPixbuf.InterpType.BILINEAR)
+                    const crop = scaled.new_sub_pixbuf((w - 80) / 2, (h - 80) / 2, 80, 80)
+                    img.set_from_pixbuf(crop)
+                  } catch {
+                    // unreadable image - leave the thumbnail empty
+                  }
                 })
               }}
             />
