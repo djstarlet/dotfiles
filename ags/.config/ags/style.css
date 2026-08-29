@@ -102,7 +102,8 @@ button.clock {
 
 button.mini-gear,
 button.action,
-button.round-icon {
+button.round-icon,
+box.notif-bubble {
   border-radius: 4px;
   border: 1px solid var(--bar-bg-dark);
   border-top-color: color-mix(in srgb, #ffffff 40%, var(--bar-bg-light));
@@ -350,10 +351,23 @@ window.FlyoutWindow .power-menu-flyout {
   min-width: 380px;
 }
 
-button.notif-row {
-  text-align: left;
-  padding: 8px 10px;
+box.notif-bubble {
   border-radius: 6px;
+}
+
+button.notif-row-body {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 8px 2px 8px 10px;
+  border-radius: 6px;
+  text-align: left;
+}
+
+button.notif-row-body:hover {
+  background: color-mix(in srgb, #ffffff 30%, transparent);
+  border: none;
+  box-shadow: none;
 }
 
 label.notif-title {
@@ -378,9 +392,11 @@ button.notif-dismiss {
   min-width: 20px;
   min-height: 20px;
   padding: 0;
+  margin: 2px 4px 0 0;
   border-radius: 4px;
   border: 1px solid transparent;
   background: transparent;
+  box-shadow: none;
 }
 
 button.notif-dismiss:hover {

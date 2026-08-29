@@ -4,20 +4,21 @@ import { execAsync } from "ags/process"
 import { createComputed } from "gnim"
 import type { Store, Notification } from "./store"
 
-// One notification row: body opens the row's action (folder in pcmanfm for
-// screenshots / openPath, URL otherwise), the ✕ dismisses until the
-// condition's sig changes. `item` is a computed binding so rows appear and
-// disappear as notifications arrive (fixed row slots, matching the Settings
-// presets list pattern).
+// One notification row: the bubble (box.notif-bubble) carries the raised
+// look; the body button inside is flat and opens the row's action (folder in
+// pcmanfm for screenshots / openPath, URL otherwise). The X dismisses until
+// the condition's sig changes. `item` is a computed binding so rows appear
+// and disappear as notifications arrive (fixed row slots, matching the
+// Settings presets list pattern).
 function NotificationRow({ item, s }: { item: () => Notification | null; s: Store }) {
   return (
     <box
+      class="notif-bubble"
       orientation={Gtk.Orientation.HORIZONTAL}
-      spacing={4}
       visible={createComputed(() => item() !== null)}
     >
       <button
-        class="action notif-row"
+        class="notif-row-body"
         hexpand
         onClicked={() => {
           const n = item()
