@@ -98,14 +98,14 @@ function ToastRow({
             </box>
             <box
               class="toast-thumb"
-              widthRequest={80}
-              heightRequest={80}
+              widthRequest={40}
+              heightRequest={40}
               valign={Gtk.Align.CENTER}
               visible={createComputed(() => Boolean(item()?.image))}
               $={(self) => {
                 const pic = new Gtk.Picture()
                 pic.set_content_fit(Gtk.ContentFit.COVER)
-                pic.set_size_request(80, 80)
+                pic.set_size_request(40, 40)
                 self.append(pic)
                 createEffect(() => {
                   const f = item()?.image
