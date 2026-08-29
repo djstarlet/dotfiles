@@ -13,19 +13,31 @@ function slideOutAndDismiss(revealer: Gtk.Revealer, n: Notification, s: Store) {
 }
 
 // One toast row: a Revealer (SLIDE_LEFT, 220ms) wrapping the .toast bubble.
-// Appears by revealing 10ms after mount; clicking the body (not the X)
-// animates out then dismisses; the X dismisses through the same animation.
+// Appears by revealing 10ms after mount; the popup auto-slides away after
+// TOAST_VISIBLE_MS WITHOUT dismissing the notifd notification, so it stays
+// in the bell until the user acts (X or click). Clicking the body (not the
+// X) animates out then dismisses.
+const TOAST_VISIBLE_MS = 6000
+
 function ToastRow({ item, s }: { item: () => Notification | null; s: Store }) {
   let revealer: Gtk.Revealer
+  let lastShownId = "_none_"
 
   createEffect(() => {
     const n = item()
-    if (n) {
+    if (n && n.id !== lastShownId) {
+      lastShownId = n.id
       revealer.reveal_child = false
       timeout(10, () => {
-        if (item()) revealer.reveal_child = true
+        if (item()?.id === lastShownId) revealer.reveal_child = true
       })
-    } else {
+      // Popup-only hide: slide away but leave the notification in the
+      // daemon so the bell keeps it until dismissed.
+      timeout(TOAST_VISIBLE_MS, () => {
+        if (item()?.id === lastShownId) revealer.reveal_child = false
+      })
+    } else if (!n) {
+      lastShownId = "_none_"
       revealer.reveal_child = false
     }
   })
