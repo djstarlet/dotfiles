@@ -258,6 +258,7 @@ export function createStore() {
   // ── Shared state ───────────────────────────────────────────────────────────
   const [controlOpen, setControlOpen] = createState(false)
   const [notifOpen, setNotifOpen] = createState(false)
+  const [toastActive, setToastActive] = createState(false)
   const [powerMenuOpen, setPowerMenuOpen] = createState(false)
   const [pendingPowerAction, setPendingPowerAction] = createState<null | "lock" | "logout" | "reboot" | "shutdown">(null)
   const [calendarOpen, setCalendarOpen] = createState(false)
@@ -760,6 +761,8 @@ export function createStore() {
     setControlOpen,
     notifOpen,
     setNotifOpen,
+    toastActive,
+    setToastActive,
     powerMenuOpen,
     setPowerMenuOpen,
     pendingPowerAction,

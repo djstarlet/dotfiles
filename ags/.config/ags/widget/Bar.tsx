@@ -268,7 +268,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
 
       {config.notifications && NotificationsWindow(gdkmonitor, monitorIndex, s)}
 
-      {config.notifications && NotificationToasts(gdkmonitor, monitorIndex, s)}
+      {config.toasts && NotificationToasts(gdkmonitor, monitorIndex, s)}
 
       {config.powerMenu && PowerMenuWindow(gdkmonitor, monitorIndex, s)}
 
