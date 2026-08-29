@@ -4,6 +4,11 @@ set -euo pipefail
 pkill -f "ags run" 2>/dev/null || true
 pkill -f "/run/user/.*/ags.js" 2>/dev/null || true
 
+# Update watcher: fingerprint installed bar vs latest djstarlet/dotfiles release
+# into ~/.config/ags/update-check.json (read by the notification bell).
+# Backgrounded - never blocks the bar from starting.
+"$HOME/.config/ags/update-check.sh" >/dev/null 2>&1 &
+
 dots_json="$HOME/.config/ags/ws-dot-colors.json"
 if [ -f "$dots_json" ]; then
   # SYNC WITH settings.sh / widget/theme.config.ts workspaceDotColors

@@ -132,6 +132,10 @@ function parseWorkspaceIds(raw: string) {
 export const DEFAULT_WS_DOT_COLORS = theme.workspaceDotColors
 export type SavedPreset = ThemeConfig["presets"][number]
 
+export type Notification = { id: string; title: string; detail: string }
+
+type UpdateCheck = { update_available: boolean; checked_at: string; local_sha: string; remote_sha: string }
+
 function parseWsDotColors(raw: string | undefined) {
   if (!raw) return null
   const colors = raw.split(",").map((color) => color.trim())
@@ -204,8 +208,21 @@ export function createStore() {
     },
   )
 
+  // update-check.sh (fired from start-bar.sh) fingerprints the installed bar
+  // against the latest djstarlet/dotfiles release into update-check.json.
+  const updateCheck = createPoll<UpdateCheck | null>(null, 60000, ["bash", "-c", "cat $HOME/.config/ags/update-check.json 2>/dev/null || true"], (out, prev) => {
+    try {
+      const parsed = JSON.parse(out)
+      if (parsed && typeof parsed.update_available === "boolean") return parsed as UpdateCheck
+    } catch {
+      // Not written yet (first watcher run still in flight).
+    }
+    return prev
+  })
+
   // ── Shared state ───────────────────────────────────────────────────────────
   const [controlOpen, setControlOpen] = createState(false)
+  const [notifOpen, setNotifOpen] = createState(false)
   const [powerMenuOpen, setPowerMenuOpen] = createState(false)
   const [pendingPowerAction, setPendingPowerAction] = createState<null | "lock" | "logout" | "reboot" | "shutdown">(null)
   const [calendarOpen, setCalendarOpen] = createState(false)
@@ -285,7 +302,21 @@ export function createStore() {
   }
 
   // ── Computeds ──────────────────────────────────────────────────────────────
-  const popupOpen = createComputed(() => controlOpen() || calendarOpen() || desktopMenuOpen() || powerMenuOpen() || settingsOpen())
+  const notifications = createComputed<Notification[]>(() => {
+    const u = updateCheck()
+    if (u?.update_available) {
+      return [
+        {
+          id: "dotfiles-update",
+          title: "Dotfiles update available",
+          detail: `Your bar differs from the latest release (checked ${u.checked_at}). Update with: curl -fsSL https://raw.githubusercontent.com/djstarlet/dotfiles/main/install.sh | bash`,
+        },
+      ]
+    }
+    return []
+  })
+  const hasNotifications = createComputed(() => notifications().length > 0)
+  const popupOpen = createComputed(() => controlOpen() || notifOpen() || calendarOpen() || desktopMenuOpen() || powerMenuOpen() || settingsOpen())
   const workspaceIds = createComputed(() => {
     const ids = workspaceListRaw()
     const active = activeWorkspace()
@@ -348,6 +379,7 @@ export function createStore() {
   // ── Toggle / close functions ───────────────────────────────────────────────
   function closeFlyouts() {
     setControlOpen(false)
+    setNotifOpen(false)
     setPowerMenuOpen(false)
     setPendingPowerAction(null)
     setCalendarOpen(false)
@@ -357,6 +389,19 @@ export function createStore() {
     setActiveList(null)
     setAuthDialogOpen(false)
     if (authPollStop) { authPollStop(); authPollStop = null }
+  }
+
+  function toggleNotifications() {
+    const next = !notifOpen()
+    setNotifOpen(next)
+    if (next) {
+      setControlOpen(false)
+      setCalendarOpen(false)
+      setDesktopMenuOpen(false)
+      setSettingsOpen(false)
+      setPowerMenuOpen(false)
+      setPendingPowerAction(null)
+    }
   }
 
   function togglePowerMenu() {
@@ -639,6 +684,8 @@ export function createStore() {
     // State
     controlOpen,
     setControlOpen,
+    notifOpen,
+    setNotifOpen,
     powerMenuOpen,
     setPowerMenuOpen,
     pendingPowerAction,
@@ -699,9 +746,12 @@ export function createStore() {
     workspaceIds,
     centerDisplay,
     isClientIdMissing,
+    notifications,
+    hasNotifications,
 
     // Functions
     closeFlyouts,
+    toggleNotifications,
     togglePowerMenu,
     toggleControl,
     toggleCalendar,

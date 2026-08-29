@@ -1,5 +1,5 @@
 export type WidgetId =
-  | "clock" | "workspaces" | "desktopMenu" | "controlCenter" | "powerMenu" | "calendar" | "settings" | "displaySettings"
+  | "clock" | "workspaces" | "desktopMenu" | "controlCenter" | "powerMenu" | "calendar" | "settings" | "displaySettings" | "notifications"
 
 export const config: Record<WidgetId, boolean> = {
   clock: true,
@@ -9,7 +9,8 @@ export const config: Record<WidgetId, boolean> = {
   powerMenu: true,
   calendar: true,
   settings: true,
-  displaySettings: true,
+  displaySettings: false,
+  notifications: true,
 }
 
 // settings' only launcher is the mini-gear inside Control Center

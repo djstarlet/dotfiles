@@ -9,6 +9,7 @@ import DesktopMenuWindow from "./DesktopMenu"
 import SettingsWindows from "./Settings"
 import CalendarWindows from "./Calendar"
 import ControlCenterWindow from "./ControlCenter"
+import NotificationsWindow from "./Notifications"
 import { ClockElement } from "./Clock"
 import { WorkspacesElement } from "./Workspaces"
 
@@ -208,6 +209,29 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
             {ClockElement(s)}
 
             <box $type="end" spacing={8}>
+              {config.notifications && (
+                <button
+                  widthRequest={26}
+                  heightRequest={26}
+                  valign={Gtk.Align.CENTER}
+                  halign={Gtk.Align.CENTER}
+                  class={s.notifOpen((open) => (open ? "bar-cap-button active" : "bar-cap-button"))}
+                  onClicked={s.toggleNotifications}
+                >
+                  <overlay>
+                    <label class="notif-bell" label={"\u{F0F3}"} />
+                    <label
+                      $type="overlay"
+                      class="notif-badge"
+                      label="●"
+                      canTarget={false}
+                      halign={Gtk.Align.END}
+                      valign={Gtk.Align.START}
+                      visible={s.hasNotifications}
+                    />
+                  </overlay>
+                </button>
+              )}
               {config.controlCenter && (
                 <button
                   widthRequest={26}
@@ -240,6 +264,8 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
       {config.desktopMenu && DesktopMenuWindow(gdkmonitor, monitorIndex, s)}
 
       {config.controlCenter && ControlCenterWindow(gdkmonitor, monitorIndex, s)}
+
+      {config.notifications && NotificationsWindow(gdkmonitor, monitorIndex, s)}
 
       {config.powerMenu && PowerMenuWindow(gdkmonitor, monitorIndex, s)}
 
