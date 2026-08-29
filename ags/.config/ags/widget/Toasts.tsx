@@ -6,23 +6,16 @@ import type { Store, Notification } from "./store"
 
 // Slide-out then dismiss: the daemon removes the notification on
 // dismiss(), so the reveal-off animation must play BEFORE calling it.
-// Daemon-side expiry (timeout) removes instantly - acceptable.
 function slideOutAndDismiss(revealer: Gtk.Revealer, n: Notification, s: Store) {
   revealer.reveal_child = false
   timeout(240, () => s.dismissNotification(n.id))
 }
 
-// One toast row: a Revealer (SLIDE_LEFT, 220ms) wrapping the .toast bubble.
-// Appears by revealing 10ms after mount; the popup auto-slides away after
-// TOAST_VISIBLE_MS WITHOUT dismissing the notifd notification, so it stays
-// in the bell until the user acts (X or click). Clicking the body (not the
-// X) animates out then dismisses.
 const TOAST_VISIBLE_MS = 6000
 
 // Each notification's popup shows exactly once per session: once toasted,
 // a re-reveal on a later window remount would re-toast old notifications
-// whenever a new one arrives. (The bar IS the notifd daemon, so a bar
-// restart clears the daemon too - nothing stale survives to re-toast.)
+// whenever a new one arrives.
 const toastedIds = new Set<string>()
 
 function ToastRow({ item, s, onAutoHide }: { item: () => Notification | null; s: Store; onAutoHide: (id: string) => void }) {
@@ -59,6 +52,8 @@ function ToastRow({ item, s, onAutoHide }: { item: () => Notification | null; s:
       transitionType={Gtk.RevealerTransitionType.SLIDE_LEFT}
       transitionDuration={220}
       revealChild={false}
+      valign={Gtk.Align.START}
+      vexpand={false}
     >
       <box class="toast" orientation={Gtk.Orientation.HORIZONTAL} spacing={4}>
         <button
@@ -75,18 +70,14 @@ function ToastRow({ item, s, onAutoHide }: { item: () => Notification | null; s:
           </box>
           <box
             class="toast-thumb"
-            widthRequest={56}
-            heightRequest={56}
+            widthRequest={80}
+            heightRequest={80}
             valign={Gtk.Align.CENTER}
             visible={createComputed(() => Boolean(item()?.image))}
             $={(self) => {
-              // Gtk.Picture scales + crops via content-fit; Gtk.Image with a
-              // file renders at natural size (pixelSize only affects icons).
               const pic = new Gtk.Picture()
               pic.set_content_fit(Gtk.ContentFit.COVER)
-              // can-shrink must stay true (default): false forces the widget
-              // to the paintable's natural size, blowing the toast up.
-              pic.set_size_request(56, 56)
+              pic.set_size_request(80, 80)
               self.append(pic)
               createEffect(() => {
                 const f = item()?.image
@@ -110,26 +101,27 @@ function ToastRow({ item, s, onAutoHide }: { item: () => Notification | null; s:
   )
 }
 
-// Stacked toast popups for the active monitor: one window holding up to 5
-// rows (fixed slots, matching the flyout), anchored top-right. The window
-// itself is visible only while notifications exist; appear/disappear
-// animation lives in each row's Revealer.
+// Separate toast window, top-right. The `$` size cap keeps the surface from
+// ballooning to the anchor extent (this GTK layer-shell build sizes anchored
+// windows to their full edge otherwise, which eats clicks).
 export default function NotificationToasts(gdkmonitor: Gdk.Monitor, monitorIndex: number, s: Store) {
-  const { TOP, RIGHT } = Astal.WindowAnchor
+  const { TOP, LEFT, RIGHT } = Astal.WindowAnchor
 
-  // Auto-hidden toasts stay in notifd (they're still in the bell), but the
-  // popup window must not linger as an empty anchored sliver - hide it once
-  // every retained notification has slid away.
   const [hidden, setHidden] = createState<Record<string, boolean>>({})
+  const anyVisible = createComputed(() => s.notifications().some((n) => !hidden()[n.id]))
+  // Raw state for the visible prop: computed bindings don't drive window
+  // mapping in this build (the bar's visible uses a state and unmaps fine).
+  const [toastVisible, setToastVisible] = createState(false)
+  createEffect(() => setToastVisible(anyVisible()))
 
   return (
     <window
-      visible={createComputed(() => s.notifications().some((n) => !hidden()[n.id]))}
+      visible={toastVisible}
       name={`ags-toast-${monitorIndex}`}
       namespace="ags-toast"
       class="ToastWindow"
       gdkmonitor={gdkmonitor}
-      anchor={TOP | RIGHT}
+      anchor={TOP | LEFT | RIGHT}
       layer={Astal.Layer.OVERLAY}
       keymode={Astal.Keymode.NONE}
       exclusivity={Astal.Exclusivity.IGNORE}
@@ -137,14 +129,17 @@ export default function NotificationToasts(gdkmonitor: Gdk.Monitor, monitorIndex
       marginEnd={18}
       application={app}
     >
-      <box orientation={Gtk.Orientation.VERTICAL} spacing={8} halign={Gtk.Align.END}>
-        {[0, 1, 2, 3, 4].map((i) => (
+      <box hexpand>
+        <button class="DismissSurface" hexpand vexpand canTarget onClicked={s.closeFlyouts} />
+        <box orientation={Gtk.Orientation.VERTICAL} spacing={8} halign={Gtk.Align.END} valign={Gtk.Align.START} vexpand={false} heightRequest={340}>
+        {[0].map((i) => (
           <ToastRow
             item={createComputed(() => s.notifications()[i] ?? null)}
             s={s}
             onAutoHide={(id) => setHidden((prev) => ({ ...prev, [id]: true }))}
           />
         ))}
+        </box>
       </box>
     </window>
   )
