@@ -73,12 +73,26 @@ function ToastRow({ item, s, onAutoHide }: { item: () => Notification | null; s:
             <label class="notif-title" xalign={0} label={createComputed(() => item()?.title ?? "")} />
             <label class="notif-detail" xalign={0} wrap label={createComputed(() => item()?.detail ?? "")} />
           </box>
-          <image
+          <box
             class="toast-thumb"
-            file={createComputed(() => item()?.image ?? "")}
-            pixelSize={56}
+            widthRequest={56}
+            heightRequest={56}
             valign={Gtk.Align.CENTER}
             visible={createComputed(() => Boolean(item()?.image))}
+            $={(self) => {
+              // Gtk.Picture scales + crops via content-fit; Gtk.Image with a
+              // file renders at natural size (pixelSize only affects icons).
+              const pic = new Gtk.Picture()
+              pic.set_content_fit(Gtk.ContentFit.COVER)
+              // can-shrink must stay true (default): false forces the widget
+              // to the paintable's natural size, blowing the toast up.
+              pic.set_size_request(56, 56)
+              self.append(pic)
+              createEffect(() => {
+                const f = item()?.image
+                if (f) pic.set_filename(f)
+              })
+            }}
           />
         </button>
         <button
