@@ -1,0 +1,16 @@
+[
+ {
+  "id": "dotfiles-update",
+  "sig": "2026-08-30T03:41:46+10:00",
+  "title": "Dotfiles update available",
+  "detail": "Your bar differs from the latest release (checked 2026-08-30T03:41:46+10:00). Update with: curl -fsSL https://raw.githubusercontent.com/djstarlet/dotfiles/main/install.sh | bash",
+  "openUrl": "https://github.com/djstarlet/dotfiles/releases"
+ },
+ {
+  "id": "screenshot-test123",
+  "sig": "1788025020",
+  "title": "Screenshot saved",
+  "detail": "/tmp/shots/test.png",
+  "openPath": "/tmp/shots"
+ }
+]

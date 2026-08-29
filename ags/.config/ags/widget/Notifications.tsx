@@ -4,10 +4,11 @@ import { execAsync } from "ags/process"
 import { createComputed } from "gnim"
 import type { Store, Notification } from "./store"
 
-// One notification row: body opens the link, the ✕ dismisses this specific
-// notification (until the next check produces a new timestamp). `item` is a
-// computed binding so rows appear/disappear as notifications arrive (fixed
-// row slots, matching the Settings presets list pattern).
+// One notification row: body opens the row's action (folder in pcmanfm for
+// screenshots / openPath, URL otherwise), the ✕ dismisses until the
+// condition's sig changes. `item` is a computed binding so rows appear and
+// disappear as notifications arrive (fixed row slots, matching the Settings
+// presets list pattern).
 function NotificationRow({ item, s }: { item: () => Notification | null; s: Store }) {
   return (
     <box
@@ -19,7 +20,13 @@ function NotificationRow({ item, s }: { item: () => Notification | null; s: Stor
         class="action notif-row"
         hexpand
         onClicked={() => {
-          execAsync(["bash", "-lc", "xdg-open https://github.com/djstarlet/dotfiles/releases 2>/dev/null"]).catch(() => null)
+          const n = item()
+          if (!n) return
+          if (n.openPath) {
+            execAsync(["pcmanfm", n.openPath]).catch(() => null)
+          } else if (n.openUrl) {
+            execAsync(["xdg-open", n.openUrl]).catch(() => null)
+          }
         }}
       >
         <box orientation={Gtk.Orientation.VERTICAL} spacing={2} hexpand>
@@ -32,7 +39,7 @@ function NotificationRow({ item, s }: { item: () => Notification | null; s: Stor
         valign={Gtk.Align.START}
         onClicked={() => {
           const n = item()
-          if (n) s.dismissNotification(n.id, n.checkedAt)
+          if (n) s.dismissNotification(n.id, n.sig)
         }}
       >
         <label class="notif-dismiss-icon" label={"\u{F00D}"} />
@@ -75,7 +82,7 @@ export default function NotificationsWindow(gdkmonitor: Gdk.Monitor, monitorInde
             </centerbox>
 
             <box orientation={Gtk.Orientation.VERTICAL} spacing={6}>
-              {[0, 1, 2].map((i) => (
+              {[0, 1, 2, 3, 4].map((i) => (
                 <NotificationRow item={createComputed(() => s.notifications()[i] ?? null)} s={s} />
               ))}
             </box>

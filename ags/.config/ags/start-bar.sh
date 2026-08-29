@@ -4,10 +4,10 @@ set -euo pipefail
 pkill -f "ags run" 2>/dev/null || true
 pkill -f "/run/user/.*/ags.js" 2>/dev/null || true
 
-# Update watcher: fingerprint installed bar vs latest djstarlet/dotfiles release
-# into ~/.config/ags/update-check.json (read by the notification bell).
-# Backgrounded - never blocks the bar from starting.
-"$HOME/.config/ags/update-check.sh" >/dev/null 2>&1 &
+# Notifications watcher: dotfiles updates, failed user units, low disk,
+# calendar auth, screenshots, Hyprland config errors -> ~/.config/ags/notifications.json
+# (read by the notification bell). Backgrounded - never blocks the bar.
+"$HOME/.config/ags/notifications-watcher.py" >/dev/null 2>&1 &
 
 dots_json="$HOME/.config/ags/ws-dot-colors.json"
 if [ -f "$dots_json" ]; then

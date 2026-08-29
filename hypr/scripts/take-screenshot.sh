@@ -17,7 +17,8 @@ fi
 if command -v wl-copy >/dev/null 2>&1; then
   wl-copy < "$out"
 fi
-if command -v notify-send >/dev/null 2>&1; then
-  notify-send "Screenshot" "$out" -i "$out" || true
-fi
+# Spool a notification entry for the bar's notification-watcher.py
+# (notify-send only works when a notification daemon is running).
+printf '{"id":"screenshot-%s","title":"Screenshot saved","detail":"%s","openPath":"%s","ts":%s}\n' \
+  "$(date +%s%N)" "$out" "$dir" "$(date +%s)" >> "$HOME/.config/ags/notification-spool.jsonl" 2>/dev/null || true
 echo "$out"
