@@ -1,24 +1,28 @@
 #!/usr/bin/env bash
-# Quick Actions "Screenshot": drag to select a region (esc = fullscreen).
-# Saves to ~/Pictures/screenshots and copies to the clipboard.
+# Screenshot wrapper: capture via grimblast, copy to clipboard, and spool a
+# notification entry for the bar's notification bell.
+#
+# Usage: take-screenshot.sh [area|screen|output|active]   (default: area)
+#
+# Wired in hyprland.conf:
+#   bind = , Print, exec, ~/.config/hypr/scripts/take-screenshot.sh screen
+#   bind = SHIFT, Print, exec, ~/.config/hypr/scripts/take-screenshot.sh area
+#   bind = $mainMod SHIFT, S, exec, ~/.config/hypr/scripts/take-screenshot.sh area
+#
+# grimblast's --notify only works when a notification daemon is running;
+# the spool hook is always active, so the bell always lights up.
 set -u
 
+target="${1:-area}"
 dir="${XDG_PICTURES_DIR:-$HOME/Pictures}/screenshots"
 mkdir -p "$dir"
 out="$dir/$(date +%Y%m%d_%H%M%S).png"
 
-region=$(slurp 2>/dev/null || true)
-if [ -n "$region" ]; then
-  grim -g "$region" "$out"
-else
-  grim "$out"
-fi
+grimblast copysave "$target" "$out" || exit 1
 
-if command -v wl-copy >/dev/null 2>&1; then
-  wl-copy < "$out"
-fi
-# Spool a notification entry for the bar's notification-watcher.py
-# (notify-send only works when a notification daemon is running).
+# Spool a notification entry for the bar's notification watcher (read by
+# ~/.config/ags/notifications-watcher.py -> ~/.config/ags/notifications.json).
 printf '{"id":"screenshot-%s","title":"Screenshot saved","detail":"%s","openPath":"%s","ts":%s}\n' \
   "$(date +%s%N)" "$out" "$dir" "$(date +%s)" >> "$HOME/.config/ags/notification-spool.jsonl" 2>/dev/null || true
+
 echo "$out"
