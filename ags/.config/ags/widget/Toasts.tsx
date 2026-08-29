@@ -1,7 +1,7 @@
 import app from "ags/gtk4/app"
 import { Astal, Gtk, Gdk } from "ags/gtk4"
 import { timeout } from "ags/time"
-import { createComputed, createEffect } from "gnim"
+import { createComputed, createEffect, createState } from "gnim"
 import type { Store, Notification } from "./store"
 
 // Slide-out then dismiss: the daemon removes the notification on
@@ -19,7 +19,7 @@ function slideOutAndDismiss(revealer: Gtk.Revealer, n: Notification, s: Store) {
 // X) animates out then dismisses.
 const TOAST_VISIBLE_MS = 6000
 
-function ToastRow({ item, s }: { item: () => Notification | null; s: Store }) {
+function ToastRow({ item, s, onAutoHide }: { item: () => Notification | null; s: Store; onAutoHide: (id: string) => void }) {
   let revealer: Gtk.Revealer
   let lastShownId = "_none_"
 
@@ -34,7 +34,10 @@ function ToastRow({ item, s }: { item: () => Notification | null; s: Store }) {
       // Popup-only hide: slide away but leave the notification in the
       // daemon so the bell keeps it until dismissed.
       timeout(TOAST_VISIBLE_MS, () => {
-        if (item()?.id === lastShownId) revealer.reveal_child = false
+        if (item()?.id === lastShownId) {
+          revealer.reveal_child = false
+          onAutoHide(n.id)
+        }
       })
     } else if (!n) {
       lastShownId = "_none_"
@@ -85,9 +88,14 @@ function ToastRow({ item, s }: { item: () => Notification | null; s: Store }) {
 export default function NotificationToasts(gdkmonitor: Gdk.Monitor, monitorIndex: number, s: Store) {
   const { TOP, RIGHT } = Astal.WindowAnchor
 
+  // Auto-hidden toasts stay in notifd (they're still in the bell), but the
+  // popup window must not linger as an empty anchored sliver - hide it once
+  // every retained notification has slid away.
+  const [hidden, setHidden] = createState<Record<string, boolean>>({})
+
   return (
     <window
-      visible={createComputed(() => s.notifications().length > 0)}
+      visible={createComputed(() => s.notifications().some((n) => !hidden()[n.id]))}
       name={`ags-toast-${monitorIndex}`}
       namespace="ags-toast"
       class="ToastWindow"
@@ -102,7 +110,11 @@ export default function NotificationToasts(gdkmonitor: Gdk.Monitor, monitorIndex
     >
       <box orientation={Gtk.Orientation.VERTICAL} spacing={8} halign={Gtk.Align.END}>
         {[0, 1, 2, 3, 4].map((i) => (
-          <ToastRow item={createComputed(() => s.notifications()[i] ?? null)} s={s} />
+          <ToastRow
+            item={createComputed(() => s.notifications()[i] ?? null)}
+            s={s}
+            onAutoHide={(id) => setHidden((prev) => ({ ...prev, [id]: true }))}
+          />
         ))}
       </box>
     </window>
