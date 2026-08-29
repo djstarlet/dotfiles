@@ -335,8 +335,31 @@ export function createStore() {
 
   // ── Computeds ──────────────────────────────────────────────────────────────
   // Notifications currently held by notifd (active only; dismissed/expired
-  // ones disappear from the bell automatically).
-  const hasNotifications = createComputed(() => notifications().length > 0)
+  // ones disappear from the bell automatically). The badge lights for
+  // notifications newer than the highest id seen when the flyout last opened.
+  const [seenUpTo, setSeenUpTo] = createState<number>(0)
+  execAsync(["bash", "-c", "cat $HOME/.config/ags/notifications-seen.json 2>/dev/null || echo 0"])
+    .then((out) => {
+      const n = Number(String(out).trim())
+      if (Number.isFinite(n) && n > 0) setSeenUpTo(n)
+    })
+    .catch(() => null)
+
+  function markAllSeen() {
+    let max = seenUpTo()
+    for (const n of notifd.notifications) {
+      const id = Number(n.id)
+      if (Number.isFinite(id) && id > max) max = id
+    }
+    if (max > seenUpTo()) {
+      setSeenUpTo(max)
+      execAsync(["bash", "-c", `printf '%s' ${max} > $HOME/.config/ags/notifications-seen.json`]).catch(() => null)
+    }
+  }
+
+  const hasNotifications = createComputed(() =>
+    notifications().some((n) => Number(n.id) > seenUpTo()),
+  )
   const popupOpen = createComputed(() => controlOpen() || notifOpen() || calendarOpen() || desktopMenuOpen() || powerMenuOpen() || settingsOpen())
   const workspaceIds = createComputed(() => {
     const ids = workspaceListRaw()
