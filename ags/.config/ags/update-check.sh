@@ -35,6 +35,7 @@ fingerprint() {
       -not -name 'theme-colors.json' -not -name 'google-calendar-auth.json' \
       -not -name 'update-check.json' -not -name 'update-check.cache' -not -name 'update-check.lock' \
       -not -name 'dismissed-notifications.json' \
+      -not -name 'notifications.json' -not -name 'notification-spool.jsonl' \
       -not -name '*.tsbuildinfo' -not -name 'package-lock.json' \
       -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -c1-64
   )
