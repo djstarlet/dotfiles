@@ -470,9 +470,46 @@ resolve_source_dir() {
 	fi
 }
 
+# Copy every file under src/ into dst/, file by file, so that:
+#   - user-generated files (monitors.conf, ws-dot-colors.json, calendar auth...) survive
+#   - already-identical files are skipped (no mtime churn, keeps re-runs quiet)
+#   - differing files are backed up to backup/<relpath> before being overwritten
+#   - per-file symlinks in the user's config are refused
+merge_copy() {
+	local src="$1" dst="$2" backup="$3"
+	local f rel target
+	while IFS= read -r -d '' f; do
+		rel="${f#"$src"}"
+		target="$dst$rel"
+		mkdir -p "$(dirname "$target")"
+		if [[ -L $target ]]; then
+			warn "Skipping ${target} - it is a symlink; refusing to write through it. Remove the symlink if a tracked file belongs there."
+			continue
+		fi
+		if [[ -e $target ]]; then
+			cmp -s "$f" "$target" && continue
+			mkdir -p "$backup/$(dirname "$rel")"
+			cp -p "$target" "$backup$rel"
+		fi
+		cp -p "$f" "$target"
+	done < <(find "$src" -type f -print0)
+}
+
 deploy_dotfiles() {
+	# Symlink guard: cp -R writes THROUGH a symlinked config dir and would
+	# clobber whatever it points at (e.g. a dotfiles checkout). Refuse.
+	local dir cfg
+	for dir in hypr ags albert; do
+		cfg="$HOME/.config/$dir"
+		if [[ -L $cfg ]]; then
+			die "$cfg is a symlink -> '$(readlink "$cfg")'.
+This installer refuses to write through symlinks (cp would overwrite the symlink
+target's files). Move the config to a real directory first, then re-run."
+		fi
+	done
+
 	if (( DRY_RUN )); then
-		info "[dry-run] merge-copy repo configs into ~/.config/hypr and ~/.config/ags (user-generated files preserved)"
+		info "[dry-run] merge-copy repo configs into ~/.config/hypr, ~/.config/ags and ~/.config/albert (identical files skipped, differing files backed up)"
 		return 0
 	fi
 
@@ -481,12 +518,19 @@ deploy_dotfiles() {
 	# monitors.conf, current-wallpaper.png, ags' ws-dot-colors.json and
 	# calendar auth. (A wholesale dir swap here used to wipe monitors.conf
 	# and reset the monitor layout on every re-run.)
+	#
+	# Re-runs are now safe: differing files are backed up to a dated
+	# directory first; identical files are skipped.
 	mkdir -p "$HOME/.config/hypr" "$HOME/.config/ags" "$HOME/.config/albert"
-	cp -R "$SRC_PATH/hypr/." "$HOME/.config/hypr/"
-	cp -R "$SRC_PATH/ags/.config/ags/." "$HOME/.config/ags/"
-	cp -R "$SRC_PATH/albert/.config/albert/." "$HOME/.config/albert/"
+	local backup_dir="$HOME/.config/dotfiles-backup-$(date +%Y%m%d-%H%M%S)"
+	merge_copy "$SRC_PATH/hypr" "$HOME/.config/hypr" "$backup_dir/hypr"
+	merge_copy "$SRC_PATH/ags/.config/ags" "$HOME/.config/ags" "$backup_dir/ags"
+	merge_copy "$SRC_PATH/albert/.config/albert" "$HOME/.config/albert" "$backup_dir/albert"
+	if [[ -d $backup_dir ]]; then
+		info "Changed configs backed up to ${backup_dir}/ - restore from there if needed."
+	fi
 	info "Installed Hyprland + AGS + Albert configs (user-generated files preserved)"
-	SUMMARY_ACTIONS+=("deployed configs to ~/.config/hypr, ~/.config/ags and ~/.config/albert (user files preserved)")
+	SUMMARY_ACTIONS+=("deployed configs to ~/.config/hypr, ~/.config/ags and ~/.config/albert (user files preserved; overwritten files backed up)")
 }
 
 # -------------------------------------------------- convenience helper (bashrc)
