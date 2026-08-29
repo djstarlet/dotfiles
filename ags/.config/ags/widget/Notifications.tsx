@@ -1,7 +1,7 @@
 import app from "ags/gtk4/app"
 import { Astal, Gtk, Gdk } from "ags/gtk4"
 import { execAsync } from "ags/process"
-import { createComputed } from "gnim"
+import { createComputed, createEffect } from "gnim"
 import type { Store, Notification } from "./store"
 
 // One notification row: the bubble (box.notif-bubble) carries the raised
@@ -48,7 +48,7 @@ function NotificationRow({ item, s }: { item: () => Notification | null; s: Stor
         valign={Gtk.Align.START}
         onClicked={() => {
           const n = item()
-          if (n) s.dismissNotification(n.id, n.sig)
+          if (n) s.dismissNotification(n.id)
         }}
       >
         <label class="notif-dismiss-icon" label={"\u{F00D}"} />
@@ -59,6 +59,12 @@ function NotificationRow({ item, s }: { item: () => Notification | null; s: Stor
 
 export default function NotificationsWindow(gdkmonitor: Gdk.Monitor, monitorIndex: number, s: Store) {
   const { TOP, LEFT, RIGHT } = Astal.WindowAnchor
+
+  // Belt-and-braces: refetch from mako whenever the flyout opens (covers a
+  // missed dbus signal while the proxy was still connecting).
+  createEffect(() => {
+    if (s.notifOpen()) s.refreshNotifications()
+  })
 
   return (
     <window

@@ -1,6 +1,8 @@
 import { execAsync } from "ags/process"
 import { createPoll, timeout } from "ags/time"
 import { createComputed, createEffect, createState } from "gnim"
+import Gio from "gi://Gio"
+import GLib from "gi://GLib"
 import { theme } from "./theme.config"
 import type { ThemeConfig } from "./theme.config"
 
@@ -133,13 +135,12 @@ export const DEFAULT_WS_DOT_COLORS = theme.workspaceDotColors
 export type SavedPreset = ThemeConfig["presets"][number]
 
 export type Notification = {
-  id: string
-  sig?: string // condition fingerprint; a change re-alerts after dismissal
+  id: string // mako notification id (numeric string)
   title: string
   detail: string
   openUrl?: string
   openPath?: string
-  action?: string // e.g. "update-dotfiles" renders a dedicated action button
+  action?: string // "update-dotfiles" renders the Update button
 }
 
 function parseWsDotColors(raw: string | undefined) {
@@ -214,19 +215,77 @@ export function createStore() {
     },
   )
 
-  // notifications-watcher.py (fired from start-bar.sh and re-run by this
-  // poll) gathers all notification sources into notifications.json.
-  const notificationPoll = createPoll<Notification[]>([], 60000, ["bash", "-c", "$HOME/.config/ags/notifications-watcher.py >/dev/null 2>&1; cat $HOME/.config/ags/notifications.json 2>/dev/null || true"], (out, prev) => {
+  // Notifications come straight from mako over dbus (event-driven): every
+  // producer notify-sends, mako persists them (timeout 0), and the bell
+  // refetches when mako's Notifications property changes. No polling.
+  const [makoNotifications, setMakoNotifications] = createState<Notification[]>([])
+  let makoProxy: Gio.DBusProxy | null = null
+
+  function refreshMakoNotifications() {
+    if (!makoProxy) return
     try {
-      const parsed = JSON.parse(out)
-      if (Array.isArray(parsed)) {
-        return parsed.filter((n) => n && typeof n.id === "string" && typeof n.title === "string") as Notification[]
+      const reply = makoProxy.call_sync("ListNotifications", null, Gio.DBusCallFlags.NONE, 3000, null)
+      if (!reply) return
+      const list = reply.deepUnpack()[0] as Array<Record<string, any>>
+      const items: Notification[] = []
+      for (const raw of list ?? []) {
+        const d = raw?.deepUnpack?.() ?? raw
+        if (!d) continue
+        const get = (key: string): string => {
+          const v = d[key]
+          if (v == null) return ""
+          return typeof v.unpack === "function" ? String(v.unpack()) : String(v)
+        }
+        const id = Number(get("id"))
+        const summary = get("summary")
+        if (!Number.isFinite(id) || id <= 0 || !summary) continue
+        const body = get("body")
+        const item: Notification = { id: String(id), title: summary, detail: body }
+        if (summary === "Screenshot saved" && body) {
+          // body carries the file path; open its folder in pcmanfm
+          item.openPath = body.replace(/[^/]*$/, "")
+        } else if (summary === "Hyprland config errors") {
+          item.openPath = "~/.config/hypr"
+        } else if (summary === "Home disk almost full" || summary === "Failed user unit(s)") {
+          item.openPath = "~"
+        } else if (summary === "Dotfiles update available") {
+          item.openUrl = "https://github.com/djstarlet/dotfiles/releases"
+          item.action = "update-dotfiles"
+        }
+        items.push(item)
       }
+      setMakoNotifications(items)
     } catch {
-      // Not written yet (first watcher run still in flight).
+      // mako went away mid-call; it will come back and signal again.
     }
-    return prev
-  })
+  }
+
+  function connectMako(attempt = 0) {
+    try {
+      const proxy = new Gio.DBusProxy({
+        gConnection: Gio.bus_get_sync(Gio.BusType.SESSION, null),
+        gName: "org.freedesktop.Notifications", // mako's bus name
+        gInterfaceName: "fr.emersion.Mako",
+        gObjectPath: "/fr/emersion/Mako",
+        gFlags: Gio.DBusProxyFlags.NONE,
+      })
+      proxy.init(null)
+      proxy.connect("g-properties-changed", (_p, changed: any) => {
+        // Notifications carries EmitsChangedSignal("invalidates") - refetch.
+        if (changed && changed.lookup_value("Notifications", GLib.VariantType.new("*"))) {
+          refreshMakoNotifications()
+        }
+      })
+      makoProxy = proxy
+      refreshMakoNotifications()
+    } catch {
+      // mako not up yet (login race); retry a few times, then give up
+      // quietly - mako's next property change is missed only until the
+      // flyout opens, which refetches.
+      if (attempt < 10) timeout(3000, () => connectMako(attempt + 1))
+    }
+  }
+  connectMako()
 
   // ── Shared state ───────────────────────────────────────────────────────────
   const [controlOpen, setControlOpen] = createState(false)
@@ -265,20 +324,6 @@ export function createStore() {
   const [workspaceFx, setWorkspaceFx] = createState<Record<number, "born" | "dying" | "collapsing" | "settled">>({})
   const [wsDotColors, setWsDotColors] = createState<string[]>(envWsDotColors ?? [...DEFAULT_WS_DOT_COLORS])
   const [savedPresets, setSavedPresets] = createState<SavedPreset[]>([])
-
-  // Manually dismissed notifications: id -> sig at dismiss time. A changed
-  // condition (new sig) re-alerts; the map persists across bar restarts.
-  const [dismissed, setDismissed] = createState<Record<string, string>>({})
-  execAsync(["bash", "-c", "cat $HOME/.config/ags/dismissed-notifications.json 2>/dev/null || true"])
-    .then((out) => {
-      try {
-        const parsed = JSON.parse(out)
-        if (parsed && typeof parsed === "object") setDismissed(parsed)
-      } catch {
-        // No or invalid dismissed state - start clean.
-      }
-    })
-    .catch(() => null)
 
   if (!envWsDotColors) {
     execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh get ws-dots"])
@@ -324,10 +369,9 @@ export function createStore() {
   }
 
   // ── Computeds ──────────────────────────────────────────────────────────────
-  const notifications = createComputed<Notification[]>(() => {
-    const gone = dismissed()
-    return notificationPoll().filter((n) => gone[n.id] !== (n.sig ?? ""))
-  })
+  // Notifications currently held by mako (active only; dismissed/expired
+  // ones disappear from the bell automatically).
+  const notifications = makoNotifications
   const hasNotifications = createComputed(() => notifications().length > 0)
   const popupOpen = createComputed(() => controlOpen() || notifOpen() || calendarOpen() || desktopMenuOpen() || powerMenuOpen() || settingsOpen())
   const workspaceIds = createComputed(() => {
@@ -417,10 +461,10 @@ export function createStore() {
     }
   }
 
-  function dismissNotification(id: string, sig?: string) {
-    setDismissed((prev) => ({ ...prev, [id]: sig ?? "" }))
-    const payload = JSON.stringify({ ...dismissed(), [id]: sig ?? "" })
-    execAsync(["bash", "-c", `printf '%s' '${payload}' > $HOME/.config/ags/dismissed-notifications.json`]).catch(() => null)
+  // Dismiss through mako: the notification leaves mako's active list, the
+  // property-change signal fires, and the bell refreshes itself.
+  function dismissNotification(id: string) {
+    execAsync(["makoctl", "dismiss", "-n", String(id)]).catch(() => null)
   }
 
   function togglePowerMenu() {
@@ -784,6 +828,7 @@ export function createStore() {
     // Functions
     closeFlyouts,
     toggleNotifications,
+    refreshNotifications: refreshMakoNotifications,
     dismissNotification,
     togglePowerMenu,
     toggleControl,

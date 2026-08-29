@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Screenshot wrapper: capture via grimblast, copy to clipboard, and spool a
-# notification entry for the bar's notification bell.
+# Screenshot wrapper: capture via grimblast, copy to clipboard, notify via
+# mako (toast + persistent bell entry), with a folder-open action.
 #
 # Usage: take-screenshot.sh [area|screen|output|active]   (default: area)
 #
@@ -8,9 +8,6 @@
 #   bind = , Print, exec, ~/.config/hypr/scripts/take-screenshot.sh screen
 #   bind = SHIFT, Print, exec, ~/.config/hypr/scripts/take-screenshot.sh area
 #   bind = $mainMod SHIFT, S, exec, ~/.config/hypr/scripts/take-screenshot.sh area
-#
-# grimblast's --notify only works when a notification daemon is running;
-# the spool hook is always active, so the bell always lights up.
 set -u
 
 target="${1:-area}"
@@ -20,9 +17,14 @@ out="$dir/$(date +%Y%m%d_%H%M%S).png"
 
 grimblast copysave "$target" "$out" || exit 1
 
-# Spool a notification entry for the bar's notification watcher (read by
-# ~/.config/ags/notifications-watcher.py -> ~/.config/ags/notifications.json).
-printf '{"id":"screenshot-%s","title":"Screenshot saved","detail":"%s","openPath":"%s","ts":%s}\n' \
-  "$(date +%s%N)" "$out" "$dir" "$(date +%s)" >> "$HOME/.config/ags/notification-spool.jsonl" 2>/dev/null || true
+# Toast via mako (also lands in the bar's bell over dbus). The action
+# handler waits for the user to pick "Open folder" and opens pcmanfm.
+if command -v notify-send >/dev/null 2>&1; then
+  (
+    choice=$(notify-send -a "dotfiles-bar" -A "open=Open folder" \
+      "Screenshot saved" "$out" 2>/dev/null)
+    [ "$choice" = "open" ] && pcmanfm "$dir"
+  ) >/dev/null 2>&1 &
+fi
 
 echo "$out"
