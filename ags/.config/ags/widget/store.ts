@@ -258,7 +258,6 @@ export function createStore() {
   // ── Shared state ───────────────────────────────────────────────────────────
   const [controlOpen, setControlOpen] = createState(false)
   const [notifOpen, setNotifOpen] = createState(false)
-  const [toastActive, setToastActive] = createState(false)
   const [powerMenuOpen, setPowerMenuOpen] = createState(false)
   const [pendingPowerAction, setPendingPowerAction] = createState<null | "lock" | "logout" | "reboot" | "shutdown">(null)
   const [calendarOpen, setCalendarOpen] = createState(false)
@@ -345,7 +344,17 @@ export function createStore() {
   execAsync(["bash", "-c", "cat $HOME/.config/ags/notifications-seen.json 2>/dev/null || echo 0"])
     .then((out) => {
       const n = Number(String(out).trim())
-      if (Number.isFinite(n) && n > 0) setSeenUpTo(n)
+      if (Number.isFinite(n) && n > 0) {
+        // Clamp to the current daemon max: notifd ids restart at 1 on each
+        // bar launch, so a stale persisted max would suppress the badge
+        // forever.
+        let max = 0
+        for (const nd of notifd.notifications) {
+          const id = Number(nd?.id)
+          if (Number.isFinite(id) && id > max) max = id
+        }
+        setSeenUpTo(Math.min(n, max))
+      }
     })
     .catch(() => null)
 
@@ -761,8 +770,6 @@ export function createStore() {
     setControlOpen,
     notifOpen,
     setNotifOpen,
-    toastActive,
-    setToastActive,
     powerMenuOpen,
     setPowerMenuOpen,
     pendingPowerAction,

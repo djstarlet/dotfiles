@@ -48,7 +48,12 @@ function ToastRow({
   createEffect(() => {
     const n = item()
     if (n && n.id !== lastShownId) {
-      if (lastShownId !== "_none_") onHidden(lastShownId)
+      if (lastShownId !== "_none_") {
+        // Mark the new toast shown BEFORE hiding the old one: otherwise
+        // anyOnScreen briefly empties and the window unmaps mid-swap.
+        onShown(n.id)
+        onHidden(lastShownId)
+      }
       lastShownId = n.id
       if (toastedIds.has(n.id)) {
         revealer.reveal_child = false
@@ -62,9 +67,11 @@ function ToastRow({
         onShown(lastShownId)
       })
       // Popup-only hide: slide away but leave the notification in the daemon
-      // so the bell keeps it until dismissed.
+      // so the bell keeps it until dismissed. Capture the owner id: prior
+      // timers must not hide a toast they don't own.
+      const owner = n.id
       timeout(TOAST_VISIBLE_MS, () => {
-        if (item()?.id === lastShownId) clear()
+        if (lastShownId === owner) clear()
       })
     } else if (!n) {
       clear()
