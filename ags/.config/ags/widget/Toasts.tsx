@@ -92,7 +92,7 @@ function ToastRow({
             silently drop the label box, so text and thumbnail go inside a
             single wrapper (same shape as the notifications flyout row). */}
         <button class="toast-body" hexpand onClicked={dismiss}>
-          <box orientation={Gtk.Orientation.HORIZONTAL} spacing={4} hexpand>
+          <box orientation={Gtk.Orientation.HORIZONTAL} spacing={6} hexpand>
             <box orientation={Gtk.Orientation.VERTICAL} spacing={2} hexpand>
               <label class="notif-title" xalign={0} label={createComputed(() => item()?.title ?? "")} />
               <label class="notif-detail" xalign={0} wrap label={createComputed(() => item()?.detail ?? "")} />
@@ -104,26 +104,25 @@ function ToastRow({
               valign={Gtk.Align.CENTER}
               visible={createComputed(() => Boolean(item()?.image))}
               $={(self) => {
-                // Gtk.Picture ignores size_request for large files in this
-                // GTK build - load + scale the pixbuf explicitly instead.
-                const img = new Gtk.Image()
-                img.set_size_request(80, 80)
-                self.append(img)
+                // Gtk.Image in this build renders pixbufs/paintables at a
+                // tiny icon scale - use Gtk.Picture, which honors the widget
+                // allocation. Load + scale the pixbuf explicitly to an exact
+                // 80x80 (gjs's GdkPixbuf bindings lack subpixbuf/crop).
+                const pic = new Gtk.Picture()
+                pic.content_fit = Gtk.ContentFit.FILL
+                pic.can_shrink = true
+                pic.set_size_request(80, 80)
+                self.append(pic)
                 createEffect(() => {
                   const f = item()?.image
                   if (!f) return
                   try {
-                    // Cover-crop into an exact 80x80 square: at_scale with
-                    // preserve_aspect would shrink a wide screenshot to a
-                    // short sliver. Scale to cover, then center-crop.
+                    // Scale into an exact 80x80 (slight squash on a wide
+                    // screenshot is imperceptible at thumbnail size; gjs's
+                    // GdkPixbuf bindings lack subpixbuf/crop).
                     const pb = GdkPixbuf.Pixbuf.new_from_file(f)
-                    const full = Math.max(80, Math.min(pb.get_width(), pb.get_height()))
-                    const scale = Math.max(80 / pb.get_width(), 80 / pb.get_height())
-                    const w = Math.round(pb.get_width() * scale)
-                    const h = Math.round(pb.get_height() * scale)
-                    const scaled = pb.scale_simple(w, h, GdkPixbuf.InterpType.BILINEAR)
-                    const crop = scaled.new_sub_pixbuf((w - 80) / 2, (h - 80) / 2, 80, 80)
-                    img.set_from_pixbuf(crop)
+                    const scaled = pb.scale_simple(80, 80, GdkPixbuf.InterpType.BILINEAR)
+                    pic.paintable = Gdk.Texture.new_for_pixbuf(scaled)
                   } catch {
                     // unreadable image - leave the thumbnail empty
                   }
@@ -176,7 +175,10 @@ export default function NotificationToasts(gdkmonitor: Gdk.Monitor, monitorIndex
       <box orientation={Gtk.Orientation.VERTICAL} spacing={8} valign={Gtk.Align.START} halign={Gtk.Align.END}>
         {[0].map((i) => (
           <ToastRow
-            item={createComputed(() => s.notifications()[i] ?? null)}
+            item={createComputed(() => {
+              const ns = s.notifications()
+              return ns.length ? ns[ns.length - 1] : null
+            })}
             s={s}
             onShown={(id) => mark(id, true)}
             onHidden={(id) => mark(id, false)}
