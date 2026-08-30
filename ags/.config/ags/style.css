@@ -461,6 +461,14 @@ label.system-info-value {
   color: var(--bar-text);
 }
 
+label.system-info-logo {
+  font-family: "Symbols Nerd Font", "Noto Sans Symbols 2", "Noto Sans Symbols", sans-serif;
+  font-size: 72px;
+  color: var(--bar-accent);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--bar-accent) 40%, transparent);
+  min-width: 88px;
+}
+
 /* Toast popups (Toasts.tsx) - same gradient recipe as .flyout */
 .toast {
   min-width: 360px;
