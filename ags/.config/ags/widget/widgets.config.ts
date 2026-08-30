@@ -11,10 +11,7 @@ export const config: Record<WidgetId, boolean> = {
   settings: true,
   displaySettings: true,
   notifications: true,
-  // Toast popups. The window's `visible` must key off "a toast is on
-  // screen" (reported by ToastRow), never off s.notifications() - notifd
-  // retains notifications until dismissed, so a "has notifications"
-  // predicate keeps the OVERLAY surface mapped forever.
+  // toggles pop-up notifications
   toasts: true,
   systemInfo: true,
 }
