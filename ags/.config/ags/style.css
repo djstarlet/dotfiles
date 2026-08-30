@@ -133,7 +133,8 @@ button.bar-cap-button:hover {
 }
 
 button.bar-cap-button label.gear-icon,
-button.bar-cap-button label.power-icon {
+button.bar-cap-button label.power-icon,
+button.bar-cap-button label.info-icon {
   padding: 0;
   margin: 0 0 0 1px;
 }
@@ -167,7 +168,8 @@ button.mini-gear {
 }
 
 label.gear-icon,
-label.power-icon {
+label.power-icon,
+label.info-icon {
   font-family: "Symbols Nerd Font", "Noto Sans Symbols 2", "Noto Sans Symbols", "Noto Sans", sans-serif;
   font-size: 16px;
   font-weight: 400;
@@ -179,10 +181,12 @@ button.bar-cap-button:hover label.gear-icon,
 button.bar-cap-button:hover label.power-icon,
 button.bar-cap-button:hover label.desktop-menu-icon,
 button.bar-cap-button:hover label.notif-bell,
+button.bar-cap-button:hover label.info-icon,
 button.bar-cap-button.active label.gear-icon,
 button.bar-cap-button.active label.power-icon,
 button.bar-cap-button.active label.desktop-menu-icon,
-button.bar-cap-button.active label.notif-bell {
+button.bar-cap-button.active label.notif-bell,
+button.bar-cap-button.active label.info-icon {
   color: var(--bar-bg);
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.72);
 }
@@ -417,6 +421,38 @@ label.notif-dismiss-icon {
   font-family: "Symbols Nerd Font", "Noto Sans Symbols 2", "Noto Sans Symbols", "Noto Sans", sans-serif;
   font-size: 12px;
   color: var(--bar-text-dim);
+}
+
+/* System Info flyout (SystemInfo.tsx) */
+.system-info-flyout {
+  min-width: 340px;
+}
+
+label.system-info-section-title {
+  font-weight: 800;
+  font-size: 11px;
+  color: var(--bar-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+box.system-info-divider {
+  min-height: 1px;
+  background: color-mix(in srgb, var(--bar-text) 15%, transparent);
+  margin: 4px 0;
+}
+
+label.system-info-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--bar-text-dim);
+  min-width: 100px;
+}
+
+label.system-info-value {
+  font-size: 11px;
+  color: var(--bar-text);
 }
 
 /* Toast popups (Toasts.tsx) - same gradient recipe as .flyout */
