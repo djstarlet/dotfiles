@@ -42,7 +42,7 @@ function Field(label: string, value: () => string) {
   return (
     <box orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
       <label class="system-info-label" label={label} widthRequest={120} xalign={1} halign={Gtk.Align.END} />
-      <label class="system-info-value" label={value} hexpand xalign={0} halign={Gtk.Align.START} ellipsize={3 /* PANGO_ELLIPSIZE_END */} />
+      <label class="system-info-value" label={value} selectable hexpand xalign={0} halign={Gtk.Align.START} ellipsize={3 /* PANGO_ELLIPSIZE_END */} />
     </box>
   )
 }
