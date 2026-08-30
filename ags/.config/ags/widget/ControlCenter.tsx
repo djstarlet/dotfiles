@@ -282,6 +282,20 @@ export default function ControlCenterWindow(gdkmonitor: Gdk.Monitor, monitorInde
                 <label class="control-action-label" label="Power" />
               </box>
             )}
+            {config.systemInfo && (
+              <box class="control-action-tile" widthRequest={68} orientation={Gtk.Orientation.VERTICAL} spacing={3} halign={Gtk.Align.CENTER}>
+                <button
+                  widthRequest={44} heightRequest={44}
+                  hexpand={false} vexpand={false}
+                  halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}
+                  class={s.systemInfoOpen((open) => `round-icon${open ? " active" : ""}`)}
+                  onClicked={s.toggleSystemInfo}
+                >
+                  <label class="info-icon" label={"\u{F05A}"} />
+                </button>
+                <label class="control-action-label" label="System" />
+              </box>
+            )}
           </box>
         </box>
 
