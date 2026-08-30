@@ -288,7 +288,7 @@ export default function ControlCenterWindow(gdkmonitor: Gdk.Monitor, monitorInde
                   widthRequest={44} heightRequest={44}
                   hexpand={false} vexpand={false}
                   halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}
-                  class={s.systemInfoOpen((open) => `round-icon${open ? " active" : ""}`)}
+                  class="round-icon"
                   onClicked={s.toggleSystemInfo}
                 >
                   <label class="info-icon" label={"\u{F05A}"} />

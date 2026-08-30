@@ -1,7 +1,10 @@
 import app from "ags/gtk4/app"
 import { Astal, Gtk, Gdk } from "ags/gtk4"
+import Gio from "gi://Gio"
+import GLib from "gi://GLib"
 import GdkPixbuf from "gi://GdkPixbuf"
 import { timeout } from "ags/time"
+import { execAsync } from "ags/process"
 import { createComputed, createEffect, createState } from "gnim"
 import type { Store, Notification } from "./store"
 
@@ -14,9 +17,48 @@ function slideOutAndDismiss(revealer: Gtk.Revealer, n: Notification, s: Store) {
 
 const TOAST_VISIBLE_MS = 6000
 
-// Each notification's popup shows exactly once per session: once toasted, a
-// later remount must not replay it.
-const toastedIds = new Set<string>()
+// Persistent conditions toast on EVERY bar start (they skip the seen-file
+// check); everything else ("Screenshot saved" with its unique file path in
+// the body) toasts once, keyed by notification body and persisted across
+// restarts. Bodies - not ids - are persisted because notifd ids restart at 1
+// on each bar launch and would collide across sessions.
+const IMPORTANT_SUMMARIES = [
+  "Dotfiles update available",
+  "Failed user unit",
+  "Home disk almost full",
+  "Hyprland config errors",
+  "Calendar sign-in expired",
+]
+
+function isImportant(summary: string): boolean {
+  return IMPORTANT_SUMMARIES.some((imp) => summary.includes(imp))
+}
+
+const TOASTED_FILE = "$HOME/.config/ags/toasted-trivial.json"
+const toastedBodies = new Set<string>(
+  (() => {
+    try {
+      const f = Gio.File.new_for_path(`${GLib.get_home_dir()}/.config/ags/toasted-trivial.json`)
+      const [bytes] = f.load_contents(null)
+      const arr: unknown = JSON.parse(new TextDecoder().decode(bytes))
+      return Array.isArray(arr) ? arr.filter((x): x is string => typeof x === "string") : []
+    } catch {
+      return []
+    }
+  })(),
+)
+
+function persistToastedBodies() {
+  // Cap at 200 entries: bodies are unique file paths, so this bounds growth.
+  const keep = [...toastedBodies].slice(-200)
+  toastedBodies.clear()
+  keep.forEach((b) => toastedBodies.add(b))
+  execAsync([
+    "bash",
+    "-c",
+    `printf '%s' '${JSON.stringify(keep).replace(/'/g, `'\\''`)}' > ${TOASTED_FILE}`,
+  ]).catch(() => null)
+}
 
 // `onShown`/`onHidden` report when a toast is actually on screen. The window's
 // `visible` MUST key off this and never off s.notifications(): notifd retains
@@ -55,11 +97,14 @@ function ToastRow({
         onHidden(lastShownId)
       }
       lastShownId = n.id
-      if (toastedIds.has(n.id)) {
+      if (!isImportant(n.title) && toastedBodies.has(n.detail)) {
         revealer.reveal_child = false
-        return // already popped this session
+        return // already popped (persisted across restarts)
       }
-      toastedIds.add(n.id)
+      if (!isImportant(n.title) && n.detail) {
+        toastedBodies.add(n.detail)
+        persistToastedBodies()
+      }
       revealer.reveal_child = false
       timeout(10, () => {
         if (item()?.id !== lastShownId) return

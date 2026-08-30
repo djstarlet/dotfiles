@@ -2,7 +2,7 @@ import app from "ags/gtk4/app"
 import { Gtk } from "ags/gtk4"
 import { execAsync } from "ags/process"
 import { createPoll } from "ags/time"
-import { createEffect, createState } from "gnim"
+import { For, createEffect, createState } from "gnim"
 import type { Store } from "./store"
 
 // ─── Parsers ──────────────────────────────────────────────────────────────────
@@ -40,6 +40,45 @@ function parseMonitors(raw: string) {
 function sortMonitors(ms: ReturnType<typeof parseMonitors>) {
   // Focused monitor first (it's the "primary"), then the rest in hyprctl order.
   return [...ms.filter((m) => m.focused), ...ms.filter((m) => !m.focused)]
+}
+
+function parseDistroId(raw: string) {
+  const m = String(raw).match(/^ID="?([^"\n]+)"?/m)
+  return m ? m[1].trim() : ""
+}
+
+// Codepoints verified against SymbolsNerdFont-Regular.ttf via fontTools:
+// gentoo E7E6, arch E732, debian E77D, ubuntu E73A, fedora E7D9, nixos E843,
+// opensuse E857, centos E78A, redhat E7BB (devicons block);
+// manjaro F312, linuxmint F30E (linux block); fallback F17C (fa-linux).
+const DISTRO_GLYPHS: Record<string, string> = {
+  gentoo: "\u{e7e6}",
+  arch: "\u{e732}",
+  debian: "\u{e77d}",
+  ubuntu: "\u{e73a}",
+  fedora: "\u{e7d9}",
+  manjaro: "\u{f312}",
+  linuxmint: "\u{f30e}",
+  nixos: "\u{e843}",
+  opensuse: "\u{e857}",
+  centos: "\u{e78a}",
+  redhat: "\u{e7bb}",
+}
+
+function parseDisks(raw: string) {
+  try {
+    const json = JSON.parse(String(raw))
+    const list = Array.isArray(json.blockdevices) ? json.blockdevices : []
+    return list
+      .filter((d: any) => d.name && d.size)
+      .map((d: any) => ({
+        name: String(d.name),
+        model: String(d.model ?? "Disk").trim() || "Disk",
+        size: String(d.size).trim(),
+      }))
+  } catch {
+    return []
+  }
 }
 
 // ─── Static field helpers ─────────────────────────────────────────────────────
@@ -81,11 +120,22 @@ export default function SystemInfoWindow(_gdkmonitor: Gdk.Monitor, monitorIndex:
   const [kernel, setKernel] = createState("…")
   const [cpu, setCpu] = createState("…")
   const [gpu, setGpu] = createState("…")
+  const [distroGlyph, setDistroGlyph] = createState("\u{f17c}")
+  const [disks, setDisks] = createState<Array<{ name: string; model: string; size: string }>>([])
+  const [monitors, setMonitors] = createState<Array<{ name: string; width: number; height: number; refreshRate: number; focused: boolean }>>([])
 
   createEffect(() => {
     if (!s.systemInfoOpen()) return
     execAsync(["hostname", "-s"]).then(setHostname).catch(() => setHostname("unknown"))
-    execAsync(["bash", "-c", "cat /etc/os-release"]).then((out) => setOsName(parseOsName(out))).catch(() => setOsName("unknown"))
+    execAsync(["bash", "-c", "cat /etc/os-release"])
+      .then((out) => {
+        setOsName(parseOsName(out))
+        setDistroGlyph(DISTRO_GLYPHS[parseDistroId(out)] ?? "\u{f17c}")
+      })
+      .catch(() => setOsName("unknown"))
+    execAsync(["bash", "-c", "lsblk -d -o NAME,MODEL,SIZE -J"])
+      .then((out) => setDisks(parseDisks(out)))
+      .catch(() => setDisks([]))
     execAsync(["uname", "-r"]).then(setKernel).catch(() => setKernel("unknown"))
     execAsync(["bash", "-c", `lscpu | grep "Model name"`]).then((out) => setCpu(parseCpuModel(out))).catch(() => setCpu("unknown"))
     // GPU: glxinfo gives a clean fastfetch-style name ("AMD Radeon RX 5700 XT");
@@ -121,10 +171,15 @@ export default function SystemInfoWindow(_gdkmonitor: Gdk.Monitor, monitorIndex:
         <label class="flyout-title" label="System Info" xalign={0.5} />
 
         <SectionTitle label="SYSTEM" />
-        {Field("Hostname", hostname)}
-        {Field("OS", osName)}
-        {Field("Kernel", kernel)}
-        {Field("Uptime", uptime)}
+        <box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
+          <box orientation={Gtk.Orientation.VERTICAL} spacing={2} hexpand>
+            {Field("Hostname", hostname)}
+            {Field("OS", osName)}
+            {Field("Kernel", kernel)}
+            {Field("Uptime", uptime)}
+          </box>
+          <label class="system-info-logo" label={distroGlyph} valign={Gtk.Align.CENTER} />
+        </box>
 
         <Divider />
 
@@ -132,17 +187,23 @@ export default function SystemInfoWindow(_gdkmonitor: Gdk.Monitor, monitorIndex:
         {Field("CPU", cpu)}
         {Field("Memory", memory)}
         {Field("GPU", gpu)}
-        {Field("Disk", disk)}
+
+        <Divider />
+
+        <SectionTitle label="STORAGE" />
+        <For each={disks}>{(d) => Field(`${d.model} (${d.name})`, () => d.size)}</For>
+        {Field("Root usage", disk)}
 
         <Divider />
 
         <SectionTitle label="DISPLAY" />
-        {monitors.map((m, i) => (
+        <For each={monitors}>{(m, i) => (
           <box orientation={Gtk.Orientation.VERTICAL} spacing={2}>
             <label class="system-info-monitor" label={`Monitor ${i + 1} — ${m.name}`} halign={Gtk.Align.START} xalign={0} />
             {Field("Resolution", () => `${m.width}x${m.height} @ ${Math.round(m.refreshRate)}Hz`)}
           </box>
-        ))}
+        )}
+        </For>
       </box>
     )
   }

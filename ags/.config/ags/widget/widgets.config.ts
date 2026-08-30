@@ -9,7 +9,7 @@ export const config: Record<WidgetId, boolean> = {
   powerMenu: true,
   calendar: true,
   settings: true,
-  displaySettings: false,
+  displaySettings: true,
   notifications: true,
   // Toast popups. The window's `visible` must key off "a toast is on
   // screen" (reported by ToastRow), never off s.notifications() - notifd
