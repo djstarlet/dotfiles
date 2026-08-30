@@ -1,7 +1,7 @@
 import app from "ags/gtk4/app"
 import { Gtk } from "ags/gtk4"
 import { execAsync } from "ags/process"
-import { createPoll } from "ags/time"
+import { createPoll, timeout } from "ags/time"
 import { For, createEffect, createState } from "gnim"
 import type { Store } from "./store"
 
@@ -15,10 +15,6 @@ function parseOsName(raw: string) {
 function parseCpuModel(raw: string) {
   const m = String(raw).match(/Model name:\s*(.+)/)
   return m ? m[1].trim() : "Unknown"
-}
-
-function parseGpuModel(raw: string) {
-  return String(raw).trim() || "Unknown"
 }
 
 function parseMonitors(raw: string) {
@@ -43,8 +39,31 @@ function sortMonitors(ms: ReturnType<typeof parseMonitors>) {
 }
 
 function parseDistroId(raw: string) {
-  const m = String(raw).match(/^ID="?([^"\n]+)"?/m)
-  return m ? m[1].trim() : ""
+  // Handle both ID="x" and ID='x' (Gentoo uses single quotes).
+  const m = String(raw).match(/^ID=([^\n]+)/m)
+  return m ? m[1].trim().replace(/^['"]|['"]$/g, "") : ""
+}
+
+// lspci device-id → name. Text parsing is ambiguous (all Navi 10 SKUs share
+// one string: "Radeon RX 5600 OEM/5600 XT / 5700/5700 XT"), so match on id.
+const GPU_IDS: Record<string, string> = {
+  "1002:731f": "AMD Radeon RX 5700 XT",
+  "1002:731e": "AMD Radeon RX 5600 XT",
+  "1002:7318": "AMD Radeon RX 5700",
+  "1002:67df": "AMD Radeon RX 5700",
+  "1002:67c4": "AMD Radeon RX 570",
+  "1002:164e": "AMD Radeon iGPU (Renoir)",
+  "1002:15bf": "AMD Radeon RX 5500",
+  "1002:73bf": "AMD Radeon RX 6800 XT",
+  "1002:744c": "AMD Radeon RX 7900 XTX",
+  "8086:9bc4": "Intel UHD Graphics 630",
+  "8086:4680": "Intel Arc A370M / Iris Xe",
+  "8086:a780": "Intel Iris Xe Graphics (Raptor Lake)",
+  "10de:1c03": "NVIDIA GeForce GTX 1060",
+  "10de:1e07": "NVIDIA GeForce RTX 2080",
+  "10de:2504": "NVIDIA GeForce RTX 3050",
+  "10de:2484": "NVIDIA GeForce RTX 3060",
+  "10de:2684": "NVIDIA GeForce RTX 4090",
 }
 
 // Codepoints verified against SymbolsNerdFont-Regular.ttf via fontTools:
@@ -138,17 +157,25 @@ export default function SystemInfoWindow(_gdkmonitor: Gdk.Monitor, monitorIndex:
       .catch(() => setDisks([]))
     execAsync(["uname", "-r"]).then(setKernel).catch(() => setKernel("unknown"))
     execAsync(["bash", "-c", `lscpu | grep "Model name"`]).then((out) => setCpu(parseCpuModel(out))).catch(() => setCpu("unknown"))
-    // GPU: glxinfo gives a clean fastfetch-style name ("AMD Radeon RX 5700 XT");
-    // fallback to lspci with aggressive bracket parsing.
+    // GPU: lspci -nn device-id lookup (text parsing is ambiguous across SKUs).
     execAsync([
       "bash",
       "-c",
-      `if command -v glxinfo >/dev/null 2>&1; then
-        glxinfo -B 2>/dev/null | grep -i "OpenGL renderer" | sed 's/.*: *//; s/ *(.*//'
-      else
-        lspci | grep -iE "vga|3d controller" | head -1 | sed -E 's/.*\\[([^]]*)\\].*/\\1/; s|/.*||; s/OEM//g; s/ *$//'
-      fi`,
-    ]).then((out) => setGpu(parseGpuModel(out))).catch(() => setGpu("unknown"))
+      "lspci -nn | grep -iE 'vga|3d controller' | head -1 | grep -oE '\\[[0-9a-f]{4}:[0-9a-f]{4}\\]' | tr -d '[]'",
+    ])
+      .then((out) => {
+        const id = out.trim().toLowerCase()
+        if (GPU_IDS[id]) setGpu(GPU_IDS[id])
+        else
+          execAsync([
+            "bash",
+            "-c",
+            "lspci | grep -iE 'vga|3d controller' | head -1 | sed -E 's/.*\\[([^]]*)\\].*/\\1/; s|/.*||; s/OEM//g; s/ *$//'",
+          ])
+            .then((o) => setGpu(o.trim() || "unknown"))
+            .catch(() => setGpu("unknown"))
+      })
+      .catch(() => setGpu("unknown"))
     execAsync(["bash", "-c", "hyprctl monitors -j"])
       .then((out) => setMonitors(sortMonitors(parseMonitors(out))))
       .catch(() => setMonitors([]))
@@ -191,7 +218,7 @@ export default function SystemInfoWindow(_gdkmonitor: Gdk.Monitor, monitorIndex:
         <Divider />
 
         <SectionTitle label="STORAGE" />
-        <For each={disks}>{(d) => Field(`${d.model} (${d.name})`, () => d.size)}</For>
+        <For each={disks}>{(d) => Field(d.model, () => d.size)}</For>
         {Field("Root usage", disk)}
 
         <Divider />
@@ -241,10 +268,36 @@ export default function SystemInfoWindow(_gdkmonitor: Gdk.Monitor, monitorIndex:
         return false // let GTK finish the close
       })
       win.present()
+
+      // Auto-dismiss on focus loss (150ms guard against focus handoff races).
+      let focusTimer: ReturnType<typeof timeout> | null = null
+      win.connect("notify::is-active", () => {
+        if (win?.is_active) {
+          if (focusTimer) {
+            focusTimer.cancel()
+            focusTimer = null
+          }
+        } else if (!focusTimer) {
+          focusTimer = timeout(150, () => {
+            focusTimer = null
+            s.closeFlyouts()
+          })
+        }
+      })
     } else {
       win?.destroy()
       win = null
     }
+  })
+
+  // Rebuild content when async data lands (gnim <For> over a State doesn't
+  // re-render the once-built tree reliably). Only rebuild on real changes.
+  let lastBuiltKey = ""
+  createEffect(() => {
+    const key = `${distroGlyph()}|${disks().length}|${monitors().length}|${disks().map((d) => d.size).join(",")}`
+    if (key === lastBuiltKey) return
+    lastBuiltKey = key
+    if (win) win.set_child(SystemInfoContent())
   })
 
   return null
