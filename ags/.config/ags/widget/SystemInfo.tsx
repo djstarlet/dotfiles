@@ -38,7 +38,7 @@ function parseResolution(raw: string) {
 
 // ─── Static field helpers ─────────────────────────────────────────────────────
 
-function Field(label: string, value: string) {
+function Field(label: string, value: () => string) {
   return (
     <box orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
       <label class="system-info-label" label={label} widthRequest={120} xalign={1} halign={Gtk.Align.END} />
@@ -88,7 +88,7 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
   })
 
   // ── JSX ────────────────────────────────────────────────────────────────────
-  const { TOP, LEFT, RIGHT } = Astal.WindowAnchor
+  const { TOP, LEFT, RIGHT, BOTTOM } = Astal.WindowAnchor
 
   return (
     <window
@@ -97,44 +97,43 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
       namespace="ags-systeminfo"
       class="FlyoutWindow"
       gdkmonitor={gdkmonitor}
-      anchor={TOP | LEFT | RIGHT}
+      anchor={TOP | LEFT | RIGHT | BOTTOM}
       layer={Astal.Layer.OVERLAY}
       keymode={Astal.Keymode.ON_DEMAND}
       exclusivity={Astal.Exclusivity.IGNORE}
-      marginTop={42}
       application={app}
     >
-      <box hexpand>
+      <box hexpand vexpand>
         <button class="DismissSurface" hexpand vexpand canTarget onClicked={s.closeFlyouts} />
-        <box halign={Gtk.Align.END} marginEnd={18}>
-          <box
-            class="flyout system-info-flyout"
-            orientation={Gtk.Orientation.VERTICAL}
-            spacing={10}
-            marginBottom={40}
-          >
+        <box
+          class="flyout system-info-flyout"
+          orientation={Gtk.Orientation.VERTICAL}
+          spacing={10}
+          halign={Gtk.Align.CENTER}
+          valign={Gtk.Align.CENTER}
+          marginBottom={40}
+        >
             <label class="flyout-title" label="System Info" xalign={0.5} />
 
             <SectionTitle label="SYSTEM" />
-            {Field("Hostname", hostname())}
-            {Field("OS", osName())}
-            {Field("Kernel", kernel())}
-            {Field("Uptime", uptime())}
+            {Field("Hostname", hostname)}
+            {Field("OS", osName)}
+            {Field("Kernel", kernel)}
+            {Field("Uptime", uptime)}
 
             <Divider />
 
             <SectionTitle label="HARDWARE" />
-            {Field("CPU", cpu())}
-            {Field("Memory", memory())}
-            {Field("GPU", gpu())}
-            {Field("Disk", disk())}
+            {Field("CPU", cpu)}
+            {Field("Memory", memory)}
+            {Field("GPU", gpu)}
+            {Field("Disk", disk)}
 
             <Divider />
 
             <SectionTitle label="DISPLAY" />
-            {Field("Resolution", resolution())}
+            {Field("Resolution", resolution)}
           </box>
-        </box>
       </box>
     </window>
   )
