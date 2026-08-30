@@ -18,22 +18,28 @@ function parseCpuModel(raw: string) {
 }
 
 function parseGpuModel(raw: string) {
-  // "03:00.0 VGA compatible controller: AMD/ATI ..." -> after ": "
-  const m = String(raw).match(/VGA compatible controller:\s*(.+)/i)
-  return m ? m[1].trim() : "Unknown"
+  return String(raw).trim() || "Unknown"
 }
 
-function parseResolution(raw: string) {
+function parseMonitors(raw: string) {
   try {
-    const monitors = JSON.parse(raw)
-    if (Array.isArray(monitors) && monitors[0]) {
-      const m = monitors[0]
-      return `${m.width}x${m.height} @ ${Math.round(m.refreshRate)}Hz`
-    }
+    const list = JSON.parse(String(raw))
+    if (!Array.isArray(list)) return []
+    return list.map((m: any) => ({
+      name: String(m.name),
+      width: Number(m.width),
+      height: Number(m.height),
+      refreshRate: Number(m.refreshRate),
+      focused: Boolean(m.focused),
+    }))
   } catch {
-    // fall through to xrandr
+    return []
   }
-  return ""
+}
+
+function sortMonitors(ms: ReturnType<typeof parseMonitors>) {
+  // Focused monitor first (it's the "primary"), then the rest in hyprctl order.
+  return [...ms.filter((m) => m.focused), ...ms.filter((m) => !m.focused)]
 }
 
 // ─── Static field helpers ─────────────────────────────────────────────────────
@@ -75,7 +81,6 @@ export default function SystemInfoWindow(_gdkmonitor: Gdk.Monitor, monitorIndex:
   const [kernel, setKernel] = createState("…")
   const [cpu, setCpu] = createState("…")
   const [gpu, setGpu] = createState("…")
-  const [resolution, setResolution] = createState("…")
 
   createEffect(() => {
     if (!s.systemInfoOpen()) return
@@ -83,14 +88,20 @@ export default function SystemInfoWindow(_gdkmonitor: Gdk.Monitor, monitorIndex:
     execAsync(["bash", "-c", "cat /etc/os-release"]).then((out) => setOsName(parseOsName(out))).catch(() => setOsName("unknown"))
     execAsync(["uname", "-r"]).then(setKernel).catch(() => setKernel("unknown"))
     execAsync(["bash", "-c", `lscpu | grep "Model name"`]).then((out) => setCpu(parseCpuModel(out))).catch(() => setCpu("unknown"))
-    execAsync(["bash", "-c", `lspci | grep -i vga | head -1`]).then((out) => setGpu(parseGpuModel(out))).catch(() => setGpu("unknown"))
-    execAsync(["bash", "-c", `hyprctl monitors -j | python3 -c "import json,sys; m=json.load(sys.stdin)[0]; print(f\\"{m['width']}x{m['height']} @ {m['refreshRate']:.0f}Hz\\")"`])
-      .then(setResolution)
-      .catch(() =>
-        execAsync(["bash", "-c", `xrandr | grep '*' | head -1 | awk '{print $1}'`])
-          .then((out) => setResolution(out.trim() || "unknown"))
-          .catch(() => setResolution("unknown")),
-      )
+    // GPU: glxinfo gives a clean fastfetch-style name ("AMD Radeon RX 5700 XT");
+    // fallback to lspci with aggressive bracket parsing.
+    execAsync([
+      "bash",
+      "-c",
+      `if command -v glxinfo >/dev/null 2>&1; then
+        glxinfo -B 2>/dev/null | grep -i "OpenGL renderer" | sed 's/.*: *//; s/ *(.*//'
+      else
+        lspci | grep -iE "vga|3d controller" | head -1 | sed -E 's/.*\\[([^]]*)\\].*/\\1/; s|/.*||; s/OEM//g; s/ *$//'
+      fi`,
+    ]).then((out) => setGpu(parseGpuModel(out))).catch(() => setGpu("unknown"))
+    execAsync(["bash", "-c", "hyprctl monitors -j"])
+      .then((out) => setMonitors(sortMonitors(parseMonitors(out))))
+      .catch(() => setMonitors([]))
   })
 
   // ── Content (same flyout box JSX, extracted) ───────────────────────────────
@@ -126,7 +137,12 @@ export default function SystemInfoWindow(_gdkmonitor: Gdk.Monitor, monitorIndex:
         <Divider />
 
         <SectionTitle label="DISPLAY" />
-        {Field("Resolution", resolution)}
+        {monitors.map((m, i) => (
+          <box orientation={Gtk.Orientation.VERTICAL} spacing={2}>
+            <label class="system-info-monitor" label={`Monitor ${i + 1} — ${m.name}`} halign={Gtk.Align.START} xalign={0} />
+            {Field("Resolution", () => `${m.width}x${m.height} @ ${Math.round(m.refreshRate)}Hz`)}
+          </box>
+        ))}
       </box>
     )
   }
