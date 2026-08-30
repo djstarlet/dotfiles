@@ -443,6 +443,12 @@ box.system-info-divider {
   margin: 4px 0;
 }
 
+label.system-info-monitor {
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--bar-text);
+}
+
 label.system-info-label {
   font-size: 11px;
   font-weight: 600;
