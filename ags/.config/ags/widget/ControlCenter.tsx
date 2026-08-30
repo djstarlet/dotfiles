@@ -282,6 +282,8 @@ export default function ControlCenterWindow(gdkmonitor: Gdk.Monitor, monitorInde
                 <label class="control-action-label" label="Power" />
               </box>
             )}
+          </box>
+          <box class="control-actions-row" orientation={Gtk.Orientation.HORIZONTAL} spacing={10} halign={Gtk.Align.CENTER}>
             {config.systemInfo && (
               <box class="control-action-tile" widthRequest={68} orientation={Gtk.Orientation.VERTICAL} spacing={3} halign={Gtk.Align.CENTER}>
                 <button
