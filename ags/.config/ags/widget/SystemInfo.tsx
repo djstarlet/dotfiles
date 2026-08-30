@@ -102,6 +102,17 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
       keymode={Astal.Keymode.ON_DEMAND}
       exclusivity={Astal.Exclusivity.IGNORE}
       application={app}
+      $={(self) => {
+        const ctrl = new Gtk.EventControllerKey()
+        ctrl.connect("key-pressed", (_c, keyval) => {
+          if (keyval === 0xff1b) {
+            s.closeFlyouts()
+            return true
+          }
+          return false
+        })
+        self.add_controller(ctrl)
+      }}
     >
       <box hexpand vexpand>
         <button class="DismissSurface" hexpand vexpand canTarget onClicked={s.closeFlyouts} />
@@ -111,7 +122,12 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
           spacing={10}
           halign={Gtk.Align.CENTER}
           valign={Gtk.Align.CENTER}
+          widthRequest={420}
+          heightRequest={480}
+          marginTop={40}
           marginBottom={40}
+          marginStart={40}
+          marginEnd={40}
         >
             <label class="flyout-title" label="System Info" xalign={0.5} />
 
