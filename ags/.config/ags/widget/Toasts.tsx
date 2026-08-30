@@ -177,7 +177,12 @@ export default function NotificationToasts(gdkmonitor: Gdk.Monitor, monitorIndex
           <ToastRow
             item={createComputed(() => {
               const ns = s.notifications()
-              return ns.length ? ns[ns.length - 1] : null
+              if (ns.length === 0) return null
+              // notifd's list order isn't guaranteed; ids are monotonically
+              // increasing, so max-id is the newest regardless of order.
+              let newest = ns[0]
+              for (const n of ns) if (Number(n.id) > Number(newest.id)) newest = n
+              return newest
             })}
             s={s}
             onShown={(id) => mark(id, true)}
