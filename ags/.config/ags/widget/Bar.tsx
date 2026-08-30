@@ -234,18 +234,6 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
                   </overlay>
                 </button>
               )}
-              {config.systemInfo && (
-                <button
-                  widthRequest={26}
-                  heightRequest={26}
-                  valign={Gtk.Align.CENTER}
-                  halign={Gtk.Align.CENTER}
-                  class={s.systemInfoOpen((open) => (open ? "bar-cap-button active" : "bar-cap-button"))}
-                  onClicked={s.toggleSystemInfo}
-                >
-                  <label class="info-icon" label={"\u{2139}"} />
-                </button>
-              )}
               {config.controlCenter && (
                 <button
                   widthRequest={26}
