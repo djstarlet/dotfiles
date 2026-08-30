@@ -9,6 +9,7 @@ import DesktopMenuWindow from "./DesktopMenu"
 import SettingsWindows from "./Settings"
 import CalendarWindows from "./Calendar"
 import ControlCenterWindow from "./ControlCenter"
+import SystemInfoWindow from "./SystemInfo"
 import NotificationsWindow from "./Notifications"
 import NotificationToasts from "./Toasts"
 import { ClockElement } from "./Clock"
@@ -233,6 +234,18 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
                   </overlay>
                 </button>
               )}
+              {config.systemInfo && (
+                <button
+                  widthRequest={26}
+                  heightRequest={26}
+                  valign={Gtk.Align.CENTER}
+                  halign={Gtk.Align.CENTER}
+                  class={s.systemInfoOpen((open) => (open ? "bar-cap-button active" : "bar-cap-button"))}
+                  onClicked={s.toggleSystemInfo}
+                >
+                  <label class="info-icon" label={"\u{2139}"} />
+                </button>
+              )}
               {config.controlCenter && (
                 <button
                   widthRequest={26}
@@ -265,6 +278,8 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
       {config.desktopMenu && DesktopMenuWindow(gdkmonitor, monitorIndex, s)}
 
       {config.controlCenter && ControlCenterWindow(gdkmonitor, monitorIndex, s)}
+
+      {config.systemInfo && SystemInfoWindow(gdkmonitor, monitorIndex, s)}
 
       {config.notifications && NotificationsWindow(gdkmonitor, monitorIndex, s)}
 

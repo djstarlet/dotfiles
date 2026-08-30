@@ -1,5 +1,5 @@
 export type WidgetId =
-  | "clock" | "workspaces" | "desktopMenu" | "controlCenter" | "powerMenu" | "calendar" | "settings" | "displaySettings" | "notifications" | "toasts"
+  | "clock" | "workspaces" | "desktopMenu" | "controlCenter" | "powerMenu" | "calendar" | "settings" | "displaySettings" | "notifications" | "toasts" | "systemInfo"
 
 export const config: Record<WidgetId, boolean> = {
   clock: true,
@@ -16,6 +16,7 @@ export const config: Record<WidgetId, boolean> = {
   // retains notifications until dismissed, so a "has notifications"
   // predicate keeps the OVERLAY surface mapped forever.
   toasts: true,
+  systemInfo: true,
 }
 
 // settings' only launcher is the mini-gear inside Control Center

@@ -263,6 +263,7 @@ export function createStore() {
   const [calendarOpen, setCalendarOpen] = createState(false)
   const [desktopMenuOpen, setDesktopMenuOpen] = createState(false)
   const [settingsOpen, setSettingsOpen] = createState(false)
+  const [systemInfoOpen, setSystemInfoOpen] = createState(false)
   const [settingsStatus, setSettingsStatus] = createState("")
   const [chooserOpen, setChooserOpen] = createState(false)
 
@@ -373,7 +374,7 @@ export function createStore() {
   const hasNotifications = createComputed(() =>
     notifications().some((n) => Number(n.id) > seenUpTo()),
   )
-  const popupOpen = createComputed(() => controlOpen() || notifOpen() || calendarOpen() || desktopMenuOpen() || powerMenuOpen() || settingsOpen())
+  const popupOpen = createComputed(() => controlOpen() || notifOpen() || calendarOpen() || desktopMenuOpen() || powerMenuOpen() || settingsOpen() || systemInfoOpen())
   const workspaceIds = createComputed(() => {
     const ids = workspaceListRaw()
     const active = activeWorkspace()
@@ -442,6 +443,7 @@ export function createStore() {
     setCalendarOpen(false)
     setDesktopMenuOpen(false)
     setSettingsOpen(false)
+    setSystemInfoOpen(false)
     setListPopupOpen(false)
     setActiveList(null)
     setAuthDialogOpen(false)
@@ -535,6 +537,19 @@ export function createStore() {
     } else {
       setListPopupOpen(false)
       setActiveList(null)
+    }
+  }
+
+  function toggleSystemInfo() {
+    const next = !systemInfoOpen()
+    setSystemInfoOpen(next)
+    if (next) {
+      setControlOpen(false)
+      setCalendarOpen(false)
+      setDesktopMenuOpen(false)
+      setSettingsOpen(false)
+      setNotifOpen(false)
+      setPowerMenuOpen(false)
     }
   }
 
@@ -780,6 +795,8 @@ export function createStore() {
     setDesktopMenuOpen,
     settingsOpen,
     setSettingsOpen,
+    systemInfoOpen,
+    setSystemInfoOpen,
     settingsStatus,
     setSettingsStatus,
     chooserOpen,
@@ -844,6 +861,7 @@ export function createStore() {
     toggleCalendar,
     toggleDesktopMenu,
     toggleSettings,
+    toggleSystemInfo,
     openAudioSettings,
     runDotfilesUpdate,
     openLauncher,
