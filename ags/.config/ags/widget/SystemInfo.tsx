@@ -1,5 +1,5 @@
 import app from "ags/gtk4/app"
-import { Astal, Gtk } from "ags/gtk4"
+import { Gtk } from "ags/gtk4"
 import { execAsync } from "ags/process"
 import { createPoll } from "ags/time"
 import { createEffect, createState } from "gnim"
@@ -55,15 +55,21 @@ function Divider() {
   return <box class="system-info-divider" />
 }
 
-// ─── System Info flyout ───────────────────────────────────────────────────────
+// ─── System Info: a REAL Hyprland-managed Gtk window ──────────────────────────
+// Not an Astal layer-shell window: Gtk.ApplicationWindow is a normal toplevel,
+// so Hyprland floats/centers it via windowrule and it responds to WM keybinds.
 
-export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: number, s: Store) {
+export default function SystemInfoWindow(_gdkmonitor: Gdk.Monitor, monitorIndex: number, s: Store) {
+  // Bar.tsx instantiates this once per monitor; a normal toplevel window is
+  // centered by the compositor, so only the first instance owns it.
+  if (monitorIndex !== 0) return null
+
   // ── Live polls (60s) ───────────────────────────────────────────────────────
   const uptime = createPoll("…", 60_000, ["bash", "-c", "uptime -p"], (out) => out.trim() || "unknown")
   const memory = createPoll("…", 60_000, ["bash", "-c", "free -h | awk '/Mem:/{print $3\" / \"$2}'"], (out) => out.trim() || "unknown")
   const disk = createPoll("…", 60_000, ["bash", "-c", `df -h / | awk 'NR==2{print $3"/"$2" ("$5" used)"}'`], (out) => out.trim() || "unknown")
 
-  // ── Static info: refreshed each time the flyout opens ──────────────────────
+  // ── Static info: refreshed each time the window opens ──────────────────────
   const [hostname, setHostname] = createState("…")
   const [osName, setOsName] = createState("…")
   const [kernel, setKernel] = createState("…")
@@ -87,70 +93,82 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
       )
   })
 
-  // ── JSX ────────────────────────────────────────────────────────────────────
-  const { TOP, LEFT, RIGHT, BOTTOM } = Astal.WindowAnchor
+  // ── Content (same flyout box JSX, extracted) ───────────────────────────────
+  function SystemInfoContent() {
+    return (
+      <box
+        class="flyout system-info-flyout"
+        orientation={Gtk.Orientation.VERTICAL}
+        spacing={10}
+        hexpand
+        vexpand
+        halign={Gtk.Align.CENTER}
+        valign={Gtk.Align.CENTER}
+        widthRequest={420}
+        heightRequest={480}
+      >
+        <label class="flyout-title" label="System Info" xalign={0.5} />
 
-  return (
-    <window
-      visible={s.systemInfoOpen}
-      name={`ags-systeminfo-${monitorIndex}`}
-      namespace="ags-systeminfo"
-      class="FlyoutWindow"
-      gdkmonitor={gdkmonitor}
-      anchor={TOP | LEFT | RIGHT | BOTTOM}
-      layer={Astal.Layer.OVERLAY}
-      keymode={Astal.Keymode.ON_DEMAND}
-      exclusivity={Astal.Exclusivity.IGNORE}
-      application={app}
-      $={(self) => {
-        const ctrl = new Gtk.EventControllerKey()
-        ctrl.connect("key-pressed", (_c, keyval) => {
-          if (keyval === 0xff1b) {
-            s.closeFlyouts()
-            return true
-          }
-          return false
-        })
-        self.add_controller(ctrl)
-      }}
-    >
-      <box hexpand vexpand>
-        <button class="DismissSurface" hexpand vexpand canTarget onClicked={s.closeFlyouts} />
-        <box
-          class="flyout system-info-flyout"
-          orientation={Gtk.Orientation.VERTICAL}
-          spacing={10}
-          halign={Gtk.Align.CENTER}
-          valign={Gtk.Align.CENTER}
-          widthRequest={420}
-          heightRequest={480}
-          marginTop={40}
-          marginBottom={40}
-          marginStart={40}
-          marginEnd={40}
-        >
-            <label class="flyout-title" label="System Info" xalign={0.5} />
+        <SectionTitle label="SYSTEM" />
+        {Field("Hostname", hostname)}
+        {Field("OS", osName)}
+        {Field("Kernel", kernel)}
+        {Field("Uptime", uptime)}
 
-            <SectionTitle label="SYSTEM" />
-            {Field("Hostname", hostname)}
-            {Field("OS", osName)}
-            {Field("Kernel", kernel)}
-            {Field("Uptime", uptime)}
+        <Divider />
 
-            <Divider />
+        <SectionTitle label="HARDWARE" />
+        {Field("CPU", cpu)}
+        {Field("Memory", memory)}
+        {Field("GPU", gpu)}
+        {Field("Disk", disk)}
 
-            <SectionTitle label="HARDWARE" />
-            {Field("CPU", cpu)}
-            {Field("Memory", memory)}
-            {Field("GPU", gpu)}
-            {Field("Disk", disk)}
+        <Divider />
 
-            <Divider />
-
-            <SectionTitle label="DISPLAY" />
-            {Field("Resolution", resolution)}
-          </box>
+        <SectionTitle label="DISPLAY" />
+        {Field("Resolution", resolution)}
       </box>
-    </window>
-  )
+    )
+  }
+
+  // ── Window lifecycle: open ⇄ systemInfoOpen, both directions ──────────────
+  let win: Gtk.ApplicationWindow | null = null
+
+  createEffect(() => {
+    if (s.systemInfoOpen()) {
+      if (win) return // guard against duplicates
+      win = new Gtk.ApplicationWindow({
+        application: app,
+        title: "System Info",
+        defaultWidth: 420,
+        defaultHeight: 480,
+        resizable: false,
+      })
+      win.set_child(SystemInfoContent())
+
+      // Esc closes (only works when the WM gives the window keyboard focus).
+      const ctrl = new Gtk.EventControllerKey()
+      ctrl.connect("key-pressed", (_c, keyval) => {
+        if (keyval === 0xff1b) {
+          s.closeFlyouts()
+          return true
+        }
+        return false
+      })
+      win.add_controller(ctrl)
+
+      // Closed via WM (kill bind / hyprctl kill): sync the store back down.
+      win.connect("close-request", () => {
+        win = null
+        s.setSystemInfoOpen(false)
+        return false // let GTK finish the close
+      })
+      win.present()
+    } else {
+      win?.destroy()
+      win = null
+    }
+  })
+
+  return null
 }
