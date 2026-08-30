@@ -374,7 +374,7 @@ export function createStore() {
   const hasNotifications = createComputed(() =>
     notifications().some((n) => Number(n.id) > seenUpTo()),
   )
-  const popupOpen = createComputed(() => controlOpen() || notifOpen() || calendarOpen() || desktopMenuOpen() || powerMenuOpen() || settingsOpen() || systemInfoOpen())
+  const popupOpen = createComputed(() => controlOpen() || notifOpen() || calendarOpen() || desktopMenuOpen() || powerMenuOpen() || settingsOpen())
   const workspaceIds = createComputed(() => {
     const ids = workspaceListRaw()
     const active = activeWorkspace()
