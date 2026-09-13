@@ -8,6 +8,7 @@ export function ClockElement(s: Store) {
       <button
         $type="center"
         class={s.calendarOpen((open) => (open ? "clock active" : "clock"))}
+        halign={Gtk.Align.CENTER}
         onClicked={s.toggleCalendar}
       >
         <label
@@ -16,7 +17,6 @@ export function ClockElement(s: Store) {
           ellipsize={3}
           halign={Gtk.Align.CENTER}
           xalign={0.5}
-          hexpand
         />
       </button>
     )
