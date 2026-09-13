@@ -23,7 +23,8 @@ window.FlyoutWindow {
 /* DEFAULT THEME — declarative source of truth: widget/theme.config.ts (runtime overrides: theme-colors.json / AGS_WS_DOT_COLORS) */
 window.Bar,
 window.FlyoutWindow,
-window.DismissWindow {
+window.DismissWindow,
+window.SystemInfoWindow {
   --bar-bg: #f6faff;
   --bar-bg-light: #ffffff;
   --bar-bg-dark: #dbe7f5;
@@ -89,14 +90,12 @@ label.clock-label {
 
 label.center-label {
   font-size: 12px;
-  padding: 2px 8px;
 }
 
 button.clock {
   min-width: 0;
   min-height: 20px;
   border: 0;
-  border-radius: 4px;
   background: transparent;
   box-shadow: none;
   padding: 0;
@@ -195,18 +194,9 @@ button.round-icon:active {
   box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.18), inset 0 -1px 0 rgba(255, 255, 255, 0.55), 0 0 0 rgba(0, 0, 0, 0);
 }
 
-button.clock:hover {
-  background: color-mix(in srgb, var(--bar-accent) 12%, transparent);
-}
-
 button.clock:hover .clock-label {
   color: var(--bar-accent);
   text-shadow: 0 1px 0 color-mix(in srgb, var(--bar-accent) 30%, transparent);
-}
-
-button.clock.active,
-button.clock:active {
-  background: color-mix(in srgb, var(--bar-accent) 18%, transparent);
 }
 
 button.clock.active .clock-label,
@@ -425,7 +415,7 @@ label.notif-dismiss-icon {
 
 label.system-info-section-title {
   font-weight: 800;
-  font-size: 11px;
+  font-size: 12.5px;
   color: var(--bar-accent);
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -440,19 +430,44 @@ box.system-info-divider {
 
 label.system-info-monitor {
   font-weight: 600;
-  font-size: 11px;
+  font-size: 12.5px;
   color: var(--bar-text);
 }
 
+levelbar.system-info-disk-bar {
+  min-height: 5px;
+  border-radius: 3px;
+}
+
+levelbar.system-info-disk-bar > trough {
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--bar-text) 14%, transparent);
+}
+
+levelbar.system-info-disk-bar > trough > block.filled {
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--bar-accent-light) 0%, var(--bar-accent) 100%);
+}
+
+label.system-info-disk-pct,
+label.system-info-disk-note {
+  font-size: 12px;
+  color: var(--bar-text-dim);
+}
+
+label.system-info-disk-note {
+  font-style: italic;
+}
+
 label.system-info-label {
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--bar-text-dim);
   min-width: 100px;
 }
 
 label.system-info-value {
-  font-size: 11px;
+  font-size: 12.5px;
   color: var(--bar-text);
 }
 

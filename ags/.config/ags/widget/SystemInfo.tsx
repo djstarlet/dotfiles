@@ -2,14 +2,15 @@ import app from "ags/gtk4/app"
 import { Gtk } from "ags/gtk4"
 import { execAsync } from "ags/process"
 import { createPoll, timeout } from "ags/time"
-import { For, createEffect, createState } from "gnim"
+import { For, createEffect, createMemo, createState } from "gnim"
 import type { Store } from "./store"
 
 // ─── Parsers ──────────────────────────────────────────────────────────────────
 
 function parseOsName(raw: string) {
   const m = String(raw).match(/^PRETTY_NAME="?([^"\n]+)"?/m)
-  return m ? m[1] : "Unknown"
+  // Gentoo's os-release uses single quotes: PRETTY_NAME='Gentoo Linux'.
+  return m ? m[1].trim().replace(/^['"]|['"]$/g, "") : "Unknown"
 }
 
 // "AMD Ryzen 7 5800X 8-Core Processor|16|5619.7388" → "AMD Ryzen 7 5800X (16) @ 5.62 GHz"
@@ -30,14 +31,6 @@ function parseBoard(raw: string) {
 function parsePackages(raw: string) {
   const [count, mgr] = String(raw).trim().split(/\s+/)
   return count && mgr && /^\d+$/.test(count) ? `${count} (${mgr})` : "unknown"
-}
-
-// "/bin/bash|GNU bash, version 5.3.15(1)-release ..." → "bash 5.3.15"
-function parseShell(raw: string) {
-  const [path, versionLine] = String(raw).split("|")
-  const name = String(path ?? "").trim().split("/").pop() || "unknown"
-  const m = String(versionLine ?? "").match(/\d+\.\d+(?:\.\d+)?/)
-  return m ? `${name} ${m[0]}` : name
 }
 
 // "Hyprland 0.56.0 built from branch ..." → "Hyprland 0.56.0"
@@ -128,17 +121,63 @@ const DISTRO_GLYPHS: Record<string, string> = {
   redhat: "\u{e7bb}",
 }
 
-function parseDisks(raw: string) {
+type DiskInfo = {
+  name: string
+  model: string
+  size: string
+  used: number
+  total: number
+  percent: number | null
+}
+
+// lsblk human sizes are IEC: 120034123776 B → "111.8G", 2000398934016 B → "1.8T".
+function fmtBytesSize(bytes: number) {
+  const gib = bytes / 1024 ** 3
+  return gib >= 1024 ? `${(gib / 1024).toFixed(1)}T` : `${gib.toFixed(1)}G`
+}
+
+// `df -B1 --output=source,used,size` → device path → usage. Deduped by source:
+// btrfs mounts one device at several mountpoints (/, /home, /.snapshots, /var/log).
+function parseDfUsage(raw: string) {
+  const usage = new Map<string, { used: number; total: number }>()
+  for (const line of String(raw).trim().split("\n").slice(1)) {
+    const [source, used, total] = line.trim().split(/\s+/)
+    if (!source?.startsWith("/dev/") || usage.has(source)) continue
+    const u = Number(used)
+    const t = Number(total)
+    if (Number.isFinite(u) && Number.isFinite(t) && t > 0) usage.set(source, { used: u, total: t })
+  }
+  return usage
+}
+
+// Physical disks with usage summed over their mounted partitions (recursive, so
+// LVM/crypt children are covered too). Disks with no mount get percent null.
+function parseDisks(lsblkRaw: string, dfRaw: string): DiskInfo[] {
   try {
-    const json = JSON.parse(String(raw))
-    const list = Array.isArray(json.blockdevices) ? json.blockdevices : []
-    return list
-      .filter((d: any) => d.name && d.size)
-      .map((d: any) => ({
-        name: String(d.name),
-        model: String(d.model ?? "Disk").trim() || "Disk",
-        size: String(d.size).trim(),
-      }))
+    const json = JSON.parse(String(lsblkRaw))
+    const usage = parseDfUsage(dfRaw)
+    const walk = (node: any): any[] => [node, ...(node.children ?? []).flatMap(walk)]
+    return (json.blockdevices ?? [])
+      .filter((d: any) => d.type === "disk" && d.name && d.size)
+      .map((d: any) => {
+        let used = 0
+        let total = 0
+        for (const dev of walk(d)) {
+          const u = usage.get(`/dev/${dev.name}`)
+          if (u) {
+            used += u.used
+            total += u.total
+          }
+        }
+        return {
+          name: String(d.name),
+          model: String(d.model ?? "Disk").trim() || "Disk",
+          size: fmtBytesSize(Number(d.size)),
+          used,
+          total,
+          percent: total > 0 ? Math.round((used / total) * 100) : null,
+        }
+      })
   } catch {
     return []
   }
@@ -149,7 +188,7 @@ function parseDisks(raw: string) {
 function Field(label: string, value: string | (() => string)) {
   return (
     <box orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
-      <label class="system-info-label" label={label} widthRequest={120} xalign={1} halign={Gtk.Align.END} />
+      <label class="system-info-label" label={label} widthRequest={130} xalign={1} halign={Gtk.Align.END} />
       <label class="system-info-value" label={value} selectable hexpand xalign={0} halign={Gtk.Align.START} ellipsize={3 /* PANGO_ELLIPSIZE_END */} />
     </box>
   )
@@ -184,13 +223,20 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
   const [kernel, setKernel] = createState("…")
   const [host, setHost] = createState("…")
   const [packages, setPackages] = createState("…")
-  const [shell, setShell] = createState("…")
   const [wm, setWm] = createState("…")
   const [cpu, setCpu] = createState("…")
   const [gpu, setGpu] = createState("…")
   const [distroGlyph, setDistroGlyph] = createState("\u{f17c}")
-  const [disks, setDisks] = createState<Array<{ name: string; model: string; size: string }>>([])
+  const [disks, setDisks] = createState<DiskInfo[]>([])
   const [monitors, setMonitors] = createState<ReturnType<typeof parseMonitors>>([])
+
+  // FIX 3: OS line = distro name + kernel release; skip empty/unknown halves.
+  const osLine = createMemo(() => {
+    const parts = [osName(), kernel()]
+      .map((v) => v.trim())
+      .filter((v) => v && v !== "…" && !/^unknown$/i.test(v))
+    return parts.join(" ") || "unknown"
+  })
 
   createEffect(() => {
     if (!s.systemInfoOpen()) return
@@ -201,8 +247,11 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
         setDistroGlyph(DISTRO_GLYPHS[parseDistroId(out)] ?? "\u{f17c}")
       })
       .catch(() => setOsName("unknown"))
-    execAsync(["bash", "-c", "lsblk -d -o NAME,MODEL,SIZE -J"])
-      .then((out) => setDisks(parseDisks(out)))
+    Promise.all([
+      execAsync(["lsblk", "-b", "-o", "NAME,MODEL,SIZE,MOUNTPOINTS,TYPE", "-J"]),
+      execAsync(["df", "-B1", "--output=source,used,size"]),
+    ])
+      .then(([lsblkOut, dfOut]) => setDisks(parseDisks(lsblkOut, dfOut)))
       .catch(() => setDisks([]))
     execAsync(["uname", "-r"]).then(setKernel).catch(() => setKernel("unknown"))
     // product_name is the short model code fastfetch shows (MS-7D54); board_name
@@ -221,13 +270,6 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
     ])
       .then((out) => setPackages(parsePackages(out)))
       .catch(() => setPackages("unknown"))
-    execAsync([
-      "bash",
-      "-c",
-      'sh=$(getent passwd "$USER" | cut -d: -f7); printf "%s|%s" "$sh" "$("$sh" --version 2>/dev/null | head -1)"',
-    ])
-      .then((out) => setShell(parseShell(out)))
-      .catch(() => setShell("unknown"))
     execAsync(["bash", "-c", "hyprctl version | head -1"])
       .then((out) => setWm(parseWm(out)))
       .catch(() => setWm("unknown"))
@@ -274,7 +316,7 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
         halign={Gtk.Align.CENTER}
         valign={Gtk.Align.CENTER}
         widthRequest={420}
-        heightRequest={560}
+        heightRequest={620}
       >
         <label class="flyout-title" label="System Info" xalign={0.5} />
 
@@ -282,12 +324,10 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
         <box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
           <box orientation={Gtk.Orientation.VERTICAL} spacing={2} hexpand>
             {Field("Hostname", hostname)}
-            {Field("OS", osName)}
-            {Field("Kernel", kernel)}
+            {Field("OS", osLine)}
             {Field("Uptime", uptime)}
             {Field("Host", host)}
             {Field("Packages", packages)}
-            {Field("Shell", shell)}
             {Field("WM", wm)}
           </box>
           <label class="system-info-logo" label={distroGlyph} valign={Gtk.Align.CENTER} />
@@ -303,12 +343,39 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
         <Divider />
 
         <SectionTitle label="STORAGE" />
-        <For each={disks}>{(d) => Field(d.model, d.size)}</For>
+        <box orientation={Gtk.Orientation.VERTICAL} spacing={6}>
+          <For each={disks}>{(d) => (
+            <box class="system-info-disk" orientation={Gtk.Orientation.VERTICAL} spacing={2}>
+              <box orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                <label class="system-info-label" label={d.model} widthRequest={130} xalign={1} halign={Gtk.Align.END} ellipsize={3 /* PANGO_ELLIPSIZE_END */} />
+                <label class="system-info-value" label={d.size} hexpand xalign={0} halign={Gtk.Align.START} />
+              </box>
+              {d.percent != null ? (
+                <box orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                  <levelbar
+                    class="system-info-disk-bar"
+                    value={d.percent / 100}
+                    minValue={0}
+                    maxValue={1}
+                    mode={Gtk.LevelBarMode.CONTINUOUS}
+                    hexpand
+                    heightRequest={5}
+                    valign={Gtk.Align.CENTER}
+                  />
+                  <label class="system-info-disk-pct" label={`${d.percent}%`} minWidthChars={4} xalign={0} halign={Gtk.Align.START} />
+                </box>
+              ) : (
+                <label class="system-info-disk-note" label="not mounted" xalign={0} halign={Gtk.Align.START} />
+              )}
+            </box>
+          )}</For>
+        </box>
         {Field("Root usage", disk)}
 
         <Divider />
 
         <SectionTitle label="DISPLAY" />
+        <box orientation={Gtk.Orientation.VERTICAL} spacing={6}>
         <For each={monitors}>{(m, i) => {
           const desc = `${m.model ? `${m.model} — ` : ""}${m.width}x${m.height} @ ${Math.round(m.refreshRate)}Hz${m.inches ? ` (${m.inches}")` : ""}`
           return (
@@ -319,6 +386,7 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
           )
         }}
         </For>
+        </box>
       </box>
     )
   }
@@ -333,9 +401,10 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
         application: app,
         title: "System Info",
         defaultWidth: 420,
-        defaultHeight: 560,
+        defaultHeight: 620,
         resizable: false,
       })
+      win.add_css_class("SystemInfoWindow")
       win.set_child(SystemInfoContent())
 
       // Esc closes (only works when the WM gives the window keyboard focus).
@@ -401,7 +470,7 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
         // Real client rect when cached; the window is centered and non-resizable,
         // so the monitor's center region is an accurate fallback.
         const w = rect?.w || win?.get_width?.() || 420
-        const h = rect?.h || win?.get_height?.() || 560
+        const h = rect?.h || win?.get_height?.() || 620
         const geo = gdkmonitor.get_geometry()
         const x = rect?.x ?? Math.round(geo.x + (geo.width - w) / 2)
         const y = rect?.y ?? Math.round(geo.y + (geo.height - h) / 2)
@@ -464,7 +533,7 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
   // re-render the once-built tree reliably). Only rebuild on real changes.
   let lastBuiltKey = ""
   createEffect(() => {
-    const key = `${distroGlyph()}|${disks().length}|${monitors().length}|${disks().map((d) => d.size).join(",")}|${monitors().map((m) => m.model).join(",")}`
+    const key = `${distroGlyph()}|${monitors().length}|${disks().map((d) => `${d.name}:${d.size}:${d.percent}`).join(",")}|${monitors().map((m) => m.model).join(",")}`
     if (key === lastBuiltKey) return
     lastBuiltKey = key
     if (win) win.set_child(SystemInfoContent())
