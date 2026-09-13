@@ -735,7 +735,7 @@ export function createStore() {
     execAsync([
       "bash",
       "-lc",
-      "current=$(hyprctl activeworkspace -j | sed -n 's/.*\"id\":\s*\([0-9][0-9]*\).*/\1/p' | head -n1); target=$(hyprctl workspaces -j | sed -n 's/.*\"id\":\s*\([0-9][0-9]*\).*/\1/p' | sort -n | grep -vx \"$current\" | head -n1); hyprctl dispatch removeworkspace \"$current\" >/dev/null 2>&1 || { [[ -n \"$target\" ]] && hyprctl dispatch workspace \"$target\" >/dev/null 2>&1; }",
+      "current=$(hyprctl activeworkspace -j | sed -n 's/.*\"id\":\s*\([0-9][0-9]*\).*/\1/p' | head -n1); target=$(hyprctl workspaces -j | sed -n 's/.*\"id\":\s*\([0-9][0-9]*\).*/\1/p' | sort -n | grep -vx \"$current\" | head -n1); hyprctl dispatch removeworkspace \"$current\" >/dev/null 2>&1 || { [[ -n \"$target\" ]] && hyprctl dispatch \"hl.dsp.focus({ workspace = $target })\" >/dev/null 2>&1; }",
     ]).catch(() => null)
     setDesktopMenuOpen(false)
   }
@@ -744,27 +744,27 @@ export function createStore() {
     const ids = workspaceIds()
     const maxId = ids.length > 0 ? Math.max(...ids) : 1
     const newId = maxId + 1
-    execAsync(["hyprctl", "dispatch", "workspace", String(newId)]).catch(() => null)
+    execAsync(["hyprctl", "dispatch", `hl.dsp.focus({ workspace = ${newId} })`]).catch(() => null)
     setDesktopMenuOpen(false)
   }
 
   function switchToWorkspace(id: number) {
     setActiveWorkspaceOverride(id)
-    execAsync(["hyprctl", "dispatch", "workspace", String(id)]).catch(() => null)
+    execAsync(["hyprctl", "dispatch", `hl.dsp.focus({ workspace = ${id} })`]).catch(() => null)
   }
 
   function moveWindowToNewDesktop() {
     const ids = workspaceIds()
     const maxId = ids.length > 0 ? Math.max(...ids) : 1
     const nextId = String(maxId + 1)
-    execAsync(["bash", "-lc", `hyprctl dispatch movetoworkspace ${nextId}; hyprctl dispatch workspace ${nextId}`]).catch(
+    execAsync(["bash", "-lc", `hyprctl dispatch 'hl.dsp.window.move({ workspace = ${nextId} })'; hyprctl dispatch 'hl.dsp.focus({ workspace = ${nextId} })'`]).catch(
       () => null,
     )
     setDesktopMenuOpen(false)
   }
 
   function openOverview() {
-    execAsync(["hyprctl", "dispatch", "workspace", "+1"]).catch(() => null)
+    execAsync(["hyprctl", "dispatch", 'hl.dsp.focus({ workspace = "e+1" })']).catch(() => null)
     setDesktopMenuOpen(false)
   }
 

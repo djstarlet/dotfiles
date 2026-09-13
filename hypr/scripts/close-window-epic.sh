@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-hyprctl dispatch killactive
+hyprctl dispatch "hl.dsp.window.close()"
