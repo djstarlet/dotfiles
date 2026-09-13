@@ -26,6 +26,19 @@
 - SUPER + L - layout: dwindle
 - SUPER + SHIFT + L - layout: master
 
+## Hyprland config (lua)
+
+The repo ships `hyprland.lua` (Lua config API, Hyprland 0.57+). Legacy `hyprland.conf` backup is kept alongside it. Gotchas worth knowing:
+
+- The lua file must be an actual file at `~/.config/hypr/hyprland.lua`. A symlink will break it — Hyprland's Lua loader fails with `cannot open ...: No such file or directory` even if the target exists. (The old conf worked fine as a symlink; the lua loader doesn't.)
+- Key names are lowercase and case-sensitive: `+ c` works, `+ C` silently does nothing. Same for `+ space` vs `+ SPACE`.
+- `~` does not expand inside `hl.exec_cmd(...)`. Use absolute paths (`/home/<user>/...`) or the command silently fails.
+- Dispatch syntax changed: `hyprctl dispatch 'hl.dsp.focus({ workspace = 2 })'` (a Lua call as one quoted arg). Old form `hyprctl dispatch workspace 2` errors. Window moves too: `hl.dsp.window.move({ workspace = N })`. AGS bar workspace switching was updated to send this form.
+- hyprexpo plugin disabled — it doesn't compile against Hyprland git HEAD yet. `.so` parked as `hyprexpo.so.stale-0562`; the plugin line and ALT+Tab bind are commented out with a note to re-enable later.
+- Monitor rules from nwg-displays' `monitors.conf` can't be `source=`ed from the lua config. They aren't applied until that output is ported to `hl.monitor({...})`.
+- Emergency fallback binds if the lua config crashes at startup: SUPER+Q (terminal), SUPER+R (launcher), SUPER+M (exit).
+- Useful lua API shapes: `hl.config({...})`, `hl.bind("MOD + KEY", hl.dsp.exec_cmd(...))`, `hl.window_rule({ match = { class = "^(foo)$" }, float = true })`, `hl.env("VAR", "val")`, `hl.on("hyprland.start", function() ... end)` (exec-once).
+
 ## Setup
 
 # Install Script:
@@ -33,7 +46,7 @@
 - then install the dependencies listed below on your package manager & reboot/logout then login
 
 # Manual:
-- drop `hypr/` into `~/.config/` - for hyprland config
+- drop `hypr/` into `~/.config/` - for hyprland config (note: `hyprland.lua` must be a real file, not a symlink)
 - drop `ags/.config/ags/` into `~/.config/` - for the taskbar
 - no npm install needed: the AGS CLI bundles the `ags` + `gnim` modules itself (the bar is typescript + gnim, compiled at runtime by `ags run`)
 - then install the dependencies listed below on your package manager & reboot/logout then login
@@ -95,19 +108,19 @@ grimblast (screenshot capture; the keybinds route through `~/.config/hypr/script
 hyprswitch (optional GUI window switcher - AUR source build, not installed by default)
 
 ## Changeable deps
-kitty (hyprland.conf - terminal emulator)
+kitty (hyprland.lua - terminal emulator)
 
-librewolf (hyprland.conf - browser)
+librewolf (hyprland.lua - browser)
 
-pcmanfm (hyprland.conf - file explorer)
+pcmanfm (hyprland.lua - file explorer)
 
 swaybg (start-wallpaper.sh - wallpaper)
 
-albert (hyprland.conf, ags/.config/ags/widget/Bar.tsx for quick actions button)
+albert (hyprland.lua, ags/.config/ags/widget/Bar.tsx for quick actions button)
 
 nwg-displays (GUI monitor layout tool - recommended for arranging multiple outputs)
 
-wl-clipboard + wl-clip-persist (hyprland.conf)
+wl-clipboard + wl-clip-persist (hyprland.lua)
 
 wpctl (wireplumber - volume in bar.tsx)
 
@@ -121,6 +134,6 @@ pavucontrol (ags/.config/ags/widget/Bar.tsx - volume button)
 
 pipewire / wireplumber
 
-grim, slurp, wl-copy, libnotify (hypr/hypr/scripts/take-screenshot.sh), grimblast (hyprland.conf screenshot keybinds)
+grim, slurp, wl-copy, libnotify (hypr/hypr/scripts/take-screenshot.sh), grimblast (hyprland.lua screenshot keybinds)
 
 fonts (ags/.config/ags/style.css - font-family declarations: Liberation Sans, Liberation Mono, Liberation Serif, Symbols Nerd Font, Symbols Nerd Font Mono)

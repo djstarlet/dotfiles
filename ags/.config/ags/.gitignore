@@ -12,3 +12,5 @@ notification-spool.jsonl
 dismissed-notifications.json
 notifications-state.json
 notifications-seen.json
+toasted-trivial.json
+*.lock

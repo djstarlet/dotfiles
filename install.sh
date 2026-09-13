@@ -635,7 +635,7 @@ Try manually: cd ${ags_dir} && ags bundle app.ts /tmp/bar-test.js"
 # ------------------------------------------------------ distro-specific extras
 
 # Debian/Ubuntu have no grimblast package; the screenshot keybinds in
-# hyprland.conf exec grimblast, so install the script from hyprwm/contrib.
+# hyprland.lua exec grimblast, so install the script from hyprwm/contrib.
 try_grimblast_source() {
 	command_exists grimblast && return 0
 	if (( DRY_RUN )); then
@@ -713,7 +713,7 @@ verify_installation() {
 	# grimblast is installed per-distro (AUR / COPR / source); ~/.local/bin
 	# installs may simply not be on this shell's PATH yet.
 	if ! command_exists grimblast && [[ ! -x $HOME/.local/bin/grimblast ]]; then
-		warn "grimblast was not found - the Print-key screenshot binds in hyprland.conf will not work.
+		warn "grimblast was not found - the Print-key screenshot binds in hyprland.lua will not work.
 See README.md ('Necessary deps') for installation options."
 	fi
 
