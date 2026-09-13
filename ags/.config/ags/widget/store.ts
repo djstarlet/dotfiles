@@ -1,6 +1,7 @@
 import { execAsync } from "ags/process"
 import { createPoll, timeout } from "ags/time"
 import { createComputed, createEffect, createState } from "gnim"
+import GLib from "gi://GLib"
 import Notifd from "gi://AstalNotifd"
 import { theme } from "./theme.config"
 import type { ThemeConfig } from "./theme.config"
@@ -45,9 +46,22 @@ function parseFocusedWindowClass(raw: string): string {
 function parseFocusedWindowTitle(raw: string) {
   try {
     const parsed = JSON.parse(raw)
-    const title = String(parsed?.title || parsed?.initialTitle || parsed?.class || "").trim()
-    if (!title) return "Desktop"
-    const compact = title.replace(/\s+/g, " ")
+    const title = String(parsed?.title || parsed?.initialTitle || "").trim()
+    // Terminals set placeholder titles ("~", home path, "-") when nothing is
+    // running in them. Fall back to the class so an empty kitty reads "kitty".
+    // Only bare placeholders count — a title with extra text keeps showing.
+    const home = String(GLib.get_home_dir() || "").replace(/\/+$/, "")
+    const isPlaceholder =
+      title === "" ||
+      title === "~" ||
+      title === "~/" ||
+      title === "-" ||
+      (home !== "" && title.replace(/\/+$/, "") === home)
+    const display = isPlaceholder
+      ? String(parsed?.class || parsed?.initialClass || "").trim()
+      : title
+    if (!display) return "Desktop"
+    const compact = display.replace(/\s+/g, " ")
     return compact.length > 48 ? `${compact.slice(0, 45)}...` : compact
   } catch {
     return "Desktop"

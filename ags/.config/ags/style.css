@@ -93,7 +93,10 @@ label.center-label {
 }
 
 button.clock {
-  min-width: 0;
+  /* Invisible click target: the highlight stays text-only, but short titles
+     ("kitty", "~") still get a ~5-character hitbox. 5em == 50px at the bar's
+     10px base font (measured with GTK 4.20 against this stylesheet). */
+  min-width: 5em;
   min-height: 20px;
   border: 0;
   background: transparent;
