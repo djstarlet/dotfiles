@@ -1,5 +1,9 @@
 export type Rgb = [number, number, number]
 
+export function isHexColor(value: unknown): value is string {
+  return typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value)
+}
+
 export function hexToRgb(hex: string): Rgb {
   const value = hex.slice(1)
   return [

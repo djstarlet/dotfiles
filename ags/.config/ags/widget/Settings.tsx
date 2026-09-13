@@ -8,25 +8,25 @@ import { DEFAULT_WS_DOT_COLORS } from "./store"
 import { theme } from "./theme.config"
 import type { ThemeConfig } from "./theme.config"
 import type { Rgb } from "./color-utils"
-import { hexToRgb, rgbToHex, mixHex, lighten, darken, hyprAccentGlow } from "./color-utils"
+import { isHexColor, hexToRgb, rgbToHex, mixHex, lighten, darken, hyprAccentGlow } from "./color-utils"
 
 const controlFlyoutMarginEnd = 18
 type ColorName = "background" | "accent" | "text" | "dot"
 const PRESET_COLORS = ["#0f2235", "#f6faff", "#dbe7f5", "#55adff", "#326fda", "#ff5a5a", "#ff9f43", "#6ddb6d", "#a06bff", "#ff6bb3", "#22c1c3", "#f0c33c"]
 
 export default function SettingsWindows(gdkmonitor: Gdk.Monitor, monitorIndex: number, s: Store) {
-  const [bgInput, setBgInput] = createState("#f6faff")
-  const [accentInput, setAccentInput] = createState("#55adff")
-  const [textInput, setTextInput] = createState("#0f2235")
+  const [bgInput, setBgInput] = createState(theme.defaults.background)
+  const [accentInput, setAccentInput] = createState(theme.defaults.accent)
+  const [textInput, setTextInput] = createState(theme.defaults.text)
   const [customOpen, setCustomOpen] = createState(false)
   const [customChannel, setCustomChannel] = createState<ColorName>("background")
   const [customDotIndex, setCustomDotIndex] = createState<number | null>(null)
   const [savedNameOpen, setSavedNameOpen] = createState(false)
   const [savedNameInput, setSavedNameInput] = createState("")
-  const [customRed, setCustomRed] = createState(246)
-  const [customGreen, setCustomGreen] = createState(250)
-  const [customBlue, setCustomBlue] = createState(255)
-  const validColor = (value: string) => /^#[0-9a-fA-F]{6}$/.test(value)
+  const [defaultRed, defaultGreen, defaultBlue] = hexToRgb(theme.defaults.background)
+  const [customRed, setCustomRed] = createState(defaultRed)
+  const [customGreen, setCustomGreen] = createState(defaultGreen)
+  const [customBlue, setCustomBlue] = createState(defaultBlue)
 
   const customHex = createComputed(() => rgbToHex([customRed(), customGreen(), customBlue()]))
   const customPreviewCss = createComputed(() => `background: ${customHex()};`)
@@ -49,7 +49,7 @@ export default function SettingsWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
 
   const applyColor = (name: ColorName, value: string, setValue: (value: string) => void) => {
     const hex = value.trim()
-    if (!validColor(hex)) {
+    if (!isHexColor(hex)) {
       s.setSettingsStatus("Invalid color")
       return
     }
@@ -92,8 +92,10 @@ export default function SettingsWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
       .catch(() => s.setSettingsStatus("Failed to set color"))
   }
 
+  const mergedPresets = createComputed(() => [...theme.presets, ...s.savedPresets()])
+
   const activePreset = createComputed(() =>
-    [...theme.presets, ...s.savedPresets()].find((preset) =>
+    mergedPresets().find((preset) =>
       preset.background.toLowerCase() === bgInput().toLowerCase() && preset.accent.toLowerCase() === accentInput().toLowerCase() && preset.text.toLowerCase() === textInput().toLowerCase()
     )?.name || null
   )
@@ -159,9 +161,9 @@ export default function SettingsWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
         .then((out) => {
           try {
             const colors = JSON.parse(out) as { background?: string; accent?: string; text?: string }
-            if (colors.background && validColor(colors.background)) setBgInput(colors.background)
-            if (colors.accent && validColor(colors.accent)) setAccentInput(colors.accent)
-            if (colors.text && validColor(colors.text)) setTextInput(colors.text)
+            if (isHexColor(colors.background)) setBgInput(colors.background)
+            if (isHexColor(colors.accent)) setAccentInput(colors.accent)
+            if (isHexColor(colors.text)) setTextInput(colors.text)
           } catch { /* ignored */ }
         })
         .catch(() => null)
@@ -172,6 +174,7 @@ export default function SettingsWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
     <window
         visible={createComputed(() => s.settingsOpen())}
         name={`ags-settings-${monitorIndex}`}
+        namespace="ags-settings"
         class="FlyoutWindow"
         gdkmonitor={gdkmonitor}
         anchor={TOP | LEFT | RIGHT}
@@ -565,6 +568,7 @@ export default function SettingsWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
       <window
         visible={createComputed(() => s.listPopupOpen() && s.activeList() !== null)}
         name={`ags-settings-list-${monitorIndex}`}
+        namespace="ags-settings-list"
         class="FlyoutWindow"
         gdkmonitor={gdkmonitor}
         anchor={TOP | LEFT | RIGHT}
@@ -604,7 +608,7 @@ export default function SettingsWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
                   if (kind === "icon") return s.iconList()
                   if (kind === "font") return s.fontList()
                   if (kind === "cursor") return s.cursorList()
-                  if (kind === "preset") return [...theme.presets, ...s.savedPresets()].map((preset) => preset.name)
+                  if (kind === "preset") return mergedPresets().map((preset) => preset.name)
                   return []
                 })}>
                   {(item) => (
@@ -629,7 +633,7 @@ export default function SettingsWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
                             .then(() => s.setCurrentCursor(item))
                             .catch(() => null)
                         } else if (kind === "preset") {
-                          const preset = [...theme.presets, ...s.savedPresets()].find((candidate) => candidate.name === item)
+                          const preset = mergedPresets().find((candidate) => candidate.name === item)
                           if (preset) void applyPreset(preset).catch(() => s.setSettingsStatus("Failed to apply preset"))
                         }
                         s.setListPopupOpen(false)

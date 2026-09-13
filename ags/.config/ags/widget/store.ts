@@ -4,6 +4,7 @@ import { createComputed, createEffect, createState } from "gnim"
 import Notifd from "gi://AstalNotifd"
 import { theme } from "./theme.config"
 import type { ThemeConfig } from "./theme.config"
+import { isHexColor } from "./color-utils"
 
 // ─── Parser helpers ───────────────────────────────────────────────────────────
 
@@ -30,45 +31,6 @@ function sendFocusedShortcut(mod: string, key: string) {
   const k = String(key)
   args.push("-k", k.length === 1 ? k.toLowerCase() : k)
   execAsync(args).catch(() => null)
-}
-
-// Mac-style per-app Quick Actions rows: picked by the focused window's class
-// when the menu opens; unknown apps fall back to the generic edit shortcuts.
-type ShortcutDef = { label: string; hint: string; mod: string; key: string }
-export const SHORTCUT_FALLBACK: ShortcutDef[] = [
-  { label: "Save", hint: "Ctrl+S", mod: "CTRL", key: "s" },
-  { label: "Undo", hint: "Ctrl+Z", mod: "CTRL", key: "z" },
-  { label: "Redo", hint: "Ctrl+Shift+Z", mod: "CTRL_SHIFT", key: "z" },
-  { label: "Cut", hint: "Ctrl+X", mod: "CTRL", key: "x" },
-  { label: "Copy", hint: "Ctrl+C", mod: "CTRL", key: "c" },
-  { label: "Paste", hint: "Ctrl+V", mod: "CTRL", key: "v" },
-  { label: "Select All", hint: "Ctrl+A", mod: "CTRL", key: "a" },
-]
-export const SHORTCUT_PRESETS: Record<string, ShortcutDef[]> = {
-  kitty: [
-    { label: "Copy", hint: "Ctrl+Shift+C", mod: "CTRL_SHIFT", key: "c" },
-    { label: "Paste", hint: "Ctrl+Shift+V", mod: "CTRL_SHIFT", key: "v" },
-    { label: "New Tab", hint: "Ctrl+Shift+T", mod: "CTRL_SHIFT", key: "t" },
-    { label: "Close Tab", hint: "Ctrl+Shift+W", mod: "CTRL_SHIFT", key: "w" },
-    { label: "New Window", hint: "Ctrl+Shift+Enter", mod: "CTRL_SHIFT", key: "Return" },
-  ],
-  librewolf: [
-    { label: "New Tab", hint: "Ctrl+T", mod: "CTRL", key: "t" },
-    { label: "Close Tab", hint: "Ctrl+W", mod: "CTRL", key: "w" },
-    { label: "Reopen Closed Tab", hint: "Ctrl+Shift+T", mod: "CTRL_SHIFT", key: "t" },
-    { label: "Find", hint: "Ctrl+F", mod: "CTRL", key: "f" },
-    { label: "Reload", hint: "Ctrl+R", mod: "CTRL", key: "r" },
-    { label: "Copy", hint: "Ctrl+C", mod: "CTRL", key: "c" },
-    { label: "Paste", hint: "Ctrl+V", mod: "CTRL", key: "v" },
-  ],
-  pcmanfm: [
-    { label: "Copy", hint: "Ctrl+C", mod: "CTRL", key: "c" },
-    { label: "Paste", hint: "Ctrl+V", mod: "CTRL", key: "v" },
-    { label: "Select All", hint: "Ctrl+A", mod: "CTRL", key: "a" },
-    { label: "Rename", hint: "F2", mod: "", key: "F2" },
-    { label: "Move to Trash", hint: "Del", mod: "", key: "Delete" },
-    { label: "Properties", hint: "Alt+Return", mod: "ALT", key: "Return" },
-  ],
 }
 
 function parseFocusedWindowClass(raw: string): string {
@@ -146,7 +108,7 @@ export type Notification = {
 function parseWsDotColors(raw: string | undefined) {
   if (!raw) return null
   const colors = raw.split(",").map((color) => color.trim())
-  return colors.length === 8 && colors.every((color) => /^#[0-9a-fA-F]{6}$/.test(color)) ? colors : null
+  return colors.length === 8 && colors.every(isHexColor) ? colors : null
 }
 
 function parseSavedPresets(raw: unknown): SavedPreset[] | null {
@@ -155,10 +117,10 @@ function parseSavedPresets(raw: unknown): SavedPreset[] | null {
     preset &&
     typeof preset.name === "string" &&
     preset.name.trim().length > 0 &&
-    [preset.background, preset.accent, preset.text].every((color) => typeof color === "string" && /^#[0-9a-fA-F]{6}$/.test(color)) &&
+    [preset.background, preset.accent, preset.text].every(isHexColor) &&
     Array.isArray(preset.dots) &&
     preset.dots.length === 8 &&
-    preset.dots.every((color: unknown) => typeof color === "string" && /^#[0-9a-fA-F]{6}$/.test(color))
+    preset.dots.every(isHexColor)
   )
   return valid ? raw as SavedPreset[] : null
 }
@@ -191,12 +153,16 @@ export function createStore() {
         }
       }
     })
-  const focusedWindowTitle = createPoll("Desktop", 900, ["hyprctl", "activewindow", "-j"], (out) =>
-    parseFocusedWindowTitle(out),
-  )
-  const focusedWindowClass = createPoll("", 900, ["hyprctl", "activewindow", "-j"], (out, prev) => {
-    const cls = parseFocusedWindowClass(out)
-    return cls !== "" ? cls : prev
+  // One hyprctl activewindow call feeds both title and class (was two polls
+  // running the same command at the same 900ms interval).
+  const activeWindowRaw = createPoll("", 900, ["hyprctl", "activewindow", "-j"])
+  const focusedWindowTitle = createComputed(() => parseFocusedWindowTitle(activeWindowRaw()))
+  // Retain the last non-empty class: the desktop menu's per-app quick actions
+  // must survive a momentary empty focus (e.g. focus moving to the desktop).
+  const [focusedWindowClass, setFocusedWindowClass] = createState("")
+  createEffect(() => {
+    const cls = parseFocusedWindowClass(activeWindowRaw())
+    if (cls !== "") setFocusedWindowClass(cls)
   })
   // Global layout coordinates of the cursor (hyprctl cursorpos -> "x, y").
   // Bar.tsx compares these against each monitor's geometry, since monitors
@@ -265,7 +231,6 @@ export function createStore() {
   const [settingsOpen, setSettingsOpen] = createState(false)
   const [systemInfoOpen, setSystemInfoOpen] = createState(false)
   const [settingsStatus, setSettingsStatus] = createState("")
-  const [chooserOpen, setChooserOpen] = createState(false)
 
   const [activeList, setActiveList] = createState<"theme" | "icon" | "font" | "cursor" | "preset" | null>(null)
   const [listPopupOpen, setListPopupOpen] = createState(false)
@@ -321,7 +286,7 @@ export function createStore() {
     .catch(() => null)
 
   function setWsDotColor(index: number, hex: string) {
-    if (index < 0 || index >= 8 || !/^#[0-9a-fA-F]{6}$/.test(hex)) return
+    if (index < 0 || index >= 8 || !isHexColor(hex)) return
     setWsDotColors((current) => current.map((color, i) => i === index ? hex : color))
   }
 
@@ -450,17 +415,28 @@ export function createStore() {
     if (authPollStop) { authPollStop(); authPollStop = null }
   }
 
+  // Every flyout closes the others when it opens, so two flyouts can never
+  // stack at the same anchor.
+  const FLYOUT_CLOSERS = {
+    control: () => setControlOpen(false),
+    notif: () => setNotifOpen(false),
+    power: () => { setPowerMenuOpen(false); setPendingPowerAction(null) },
+    calendar: () => setCalendarOpen(false),
+    desktop: () => setDesktopMenuOpen(false),
+    settings: () => setSettingsOpen(false),
+    sysinfo: () => setSystemInfoOpen(false),
+  } as const
+
+  function closeOtherFlyouts(except: keyof typeof FLYOUT_CLOSERS) {
+    for (const [key, close] of Object.entries(FLYOUT_CLOSERS)) {
+      if (key !== except) close()
+    }
+  }
+
   function toggleNotifications() {
     const next = !notifOpen()
     setNotifOpen(next)
-    if (next) {
-      setControlOpen(false)
-      setCalendarOpen(false)
-      setDesktopMenuOpen(false)
-      setSettingsOpen(false)
-      setPowerMenuOpen(false)
-      setPendingPowerAction(null)
-    }
+    if (next) closeOtherFlyouts("notif")
   }
 
   // Dismiss through notifd: the notification leaves the active list, the
@@ -480,37 +456,25 @@ export function createStore() {
   function togglePowerMenu() {
     const next = !powerMenuOpen()
     setPowerMenuOpen(next)
-    if (!next) setPendingPowerAction(null)
-    if (next) {
-      setControlOpen(false)
-      setCalendarOpen(false)
-      setDesktopMenuOpen(false)
-      setSettingsOpen(false)
-    }
+    if (next) closeOtherFlyouts("power")
+    else setPendingPowerAction(null)
   }
 
   function toggleControl() {
     const next = !controlOpen()
     setControlOpen(next)
-    if (!next) {
+    if (next) closeOtherFlyouts("control")
+    else {
       setPowerMenuOpen(false)
       setPendingPowerAction(null)
-    }
-    if (next) {
-      setCalendarOpen(false)
-      setDesktopMenuOpen(false)
-      setSettingsOpen(false)
     }
   }
 
   function toggleCalendar() {
     const next = !calendarOpen()
     setCalendarOpen(next)
-    setControlOpen(false)
-    setPowerMenuOpen(false)
-    setDesktopMenuOpen(false)
-    setSettingsOpen(false)
-    if (!next) {
+    if (next) closeOtherFlyouts("calendar")
+    else {
       setAuthDialogOpen(false)
       if (authPollStop) { authPollStop(); authPollStop = null }
     }
@@ -519,22 +483,14 @@ export function createStore() {
   function toggleDesktopMenu() {
     const next = !desktopMenuOpen()
     setDesktopMenuOpen(next)
-    setControlOpen(false)
-    setPowerMenuOpen(false)
-    setCalendarOpen(false)
-    setSettingsOpen(false)
+    if (next) closeOtherFlyouts("desktop")
   }
 
   function toggleSettings() {
     const next = !settingsOpen()
     setSettingsOpen(next)
-    if (next) {
-      setControlOpen(false)
-      setCalendarOpen(false)
-      setDesktopMenuOpen(false)
-      setPowerMenuOpen(false)
-      setPendingPowerAction(null)
-    } else {
+    if (next) closeOtherFlyouts("settings")
+    else {
       setListPopupOpen(false)
       setActiveList(null)
     }
@@ -543,14 +499,7 @@ export function createStore() {
   function toggleSystemInfo() {
     const next = !systemInfoOpen()
     setSystemInfoOpen(next)
-    if (next) {
-      setControlOpen(false)
-      setCalendarOpen(false)
-      setDesktopMenuOpen(false)
-      setSettingsOpen(false)
-      setNotifOpen(false)
-      setPowerMenuOpen(false)
-    }
+    if (next) closeOtherFlyouts("sysinfo")
   }
 
   // ── Auth flow ──────────────────────────────────────────────────────────────
@@ -665,6 +614,10 @@ export function createStore() {
     execAsync(["pavucontrol"]).catch(() => null)
   }
 
+  function setWifiEnabled(on: boolean) {
+    execAsync(["nmcli", "radio", "wifi", on ? "on" : "off"]).catch(() => null)
+  }
+
   // Run the dotfiles installer in a kitty window (the update notification's
   // "Update" button). The installer is safe to re-run: it backs up and
   // preserves user files.
@@ -772,47 +725,34 @@ export function createStore() {
     // Polls
     clock,
     activeWorkspace,
-    setActiveWorkspaceOverride,
     switchToWorkspace,
-    focusedWindowTitle,
     focusedWindowClass,
     cursorPos,
-    workspaceListRaw,
     gcalEvents,
 
     // State
     controlOpen,
-    setControlOpen,
     notifOpen,
-    setNotifOpen,
     powerMenuOpen,
     setPowerMenuOpen,
     pendingPowerAction,
     setPendingPowerAction,
     calendarOpen,
-    setCalendarOpen,
     desktopMenuOpen,
     setDesktopMenuOpen,
     settingsOpen,
-    setSettingsOpen,
     systemInfoOpen,
     setSystemInfoOpen,
     settingsStatus,
     setSettingsStatus,
-    chooserOpen,
-    setChooserOpen,
     activeList,
     setActiveList,
     listPopupOpen,
     setListPopupOpen,
     themeList,
-    setThemeList,
     iconList,
-    setIconList,
     fontList,
-    setFontList,
     cursorList,
-    setCursorList,
     currentTheme,
     setCurrentTheme,
     currentIcon,
@@ -826,19 +766,15 @@ export function createStore() {
     calendarAccountEmail,
     setCalendarAccountEmail,
     authDialogOpen,
-    setAuthDialogOpen,
     authDialogInfo,
-    setAuthDialogInfo,
     clientIdInput,
     setClientIdInput,
     workspaceFx,
     setWorkspaceFx,
     wsDotColors,
-    setWsDotColors,
     setWsDotColor,
     resetWsDotColors,
     savedPresets,
-    setSavedPresets,
     addSavedPreset,
     removeSavedPreset,
 
@@ -863,6 +799,7 @@ export function createStore() {
     toggleSettings,
     toggleSystemInfo,
     openAudioSettings,
+    setWifiEnabled,
     runDotfilesUpdate,
     openLauncher,
     openNetworkSettings,
@@ -877,7 +814,6 @@ export function createStore() {
     moveWindowToNewDesktop,
     openOverview,
     sendFocusedShortcut,
-    startLogin,
     handleAccountClick,
     saveClientIdAndLogin,
     closeAuthDialog,

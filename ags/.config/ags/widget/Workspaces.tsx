@@ -1,11 +1,9 @@
 import { Gtk } from "ags/gtk4"
-import { execAsync } from "ags/process"
 import { createComputed, createEffect } from "gnim"
 import { timeout } from "ags/time"
 import type { Store } from "./store"
 import { DEFAULT_WS_DOT_COLORS } from "./store"
 import { darken, mixHex } from "./color-utils"
-import config from "./widgets.config"
 
 const workspaceSlots = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 

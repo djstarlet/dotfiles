@@ -6,6 +6,7 @@ import { createComputed, createEffect, createState } from "gnim"
 import type { Store } from "./store"
 import config from "./widgets.config"
 import { DisplaySettingsTile } from "./DisplaySettings"
+import { RoundTile } from "./buttons"
 
 // ─── Parser helpers ───────────────────────────────────────────────────────────
 
@@ -92,14 +93,12 @@ export default function ControlCenterWindow(gdkmonitor: Gdk.Monitor, monitorInde
 
   // Manual volume sync
   createEffect(() => {
-    if (config.controlCenter) {
-      setManualVolume(liveVolume())
-    }
+    setManualVolume(liveVolume())
   })
 
   // Brightness sync (primary monitor's CC only; paused mid-drag)
   createEffect(() => {
-    if (config.controlCenter && isBrightnessController && !brightnessApplyTimer) {
+    if (isBrightnessController && !brightnessApplyTimer) {
       setBrightnessPercent(liveBrightness())
     }
   })
@@ -161,7 +160,7 @@ export default function ControlCenterWindow(gdkmonitor: Gdk.Monitor, monitorInde
               class="mini-gear"
               onClicked={s.toggleSettings}
             >
-              <label class="gear-icon" label={"\u{F1FC}"} />
+              <label class="palette-icon" label={"\u{F1FC}"} />
             </button>
           )}
         </centerbox>
@@ -236,67 +235,32 @@ export default function ControlCenterWindow(gdkmonitor: Gdk.Monitor, monitorInde
 
         <box class="control-actions-section" orientation={Gtk.Orientation.VERTICAL} spacing={6} halign={Gtk.Align.CENTER}>
           <box class="control-actions-row" orientation={Gtk.Orientation.HORIZONTAL} spacing={10} halign={Gtk.Align.CENTER}>
-            <box class="control-action-tile" widthRequest={68} orientation={Gtk.Orientation.VERTICAL} spacing={3} halign={Gtk.Align.CENTER}>
-              <button
-                widthRequest={44} heightRequest={44}
-                hexpand={false} vexpand={false}
-                halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}
-                class={wifiEnabled((on) => `round-icon${on ? " active" : " off"}`)}
-                onClicked={() => {
-                  const next = !wifiEnabled()
-                  execAsync(["nmcli", "radio", "wifi", next ? "on" : "off"]).catch(() => null)
-                }}
-              >
-                <label class="signal-icon" label={wifiGlyph} />
-              </button>
-              <label class="control-action-label" label="Wi-Fi" />
-            </box>
-            <box class="control-action-tile" widthRequest={68} orientation={Gtk.Orientation.VERTICAL} spacing={3} halign={Gtk.Align.CENTER}>
-              <button
-                widthRequest={44} heightRequest={44}
-                hexpand={false} vexpand={false}
-                halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}
-                class="round-icon"
-                onClicked={s.openNetworkSettings}
-              >
-                <image class="symbol-icon" iconName="network-workgroup-symbolic" pixelSize={20} />
-              </button>
-              <label class="control-action-label" label="Network" />
-            </box>
+            <RoundTile
+              label="Wi-Fi"
+              class={wifiEnabled((on) => `round-icon${on ? " active" : " off"}`)}
+              onClicked={() => s.setWifiEnabled(!wifiEnabled())}
+            >
+              <label class="signal-icon" label={wifiGlyph} />
+            </RoundTile>
+            <RoundTile label="Network" onClicked={s.openNetworkSettings}>
+              <image class="symbol-icon" iconName="network-workgroup-symbolic" pixelSize={20} />
+            </RoundTile>
             {DisplaySettingsTile(s)}
             {config.powerMenu && (
-              <box class="control-action-tile" widthRequest={68} orientation={Gtk.Orientation.VERTICAL} spacing={3} halign={Gtk.Align.CENTER}>
-                <button
-                  widthRequest={44} heightRequest={44}
-                  hexpand={false} vexpand={false}
-                  halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}
-                  class={s.powerMenuOpen((open) => `round-icon power-toggle${open ? " active" : ""}`)}
-                  onClicked={() => {
-                    const next = !s.powerMenuOpen()
-                    s.setPowerMenuOpen(next)
-                    if (!next) s.setPendingPowerAction(null)
-                  }}
-                >
-                  <label class="power-icon" label="⏻" />
-                </button>
-                <label class="control-action-label" label="Power" />
-              </box>
+              <RoundTile
+                label="Power"
+                class={s.powerMenuOpen((open) => (open ? "round-icon active" : "round-icon"))}
+                onClicked={s.togglePowerMenu}
+              >
+                <label class="power-icon" label="⏻" />
+              </RoundTile>
             )}
           </box>
           <box class="control-actions-row" orientation={Gtk.Orientation.HORIZONTAL} spacing={10} halign={Gtk.Align.CENTER}>
             {config.systemInfo && (
-              <box class="control-action-tile" widthRequest={68} orientation={Gtk.Orientation.VERTICAL} spacing={3} halign={Gtk.Align.CENTER}>
-                <button
-                  widthRequest={44} heightRequest={44}
-                  hexpand={false} vexpand={false}
-                  halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}
-                  class="round-icon"
-                  onClicked={s.toggleSystemInfo}
-                >
-                  <label class="info-icon" label={"\u{F05A}"} />
-                </button>
-                <label class="control-action-label" label="System" />
-              </box>
+              <RoundTile label="System" onClicked={s.toggleSystemInfo}>
+                <label class="info-icon" label={"\u{F05A}"} />
+              </RoundTile>
             )}
           </box>
         </box>

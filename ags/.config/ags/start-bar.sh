@@ -5,8 +5,8 @@ pkill -f "ags run" 2>/dev/null || true
 pkill -f "/run/user/.*/ags.js" 2>/dev/null || true
 
 # Notifications watcher: dotfiles updates, failed user units, low disk,
-# calendar auth, screenshots, Hyprland config errors -> ~/.config/ags/notifications.json
-# (read by the notification bell). Backgrounded - never blocks the bar.
+# calendar auth, screenshots, Hyprland config errors -> ~/.config/ags/notifications-state.json
+# (read by the notification bell; the legacy notifications.json is deleted). Backgrounded - never blocks the bar.
 "$HOME/.config/ags/notifications-watcher.py" >/dev/null 2>&1 &
 
 dots_json="$HOME/.config/ags/ws-dot-colors.json"

@@ -26,6 +26,7 @@ export default function CalendarWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
       <window
         visible={s.calendarOpen}
         name={`ags-calendar-${monitorIndex}`}
+        namespace="ags-calendar"
         class="FlyoutWindow"
         gdkmonitor={gdkmonitor}
         anchor={TOP | LEFT | RIGHT}
@@ -59,6 +60,7 @@ export default function CalendarWindows(gdkmonitor: Gdk.Monitor, monitorIndex: n
       <window
         visible={s.authDialogOpen}
         name={`ags-calendar-auth-${monitorIndex}`}
+        namespace="ags-calendar-auth"
         class="FlyoutWindow"
         gdkmonitor={gdkmonitor}
         anchor={TOP | LEFT | RIGHT}

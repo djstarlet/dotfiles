@@ -2,13 +2,14 @@ import app from "ags/gtk4/app"
 import { Astal, Gtk, Gdk } from "ags/gtk4"
 import { createComputed, For } from "gnim"
 import type { Store } from "./store"
-import { SHORTCUT_PRESETS, SHORTCUT_FALLBACK } from "./store"
+import { SHORTCUT_PRESETS, SHORTCUT_FALLBACK } from "./shortcuts"
 
 export default function DesktopMenuWindow(gdkmonitor: Gdk.Monitor, monitorIndex: number, s: Store) {
   return (
     <window
       visible={s.desktopMenuOpen}
       name={`ags-desktop-menu-${monitorIndex}`}
+      namespace="ags-desktop-menu"
       class="FlyoutWindow"
       gdkmonitor={gdkmonitor}
       anchor={Astal.WindowAnchor.TOP | Astal.WindowAnchor.LEFT | Astal.WindowAnchor.RIGHT}
@@ -16,7 +17,6 @@ export default function DesktopMenuWindow(gdkmonitor: Gdk.Monitor, monitorIndex:
       keymode={Astal.Keymode.ON_DEMAND}
       exclusivity={Astal.Exclusivity.IGNORE}
       marginTop={42}
-      marginStart={0}
       application={app}
     >
       <box hexpand>

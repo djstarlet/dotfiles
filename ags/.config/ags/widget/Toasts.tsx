@@ -4,16 +4,8 @@ import Gio from "gi://Gio"
 import GLib from "gi://GLib"
 import GdkPixbuf from "gi://GdkPixbuf"
 import { timeout } from "ags/time"
-import { execAsync } from "ags/process"
 import { createComputed, createEffect, createState } from "gnim"
 import type { Store, Notification } from "./store"
-
-// Slide-out then dismiss: the daemon removes the notification on
-// dismiss(), so the reveal-off animation must play BEFORE calling it.
-function slideOutAndDismiss(revealer: Gtk.Revealer, n: Notification, s: Store) {
-  revealer.reveal_child = false
-  timeout(240, () => s.dismissNotification(n.id))
-}
 
 const TOAST_VISIBLE_MS = 6000
 
@@ -34,11 +26,11 @@ function isImportant(summary: string): boolean {
   return IMPORTANT_SUMMARIES.some((imp) => summary.includes(imp))
 }
 
-const TOASTED_FILE = "$HOME/.config/ags/toasted-trivial.json"
+const TOASTED_FILE = GLib.build_filenamev([GLib.get_home_dir(), ".config", "ags", "toasted-trivial.json"])
 const toastedBodies = new Set<string>(
   (() => {
     try {
-      const f = Gio.File.new_for_path(`${GLib.get_home_dir()}/.config/ags/toasted-trivial.json`)
+      const f = Gio.File.new_for_path(TOASTED_FILE)
       const [bytes] = f.load_contents(null)
       const arr: unknown = JSON.parse(new TextDecoder().decode(bytes))
       return Array.isArray(arr) ? arr.filter((x): x is string => typeof x === "string") : []
@@ -53,11 +45,11 @@ function persistToastedBodies() {
   const keep = [...toastedBodies].slice(-200)
   toastedBodies.clear()
   keep.forEach((b) => toastedBodies.add(b))
-  execAsync([
-    "bash",
-    "-c",
-    `printf '%s' '${JSON.stringify(keep).replace(/'/g, `'\\''`)}' > ${TOASTED_FILE}`,
-  ]).catch(() => null)
+  try {
+    GLib.file_set_contents(TOASTED_FILE, JSON.stringify(keep))
+  } catch {
+    // best effort - losing the persisted list only re-toasts once
+  }
 }
 
 // `onShown`/`onHidden` report when a toast is actually on screen. The window's
@@ -79,12 +71,15 @@ function ToastRow({
   let revealer: Gtk.Revealer
   let lastShownId = "_none_"
 
-  const clear = () => {
+  const clear = (n?: Notification) => {
     const id = lastShownId
     lastShownId = "_none_"
     revealer.reveal_child = false
     // let the slide-out finish before the surface goes away
     if (id !== "_none_") timeout(260, () => onHidden(id))
+    // The daemon removes the notification on dismiss(), so it must wait for
+    // the reveal-off animation to play first.
+    if (n) timeout(240, () => s.dismissNotification(n.id))
   }
 
   createEffect(() => {
@@ -126,8 +121,7 @@ function ToastRow({
   const dismiss = () => {
     const n = item()
     if (!n) return
-    clear()
-    slideOutAndDismiss(revealer, n, s)
+    clear(n)
   }
 
   return (
@@ -225,22 +219,20 @@ export default function NotificationToasts(gdkmonitor: Gdk.Monitor, monitorIndex
       application={app}
     >
       <box orientation={Gtk.Orientation.VERTICAL} spacing={8} valign={Gtk.Align.START} halign={Gtk.Align.END}>
-        {[0].map((i) => (
-          <ToastRow
-            item={createComputed(() => {
-              const ns = s.notifications()
-              if (ns.length === 0) return null
-              // notifd's list order isn't guaranteed; ids are monotonically
-              // increasing, so max-id is the newest regardless of order.
-              let newest = ns[0]
-              for (const n of ns) if (Number(n.id) > Number(newest.id)) newest = n
-              return newest
-            })}
-            s={s}
-            onShown={(id) => mark(id, true)}
-            onHidden={(id) => mark(id, false)}
-          />
-        ))}
+        <ToastRow
+          item={createComputed(() => {
+            const ns = s.notifications()
+            if (ns.length === 0) return null
+            // notifd's list order isn't guaranteed; ids are monotonically
+            // increasing, so max-id is the newest regardless of order.
+            let newest = ns[0]
+            for (const n of ns) if (Number(n.id) > Number(newest.id)) newest = n
+            return newest
+          })}
+          s={s}
+          onShown={(id) => mark(id, true)}
+          onHidden={(id) => mark(id, false)}
+        />
       </box>
     </window>
   )

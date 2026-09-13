@@ -3,12 +3,9 @@ import style from "./style.css"
 import { execAsync } from "ags/process"
 
 import Bar from "./widget/Bar"
-import { lighten, darken, mixHex, hyprAccentGlow } from "./widget/color-utils"
+import { createStore } from "./widget/store"
+import { isHexColor, lighten, darken, mixHex, hyprAccentGlow } from "./widget/color-utils"
 import { theme } from "./widget/theme.config"
-
-function isHexColor(value: unknown): value is string {
-  return typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value)
-}
 
 function injectThemeColors(background: string, accent: string, text: string) {
   app.apply_css(`
@@ -54,6 +51,7 @@ app.start({
       })
       .catch(() => injectThemeColors(theme.defaults.background, theme.defaults.accent, theme.defaults.text))
 
-    app.get_monitors().map(Bar)
+    const store = createStore()
+    app.get_monitors().map((m) => Bar(m, store))
   },
 })

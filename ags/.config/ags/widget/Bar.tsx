@@ -2,7 +2,7 @@ import app from "ags/gtk4/app"
 import { Astal, Gtk, Gdk } from "ags/gtk4"
 import { timeout } from "ags/time"
 import { createComputed, createEffect, createState } from "gnim"
-import { createStore } from "./store"
+import type { Store } from "./store"
 import config from "./widgets.config"
 import PowerMenuWindow from "./PowerMenu"
 import DesktopMenuWindow from "./DesktopMenu"
@@ -14,9 +14,9 @@ import NotificationsWindow from "./Notifications"
 import NotificationToasts from "./Toasts"
 import { ClockElement } from "./Clock"
 import { WorkspacesElement } from "./Workspaces"
+import { BarCap } from "./buttons"
 
-export default function Bar(gdkmonitor: Gdk.Monitor) {
-  const s = createStore()
+export default function Bar(gdkmonitor: Gdk.Monitor, s: Store) {
   const monitorIndex = Math.max(0, app.get_monitors().indexOf(gdkmonitor))
   const { TOP, LEFT, RIGHT, BOTTOM } = Astal.WindowAnchor
 
@@ -48,14 +48,13 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
   const barSlideDuration = 300
   const barRevealDelay = 20
   const barReserveReleaseDelay = 48
-  const flyoutToggleSize = 24
 
   // ── Bar-local effects ──────────────────────────────────────────────────────
   function scheduleHide() {
     if (hideTimer) return
     hideTimer = timeout(380, () => {
       hideTimer = null
-      if (!s.popupOpen() && !s.chooserOpen() && !cursorInTopBand(40)) setBarVisible(false)
+      if (!s.popupOpen() && !cursorInTopBand(40)) setBarVisible(false)
     })
   }
 
@@ -70,7 +69,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
     const revealEdge = cursorInTopBand(8)
     const onBarBand = cursorInTopBand(40)
     const revealBand = cursorInTopBand(20)
-    const hasPopup = s.popupOpen() || s.chooserOpen()
+    const hasPopup = s.popupOpen()
     if (hasPopup) {
       cancelHide()
       setBarVisible(true)
@@ -152,8 +151,9 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
   return (
     <>
       <window
-        visible={createComputed(() => s.popupOpen() && !s.chooserOpen())}
+        visible={s.popupOpen}
         name={`ags-dismiss-${monitorIndex}`}
+        namespace="ags-dismiss"
         class="DismissWindow"
         gdkmonitor={gdkmonitor}
         anchor={TOP | LEFT | RIGHT | BOTTOM}
@@ -195,15 +195,9 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
           >
             <box $type="start" spacing={8}>
               {config.desktopMenu && (
-                <button
-                  widthRequest={flyoutToggleSize}
-                  heightRequest={flyoutToggleSize}
-                  valign={Gtk.Align.CENTER}
-                  class={s.desktopMenuOpen((open) => `desktop-menu-toggle bar-cap-button${open ? " active" : ""}`)}
-                  onClicked={s.toggleDesktopMenu}
-                >
+                <BarCap open={s.desktopMenuOpen} onClicked={s.toggleDesktopMenu}>
                   <label class="desktop-menu-icon" label={"\u{F0C9}"} />
-                </button>
+                </BarCap>
               )}
               {config.workspaces && WorkspacesElement(s)}
             </box>
@@ -212,14 +206,7 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
 
             <box $type="end" spacing={8}>
               {config.notifications && (
-                <button
-                  widthRequest={26}
-                  heightRequest={26}
-                  valign={Gtk.Align.CENTER}
-                  halign={Gtk.Align.CENTER}
-                  class={s.notifOpen((open) => (open ? "bar-cap-button active" : "bar-cap-button"))}
-                  onClicked={s.toggleNotifications}
-                >
+                <BarCap open={s.notifOpen} onClicked={s.toggleNotifications}>
                   <overlay>
                     <label class="notif-bell" label={"\u{F0F3}"} />
                     <label
@@ -232,31 +219,17 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
                       visible={s.hasNotifications}
                     />
                   </overlay>
-                </button>
+                </BarCap>
               )}
               {config.controlCenter && (
-                <button
-                  widthRequest={26}
-                  heightRequest={26}
-                  valign={Gtk.Align.CENTER}
-                  halign={Gtk.Align.CENTER}
-                  class={s.controlOpen((open) => (open ? "bar-cap-button active" : "bar-cap-button"))}
-                  onClicked={s.toggleControl}
-                >
+                <BarCap open={s.controlOpen} onClicked={s.toggleControl}>
                   <label class="gear-icon" label={"\u{F013}"} />
-                </button>
+                </BarCap>
               )}
               {config.powerMenu && (
-                <button
-                  widthRequest={26}
-                  heightRequest={26}
-                  valign={Gtk.Align.CENTER}
-                  halign={Gtk.Align.CENTER}
-                  class={s.powerMenuOpen((open) => (open ? "bar-cap-button active" : "bar-cap-button"))}
-                  onClicked={s.togglePowerMenu}
-                >
+                <BarCap open={s.powerMenuOpen} onClicked={s.togglePowerMenu}>
                   <label class="power-icon" label={"\u{F011}"} />
-                </button>
+                </BarCap>
               )}
             </box>
           </centerbox>

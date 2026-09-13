@@ -31,6 +31,7 @@ window.DismissWindow {
   --bar-accent-light: #7cc0ff;
   --bar-accent-dark: #326fda;
   --bar-accent-pale: #cfe6ff;
+  --hover-bg: linear-gradient(180deg, var(--bar-accent-light) 0%, var(--bar-accent-dark) 100%);
   --bar-text: #0f2235;
   --bar-text-dim: #6a7a8c;
 }
@@ -115,8 +116,8 @@ box.notif-bubble {
 }
 
 button.bar-cap-button {
-  min-width: 24px;
-  min-height: 24px;
+  min-width: 26px;
+  min-height: 26px;
   padding: 0;
   border: 1px solid var(--bar-bg-dark);
   border-top-color: color-mix(in srgb, #ffffff 40%, var(--bar-bg-light));
@@ -129,12 +130,11 @@ button.bar-cap-button {
 
 button.bar-cap-button:hover {
   border-color: var(--bar-accent);
-  background: linear-gradient(180deg, var(--bar-accent-light) 0%, var(--bar-accent-dark) 100%);
+  background: var(--hover-bg);
 }
 
 button.bar-cap-button label.gear-icon,
-button.bar-cap-button label.power-icon,
-button.bar-cap-button label.info-icon {
+button.bar-cap-button label.power-icon {
   padding: 0;
   margin: 0 0 0 1px;
 }
@@ -169,7 +169,8 @@ button.mini-gear {
 
 label.gear-icon,
 label.power-icon,
-label.info-icon {
+label.info-icon,
+label.palette-icon {
   font-family: "Symbols Nerd Font", "Noto Sans Symbols 2", "Noto Sans Symbols", "Noto Sans", sans-serif;
   font-size: 16px;
   font-weight: 400;
@@ -177,25 +178,11 @@ label.info-icon {
   text-shadow: 0 0 5px color-mix(in srgb, var(--bar-accent) 55%, transparent), 0 1px 0 color-mix(in srgb, var(--bar-accent) 30%, transparent);
 }
 
-button.bar-cap-button:hover label.gear-icon,
-button.bar-cap-button:hover label.power-icon,
-button.bar-cap-button:hover label.desktop-menu-icon,
-button.bar-cap-button:hover label.notif-bell,
-button.bar-cap-button:hover label.info-icon,
-button.bar-cap-button.active label.gear-icon,
-button.bar-cap-button.active label.power-icon,
-button.bar-cap-button.active label.desktop-menu-icon,
-button.bar-cap-button.active label.notif-bell,
-button.bar-cap-button.active label.info-icon {
-  color: var(--bar-bg);
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.72);
-}
-
 button.mini-gear:hover,
 button.action:hover,
 button.round-icon:hover {
   border-color: var(--bar-accent);
-  background: linear-gradient(180deg, var(--bar-accent-light) 0%, var(--bar-accent-dark) 100%);
+  background: var(--hover-bg);
 }
 
 button.mini-gear:active,
@@ -537,16 +524,6 @@ label.power-confirm-label {
   padding: 12px;
 }
 
-button.desktop-menu-toggle {
-  min-width: 24px;
-  min-height: 24px;
-}
-
-button.desktop-menu-toggle.active {
-  border-color: var(--bar-accent);
-  background: linear-gradient(180deg, var(--bar-accent-light) 0%, var(--bar-accent-dark) 100%);
-}
-
 label.desktop-menu-icon {
   font-family: "Symbols Nerd Font", "Liberation Sans", sans-serif;
   font-size: 12px;
@@ -619,7 +596,7 @@ label.desktop-menu-icon {
 
 .calendar-widget header button:hover {
   border-color: var(--bar-accent);
-  background: linear-gradient(180deg, var(--bar-accent-light) 0%, var(--bar-accent-dark) 100%);
+  background: var(--hover-bg);
 }
 
 .calendar-widget header button:active {
@@ -731,12 +708,6 @@ button.round-icon.active {
   box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 60%, transparent), inset 0 -1px 0 rgba(9, 41, 87, 0.28), 0 0 0 1px color-mix(in srgb, #ffffff 35%, transparent), 0 1px 3px rgba(0, 0, 0, 0.22), 0 0 14px color-mix(in srgb, var(--bar-accent) 28%, transparent);
 }
 
-button.round-icon.power-toggle.active {
-  border-color: var(--bar-accent);
-  background: linear-gradient(180deg, var(--bar-accent-light) 0%, var(--bar-accent) 42%, var(--bar-accent-dark) 100%);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 60%, transparent), inset 0 -1px 0 rgba(9, 41, 87, 0.32), 0 0 0 1px color-mix(in srgb, #ffffff 35%, transparent), 0 1px 3px rgba(0, 0, 0, 0.24), 0 0 16px color-mix(in srgb, var(--bar-accent) 24%, transparent);
-}
-
 .control-actions-section {
   min-width: 1px;
 }
@@ -816,25 +787,22 @@ label.display-icon {
   text-shadow: 0 0 5px color-mix(in srgb, var(--bar-accent) 55%, transparent);
 }
 
-/* Glyphs switch to the widget background when their round button is hovered or toggled */
-button.mini-gear:hover label.gear-icon,
-button.mini-gear:active label.gear-icon,
-button.mini-gear.active label.gear-icon,
-button.round-icon:hover label.power-icon,
-button.round-icon:hover label.signal-icon,
-button.round-icon:hover label.display-icon,
-button.round-icon:hover label.power-action-glyph,
-button.round-icon:hover image.symbol-icon,
-button.round-icon.active label.power-icon,
-button.round-icon.active label.signal-icon,
-button.round-icon.active label.display-icon,
-button.round-icon.active label.power-action-glyph,
-button.round-icon.active image.symbol-icon {
+/* Glyphs switch to the widget background when their button is hovered or toggled.
+   Keyed on the button so a new glyph can never drift out of the invert set. */
+button.bar-cap-button:hover label,
+button.bar-cap-button.active label,
+button.round-icon:hover label,
+button.round-icon.active label,
+button.mini-gear:hover label,
+button.mini-gear:active label,
+button.mini-gear.active label {
   color: var(--bar-bg);
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.72);
 }
+/* Symbolic icons are images, not labels: invert them separately. */
 button.round-icon:hover image.symbol-icon,
 button.round-icon.active image.symbol-icon {
+  color: var(--bar-bg);
   -gtk-icon-shadow: 0 0 7px color-mix(in srgb, var(--bar-accent) 70%, transparent);
 }
 
@@ -871,7 +839,7 @@ button.calendar-account-btn {
 
 button.calendar-account-btn:hover {
   border-color: var(--bar-accent);
-  background: linear-gradient(180deg, var(--bar-accent-light) 0%, var(--bar-accent-dark) 100%);
+  background: var(--hover-bg);
 }
 
 button.calendar-account-btn:active {
@@ -991,7 +959,7 @@ button.calendar-account-btn label.calendar-account-icon {
 .settings-channel-button.active,
 .settings-channel-button:hover {
   border-color: var(--bar-accent);
-  background: linear-gradient(180deg, var(--bar-accent-light) 0%, var(--bar-accent-dark) 100%);
+  background: var(--hover-bg);
 }
 
 .settings-color-preview {
@@ -1081,7 +1049,7 @@ button.settings-preset-delete label {
 button.settings-preset-delete:hover,
 button.settings-preset-delete:active {
   color: var(--bar-bg);
-  background: linear-gradient(180deg, var(--bar-accent-light) 0%, var(--bar-accent-dark) 100%);
+  background: var(--hover-bg);
 }
 
 .settings-entry {
