@@ -251,8 +251,13 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
       execAsync(["lsblk", "-b", "-o", "NAME,MODEL,SIZE,MOUNTPOINTS,TYPE", "-J"]),
       execAsync(["df", "-B1", "--output=source,used,size"]),
     ])
-      .then(([lsblkOut, dfOut]) => setDisks(parseDisks(lsblkOut, dfOut)))
-      .catch(() => setDisks([]))
+      // Two-arg then: only the *fetch* rejection resets the list. A throw from
+      // setDisks (i.e. a bad prop in SystemInfoContent) must not be swallowed
+      // back into this catch, or it looks like a fetch failure forever.
+      .then(
+        ([lsblkOut, dfOut]) => setDisks(parseDisks(lsblkOut, dfOut)),
+        () => setDisks([]),
+      )
     execAsync(["uname", "-r"]).then(setKernel).catch(() => setKernel("unknown"))
     // product_name is the short model code fastfetch shows (MS-7D54); board_name
     // on this board is the long marketing name (MAG X570S TOMAHAWK MAX WIFI).
@@ -362,7 +367,7 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
                     heightRequest={5}
                     valign={Gtk.Align.CENTER}
                   />
-                  <label class="system-info-disk-pct" label={`${d.percent}%`} minWidthChars={4} xalign={0} halign={Gtk.Align.START} />
+                  <label class="system-info-disk-pct" label={`${d.percent}%`} widthChars={4} xalign={0} halign={Gtk.Align.START} />
                 </box>
               ) : (
                 <label class="system-info-disk-note" label="not mounted" xalign={0} halign={Gtk.Align.START} />
