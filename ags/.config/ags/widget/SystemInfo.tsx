@@ -12,22 +12,66 @@ function parseOsName(raw: string) {
   return m ? m[1] : "Unknown"
 }
 
-function parseCpuModel(raw: string) {
-  const m = String(raw).match(/Model name:\s*(.+)/)
-  return m ? m[1].trim() : "Unknown"
+// "AMD Ryzen 7 5800X 8-Core Processor|16|5619.7388" → "AMD Ryzen 7 5800X (16) @ 5.62 GHz"
+function parseCpuInfo(raw: string) {
+  const [model, cores, maxMhz] = String(raw).split("|").map((s) => s.trim())
+  if (!model) return "Unknown"
+  const ghz = Number(maxMhz) / 1000
+  // Drop AMD's "8-Core Processor" suffix; it pushes the line past the 420px window.
+  const name = model.replace(/\s+\d+-Core Processor\s*$/, "")
+  return `${name}${cores ? ` (${cores})` : ""}${ghz > 0 ? ` @ ${ghz.toFixed(2)} GHz` : ""}`
+}
+
+function parseBoard(raw: string) {
+  return String(raw).trim() || "unknown"
+}
+
+// "719 emerge" → "719 (emerge)"
+function parsePackages(raw: string) {
+  const [count, mgr] = String(raw).trim().split(/\s+/)
+  return count && mgr && /^\d+$/.test(count) ? `${count} (${mgr})` : "unknown"
+}
+
+// "/bin/bash|GNU bash, version 5.3.15(1)-release ..." → "bash 5.3.15"
+function parseShell(raw: string) {
+  const [path, versionLine] = String(raw).split("|")
+  const name = String(path ?? "").trim().split("/").pop() || "unknown"
+  const m = String(versionLine ?? "").match(/\d+\.\d+(?:\.\d+)?/)
+  return m ? `${name} ${m[0]}` : name
+}
+
+// "Hyprland 0.56.0 built from branch ..." → "Hyprland 0.56.0"
+function parseWm(raw: string) {
+  const first = String(raw).trim().split("\n")[0] ?? ""
+  const m = first.match(/^(\S+)\s+(\d\S*)/)
+  return m ? `${m[1]} ${m[2]}` : first || "unknown"
+}
+
+// "50422689792 4288212992 ..." (free -b) → "4.0Gi / 47Gi (9%)"
+function parseMemory(raw: string) {
+  const [total, used] = String(raw).trim().split(/\s+/).map(Number)
+  if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(used)) return "unknown"
+  const gib = (n: number) => (n / 1024 ** 3 >= 10 ? `${Math.round(n / 1024 ** 3)}Gi` : `${(n / 1024 ** 3).toFixed(1)}Gi`)
+  return `${gib(used)} / ${gib(total)} (${Math.round((used / total) * 100)}%)`
 }
 
 function parseMonitors(raw: string) {
   try {
     const list = JSON.parse(String(raw))
     if (!Array.isArray(list)) return []
-    return list.map((m: any) => ({
-      name: String(m.name),
-      width: Number(m.width),
-      height: Number(m.height),
-      refreshRate: Number(m.refreshRate),
-      focused: Boolean(m.focused),
-    }))
+    return list.map((m: any) => {
+      const pw = Number(m.physicalWidth) || 0
+      const ph = Number(m.physicalHeight) || 0
+      return {
+        name: String(m.name),
+        model: String(m.model ?? "").trim(),
+        width: Number(m.width),
+        height: Number(m.height),
+        refreshRate: Number(m.refreshRate),
+        focused: Boolean(m.focused),
+        inches: pw > 0 && ph > 0 ? (Math.hypot(pw, ph) / 25.4).toFixed(1) : "",
+      }
+    })
   } catch {
     return []
   }
@@ -102,7 +146,7 @@ function parseDisks(raw: string) {
 
 // ─── Static field helpers ─────────────────────────────────────────────────────
 
-function Field(label: string, value: () => string) {
+function Field(label: string, value: string | (() => string)) {
   return (
     <box orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
       <label class="system-info-label" label={label} widthRequest={120} xalign={1} halign={Gtk.Align.END} />
@@ -123,25 +167,30 @@ function Divider() {
 // Not an Astal layer-shell window: Gtk.ApplicationWindow is a normal toplevel,
 // so Hyprland floats/centers it via windowrule and it responds to WM keybinds.
 
-export default function SystemInfoWindow(_gdkmonitor: Gdk.Monitor, monitorIndex: number, s: Store) {
+export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: number, s: Store) {
   // Bar.tsx instantiates this once per monitor; a normal toplevel window is
   // centered by the compositor, so only the first instance owns it.
   if (monitorIndex !== 0) return null
 
   // ── Live polls (60s) ───────────────────────────────────────────────────────
   const uptime = createPoll("…", 60_000, ["bash", "-c", "uptime -p"], (out) => out.trim() || "unknown")
-  const memory = createPoll("…", 60_000, ["bash", "-c", "free -h | awk '/Mem:/{print $3\" / \"$2}'"], (out) => out.trim() || "unknown")
+  // free -b so the percentage is computed from bytes in JS, not from rounded "free -h" text.
+  const memory = createPoll("…", 60_000, ["bash", "-c", "free -b | sed -n 's/^Mem: *//p'"], (out) => parseMemory(out))
   const disk = createPoll("…", 60_000, ["bash", "-c", `df -h / | awk 'NR==2{print $3"/"$2" ("$5" used)"}'`], (out) => out.trim() || "unknown")
 
   // ── Static info: refreshed each time the window opens ──────────────────────
   const [hostname, setHostname] = createState("…")
   const [osName, setOsName] = createState("…")
   const [kernel, setKernel] = createState("…")
+  const [host, setHost] = createState("…")
+  const [packages, setPackages] = createState("…")
+  const [shell, setShell] = createState("…")
+  const [wm, setWm] = createState("…")
   const [cpu, setCpu] = createState("…")
   const [gpu, setGpu] = createState("…")
   const [distroGlyph, setDistroGlyph] = createState("\u{f17c}")
   const [disks, setDisks] = createState<Array<{ name: string; model: string; size: string }>>([])
-  const [monitors, setMonitors] = createState<Array<{ name: string; width: number; height: number; refreshRate: number; focused: boolean }>>([])
+  const [monitors, setMonitors] = createState<ReturnType<typeof parseMonitors>>([])
 
   createEffect(() => {
     if (!s.systemInfoOpen()) return
@@ -156,7 +205,39 @@ export default function SystemInfoWindow(_gdkmonitor: Gdk.Monitor, monitorIndex:
       .then((out) => setDisks(parseDisks(out)))
       .catch(() => setDisks([]))
     execAsync(["uname", "-r"]).then(setKernel).catch(() => setKernel("unknown"))
-    execAsync(["bash", "-c", `lscpu | grep "Model name"`]).then((out) => setCpu(parseCpuModel(out))).catch(() => setCpu("unknown"))
+    // product_name is the short model code fastfetch shows (MS-7D54); board_name
+    // on this board is the long marketing name (MAG X570S TOMAHAWK MAX WIFI).
+    execAsync([
+      "bash",
+      "-c",
+      "cat /sys/devices/virtual/dmi/id/product_name 2>/dev/null || cat /sys/devices/virtual/dmi/id/board_name 2>/dev/null",
+    ])
+      .then((out) => setHost(parseBoard(out)))
+      .catch(() => setHost("unknown"))
+    execAsync([
+      "bash",
+      "-c",
+      "if command -v qlist >/dev/null 2>&1; then printf '%s emerge' \"$(qlist -I | wc -l)\"; elif command -v pacman >/dev/null 2>&1; then printf '%s pacman' \"$(pacman -Q | wc -l)\"; elif command -v dpkg-query >/dev/null 2>&1; then printf '%s dpkg' \"$(dpkg-query -f '.\\n' -W | wc -l)\"; elif command -v rpm >/dev/null 2>&1; then printf '%s rpm' \"$(rpm -qa | wc -l)\"; fi",
+    ])
+      .then((out) => setPackages(parsePackages(out)))
+      .catch(() => setPackages("unknown"))
+    execAsync([
+      "bash",
+      "-c",
+      'sh=$(getent passwd "$USER" | cut -d: -f7); printf "%s|%s" "$sh" "$("$sh" --version 2>/dev/null | head -1)"',
+    ])
+      .then((out) => setShell(parseShell(out)))
+      .catch(() => setShell("unknown"))
+    execAsync(["bash", "-c", "hyprctl version | head -1"])
+      .then((out) => setWm(parseWm(out)))
+      .catch(() => setWm("unknown"))
+    execAsync([
+      "bash",
+      "-c",
+      "lscpu | awk -F: '/^Model name/{m=$2} /^CPU\\(s\\):/{c=$2} /^CPU max MHz/{f=$2} END{print m\"|\"c\"|\"f}'",
+    ])
+      .then((out) => setCpu(parseCpuInfo(out)))
+      .catch(() => setCpu("unknown"))
     // GPU: lspci -nn device-id lookup (text parsing is ambiguous across SKUs).
     execAsync([
       "bash",
@@ -193,7 +274,7 @@ export default function SystemInfoWindow(_gdkmonitor: Gdk.Monitor, monitorIndex:
         halign={Gtk.Align.CENTER}
         valign={Gtk.Align.CENTER}
         widthRequest={420}
-        heightRequest={480}
+        heightRequest={560}
       >
         <label class="flyout-title" label="System Info" xalign={0.5} />
 
@@ -204,6 +285,10 @@ export default function SystemInfoWindow(_gdkmonitor: Gdk.Monitor, monitorIndex:
             {Field("OS", osName)}
             {Field("Kernel", kernel)}
             {Field("Uptime", uptime)}
+            {Field("Host", host)}
+            {Field("Packages", packages)}
+            {Field("Shell", shell)}
+            {Field("WM", wm)}
           </box>
           <label class="system-info-logo" label={distroGlyph} valign={Gtk.Align.CENTER} />
         </box>
@@ -218,18 +303,21 @@ export default function SystemInfoWindow(_gdkmonitor: Gdk.Monitor, monitorIndex:
         <Divider />
 
         <SectionTitle label="STORAGE" />
-        <For each={disks}>{(d) => Field(d.model, () => d.size)}</For>
+        <For each={disks}>{(d) => Field(d.model, d.size)}</For>
         {Field("Root usage", disk)}
 
         <Divider />
 
         <SectionTitle label="DISPLAY" />
-        <For each={monitors}>{(m, i) => (
-          <box orientation={Gtk.Orientation.VERTICAL} spacing={2}>
-            <label class="system-info-monitor" label={`Monitor ${i + 1} — ${m.name}`} halign={Gtk.Align.START} xalign={0} />
-            {Field("Resolution", () => `${m.width}x${m.height} @ ${Math.round(m.refreshRate)}Hz`)}
-          </box>
-        )}
+        <For each={monitors}>{(m, i) => {
+          const desc = `${m.model ? `${m.model} — ` : ""}${m.width}x${m.height} @ ${Math.round(m.refreshRate)}Hz${m.inches ? ` (${m.inches}")` : ""}`
+          return (
+            <box orientation={Gtk.Orientation.VERTICAL} spacing={2}>
+              <label class="system-info-monitor" label={`Monitor ${i() + 1} — ${m.name}`} halign={Gtk.Align.START} xalign={0} />
+              {Field("Resolution", desc)}
+            </box>
+          )
+        }}
         </For>
       </box>
     )
@@ -245,7 +333,7 @@ export default function SystemInfoWindow(_gdkmonitor: Gdk.Monitor, monitorIndex:
         application: app,
         title: "System Info",
         defaultWidth: 420,
-        defaultHeight: 480,
+        defaultHeight: 560,
         resizable: false,
       })
       win.set_child(SystemInfoContent())
@@ -267,10 +355,66 @@ export default function SystemInfoWindow(_gdkmonitor: Gdk.Monitor, monitorIndex:
         s.setSystemInfoOpen(false)
         return false // let GTK finish the close
       })
+      const openedAt = Date.now()
       win.present()
 
-      // Auto-dismiss on focus loss (150ms guard against focus handoff races).
+      // ── Auto-dismiss on focus loss ──────────────────────────────────────────
+      // Hyprland 0.56 steals focus from a floating window on pointer motion even
+      // with follow_mouse = 0, so losing `is-active` does NOT mean the user left
+      // the window. On focus loss we wait 150ms (debounce), then dismiss ONLY if
+      // the cursor is actually outside the window rect (8px margin).
       let focusTimer: ReturnType<typeof timeout> | null = null
+      let rect: { x: number; y: number; w: number; h: number } | null = null
+      let rectAt = 0
+      let rectPending = false
+
+      // hyprctl clients -j → this window's real rect. Cached (5s TTL) so focus
+      // events never shell out directly.
+      const refreshRect = () => {
+        if (rectPending || Date.now() - rectAt < 5000) return
+        rectPending = true
+        execAsync(["hyprctl", "clients", "-j"])
+          .then((out) => {
+            const list = JSON.parse(out)
+            const c = Array.isArray(list) ? list.find((c: any) => c.title === "System Info") : null
+            if (c?.at && c?.size) {
+              rect = { x: Number(c.at[0]), y: Number(c.at[1]), w: Number(c.size[0]), h: Number(c.size[1]) }
+              rectAt = Date.now()
+            }
+          })
+          .catch(() => {})
+          .finally(() => {
+            rectPending = false
+          })
+      }
+
+      const cursorInside = () => {
+        const { x: cx, y: cy } = s.cursorPos()
+        const m = 8
+        // Real client rect when cached; the window is centered and non-resizable,
+        // so the monitor's center region is an accurate fallback.
+        const w = rect?.w || win?.get_width?.() || 420
+        const h = rect?.h || win?.get_height?.() || 560
+        const geo = gdkmonitor.get_geometry()
+        const x = rect?.x ?? Math.round(geo.x + (geo.width - w) / 2)
+        const y = rect?.y ?? Math.round(geo.y + (geo.height - h) / 2)
+        return cx >= x - m && cx <= x + w + m && cy >= y - m && cy <= y + h + m
+      }
+
+      const dismissIfLeft = () => {
+        focusTimer = null
+        if (!win) return
+        // Grace period after present(): ignore the initial focus handoff.
+        const sinceOpen = Date.now() - openedAt
+        if (sinceOpen < 250) {
+          focusTimer = timeout(250 - sinceOpen, dismissIfLeft)
+          return
+        }
+        refreshRect()
+        if (cursorInside()) return // focus stolen by the Hyprland floating-window bug
+        s.closeFlyouts()
+      }
+
       win.connect("notify::is-active", () => {
         if (win?.is_active) {
           if (focusTimer) {
@@ -278,12 +422,12 @@ export default function SystemInfoWindow(_gdkmonitor: Gdk.Monitor, monitorIndex:
             focusTimer = null
           }
         } else if (!focusTimer) {
-          focusTimer = timeout(150, () => {
-            focusTimer = null
-            s.closeFlyouts()
-          })
+          focusTimer = timeout(150, dismissIfLeft)
         }
       })
+      refreshRect()
+      // The window may not be mapped yet when the first lookup runs; retry once.
+      timeout(400, refreshRect)
     } else {
       win?.destroy()
       win = null
@@ -294,7 +438,7 @@ export default function SystemInfoWindow(_gdkmonitor: Gdk.Monitor, monitorIndex:
   // re-render the once-built tree reliably). Only rebuild on real changes.
   let lastBuiltKey = ""
   createEffect(() => {
-    const key = `${distroGlyph()}|${disks().length}|${monitors().length}|${disks().map((d) => d.size).join(",")}`
+    const key = `${distroGlyph()}|${disks().length}|${monitors().length}|${disks().map((d) => d.size).join(",")}|${monitors().map((m) => m.model).join(",")}`
     if (key === lastBuiltKey) return
     lastBuiltKey = key
     if (win) win.set_child(SystemInfoContent())

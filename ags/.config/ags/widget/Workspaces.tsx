@@ -113,8 +113,11 @@ export function WorkspacesElement(s: Store) {
           css={createComputed(() => {
             const colors = s.wsDotColors()
             const base = colors[(ws - 1) % 8] || DEFAULT_WS_DOT_COLORS[(ws - 1) % 8]
-            const bg = `background: radial-gradient(circle at 32% 28%, ${mixHex(base, "#ffffff", 0.55)} 0%, ${mixHex(base, "#ffffff", 0.25)} 28%, ${base} 62%, ${darken(base, 0.55)} 100%);`
-            return bg
+            // ring is baked into the gradient: GTK renders a 1px border/box-shadow on a
+            // circle as 4 corner patches, leaving a crosshair of nubs at the cardinals
+            const ring = `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0) 7.3px, rgba(255, 255, 255, var(--ws-ring, 0.72)) 7.9px, rgba(255, 255, 255, var(--ws-ring, 0.72)) 9px)`
+            const body = `radial-gradient(circle at 32% 28%, ${mixHex(base, "#ffffff", 0.55)} 0%, ${mixHex(base, "#ffffff", 0.25)} 28%, ${base} 62%, ${darken(base, 0.55)} 100%)`
+            return `background-image: ${ring}, ${body};`
           })}
         />
       </button>
