@@ -362,8 +362,15 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
       // Hyprland 0.56 steals focus from a floating window on pointer motion even
       // with follow_mouse = 0, so losing `is-active` does NOT mean the user left
       // the window. On focus loss we wait 150ms (debounce), then dismiss ONLY if
-      // the cursor is actually outside the window rect (8px margin).
+      // the cursor is actually outside the window rect (8px margin) AND has been
+      // inside it at least once since opening.
+      //
+      // The latch matters: the window is opened from the Control Center tile in
+      // the screen corner, while the window itself is centred, so the cursor
+      // starts outside. Without `hasEntered` the post-present focus theft read
+      // as "user left" and closed the window ~250ms after it appeared.
       let focusTimer: ReturnType<typeof timeout> | null = null
+      let hasEntered = false
       let rect: { x: number; y: number; w: number; h: number } | null = null
       let rectAt = 0
       let rectPending = false
@@ -411,7 +418,11 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
           return
         }
         refreshRect()
-        if (cursorInside()) return // focus stolen by the Hyprland floating-window bug
+        if (cursorInside()) {
+          hasEntered = true
+          return // focus stolen by the Hyprland floating-window bug
+        }
+        if (!hasEntered) return // cursor never reached the window: ignore focus theft
         s.closeFlyouts()
       }
 
@@ -425,6 +436,21 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
           focusTimer = timeout(150, dismissIfLeft)
         }
       })
+
+      // Latch `hasEntered` off the store's existing 120ms cursorPos poll (no new
+      // subprocess), and close on cursor-leave once the pointer has been on the
+      // window. Geometry comes from the cached rect only; refreshRect() runs on
+      // open/focus loss, never from this watcher.
+      createEffect(() => {
+        if (!win) return
+        const inside = cursorInside()
+        if (!hasEntered) {
+          if (inside) hasEntered = true
+          return
+        }
+        if (!inside && !focusTimer) dismissIfLeft()
+      })
+
       refreshRect()
       // The window may not be mapped yet when the first lookup runs; retry once.
       timeout(400, refreshRect)

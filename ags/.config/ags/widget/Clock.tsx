@@ -9,7 +9,7 @@ export function ClockElement(s: Store) {
         class={s.calendarOpen((open) => (open ? "clock active" : "clock"))}
         onClicked={s.toggleCalendar}
       >
-        <label class="clock-label center-label" label={s.centerDisplay} />
+        <label class="clock-label center-label" label={s.centerDisplay} ellipsize={3} />
       </button>
     )
   }
