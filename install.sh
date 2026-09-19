@@ -584,9 +584,7 @@ ensure_bash_completion() {
 	SUMMARY_ACTIONS+=("enabled bash tab completion in ~/.bashrc")
 }
 
-# Declarative feature flags: a small user-editable file, deployed once to
-# ~/.config/dotfiles/features.sh and sourced by the ~/.bashrc block below.
-# An existing copy is never overwritten, so toggles survive re-runs.
+# feature flags - deployed once, never overwritten, sourced from ~/.bashrc
 ensure_features_file() {
 	local features="$HOME/.config/dotfiles/features.sh"
 	if [[ -e $features || -L $features ]]; then
@@ -602,12 +600,24 @@ ensure_features_file() {
 	SUMMARY_ACTIONS+=("deployed feature flags to ~/.config/dotfiles/features.sh (edit to toggle features)")
 }
 
-# ble.sh - bash line editor with as-you-type suggestions and syntax
-# highlighting (the CachyOS bash experience). Available via AUR on Arch and
-# the ble.sh package on Debian/Ubuntu trixie+; elsewhere the guarded source
-# block simply stays dormant. ~/.bashrc sources the feature flags first, so
-# dotfiles_blesh=0 disables it; the :-1 default keeps pre-feature-flag
-# behaviour (on) when the features file is missing.
+# ble.sh theme generator - deployed once, never overwritten. install(1) sets the
+# exec bit the ~/.bashrc source line and the install-time run need.
+ensure_blesh_theme_gen() {
+	local gen="$HOME/.config/dotfiles/gen-blesh-theme.sh"
+	if [[ -e $gen || -L $gen ]]; then
+		info "Keeping existing ble.sh theme generator: ${gen}"
+		return 0
+	fi
+	if (( DRY_RUN )); then
+		info "[dry-run] deploy ble.sh theme generator to ${gen}"
+		return 0
+	fi
+	mkdir -p "$(dirname "$gen")"
+	install -m 755 "$SRC_PATH/bash/gen-blesh-theme.sh" "$gen"
+	SUMMARY_ACTIONS+=("deployed the ble.sh theme generator to ~/.config/dotfiles/gen-blesh-theme.sh")
+}
+
+# ble.sh - AUR blesh / Debian ble.sh; inert elsewhere. Gated on dotfiles_blesh (default 1).
 
 # The block appended by installer versions before the feature flags existed.
 BLESH_OLD_BLOCK='# ble.sh - live completion suggestions (like CachyOS); no history suggestions
@@ -616,22 +626,33 @@ if [ -f /usr/share/blesh/ble.sh ]; then
   bleopt complete_auto_history=
 fi'
 
-# The two pieces appended now, tracked separately so each lands exactly once.
-BLESH_FLAGS_LINE='[ -f "$HOME/.config/dotfiles/features.sh" ] && . "$HOME/.config/dotfiles/features.sh"'
-BLESH_NEW_BLOCK='# ble.sh - live completion suggestions (like CachyOS); toggle via dotfiles_blesh
+# The block written by installers before the theme source line existed, so an
+# existing install is upgraded in place exactly once.
+BLESH_PREV_BLOCK='# ble.sh - live completion suggestions (like CachyOS); toggle via dotfiles_blesh
 if [ "${dotfiles_blesh:-1}" = 1 ] && [ -f /usr/share/blesh/ble.sh ]; then
   source /usr/share/blesh/ble.sh
   bleopt complete_auto_history=
 fi'
 
+# The pieces appended now, tracked separately so each lands exactly once.
+BLESH_FLAGS_LINE='[ -f "$HOME/.config/dotfiles/features.sh" ] && . "$HOME/.config/dotfiles/features.sh"'
+BLESH_NEW_BLOCK='# ble.sh - live completion suggestions (like CachyOS); toggle via dotfiles_blesh
+if [ "${dotfiles_blesh:-1}" = 1 ] && [ -f /usr/share/blesh/ble.sh ]; then
+  source /usr/share/blesh/ble.sh
+  bleopt complete_auto_history=
+  [ -f "$HOME/.config/dotfiles/blesh-theme.sh" ] && . "$HOME/.config/dotfiles/blesh-theme.sh"
+fi'
+
 ensure_blesh() {
-	local bashrc="$HOME/.bashrc" content="" have_old=0 have_flags=0 have_new=0
+	local bashrc="$HOME/.bashrc" content="" have_old=0 have_prev=0 have_flags=0 have_new=0
 	if [[ -f $bashrc ]]; then
 		content="$(<"$bashrc")"
 	fi
 	if [[ $content == *"$BLESH_OLD_BLOCK"* ]]; then have_old=1; fi
+	if [[ $content == *"$BLESH_PREV_BLOCK"* ]]; then have_prev=1; fi
 	if [[ $content == *"dotfiles/features.sh"* ]]; then have_flags=1; fi
-	if [[ $content == *"dotfiles_blesh"* ]]; then have_new=1; fi
+	# Match the complete current block, so a pre-theme install is still migrated.
+	if [[ $content == *"$BLESH_NEW_BLOCK"* ]]; then have_new=1; fi
 
 	if (( !have_old && have_flags && have_new )); then
 		info "ble.sh already enabled (toggle: dotfiles_blesh in ~/.config/dotfiles/features.sh)."
@@ -641,33 +662,55 @@ ensure_blesh() {
 	if (( DRY_RUN )); then
 		if (( have_old )); then
 			info "[dry-run] replace the old ble.sh block in ${bashrc} with the feature-flag aware block"
+		elif (( have_prev )); then
+			info "[dry-run] upgrade the ble.sh block in ${bashrc} to source the generated theme"
 		else
 			info "[dry-run] add the dotfiles feature-flags + ble.sh block to ${bashrc}"
 		fi
 		return 0
 	fi
 
-	# Migration: drop the exact unconditional block older installers appended,
-	# then add whichever pieces are missing. A second run is a no-op.
+	# Migration: drop blocks older installers appended, then add whichever
+	# pieces are missing. A second run is a no-op.
 	if (( have_old )); then
 		content="${content/"$BLESH_OLD_BLOCK"/}"
 		# drop the blank line the removed old block left behind
 		while [[ $content == *$'\n' ]]; do content="${content%$'\n'}"; done
 	fi
+	if (( have_prev )); then
+		content="${content/"$BLESH_PREV_BLOCK"/"$BLESH_NEW_BLOCK"}"
+	fi
 	if (( !have_flags )); then
 		content+=$'\n# dotfiles feature flags - edit ~/.config/dotfiles/features.sh to toggle\n'"$BLESH_FLAGS_LINE"
 	fi
-	if (( !have_new )); then
+	if (( !have_new && !have_prev )); then
 		content+=$'\n\n'"$BLESH_NEW_BLOCK"
 	fi
 	printf '%s\n' "$content" > "$bashrc"
 
-	if (( have_old )); then
+	if (( have_old || have_prev )); then
 		info "Updated the ble.sh block in ${bashrc} (toggle: dotfiles_blesh)."
 		SUMMARY_ACTIONS+=("updated the ble.sh block in ~/.bashrc (toggle via ~/.config/dotfiles/features.sh)")
 	else
 		info "Enabled ble.sh as-you-type completion in ${bashrc} (toggle: dotfiles_blesh)."
 		SUMMARY_ACTIONS+=("enabled ble.sh in ~/.bashrc (toggle via ~/.config/dotfiles/features.sh)")
+	fi
+}
+
+# Generate the theme once at install time so the first shell is already themed.
+# Non-fatal: the bar install must not fail if the generator does.
+generate_blesh_theme() {
+	local gen="$HOME/.config/dotfiles/gen-blesh-theme.sh"
+	if (( DRY_RUN )); then
+		info "[dry-run] generate the ble.sh theme from ~/.config/ags/theme-colors.json"
+		return 0
+	fi
+	if [[ -x $gen ]]; then
+		if "$gen"; then
+			SUMMARY_ACTIONS+=("generated the ble.sh theme at ~/.config/dotfiles/blesh-theme.sh")
+		else
+			warn "Could not generate the ble.sh theme (continuing)."
+		fi
 	fi
 }
 
@@ -890,7 +933,9 @@ main() {
 	ensure_bashrc_helper
 	ensure_bash_completion
 	ensure_features_file
+	ensure_blesh_theme_gen
 	ensure_blesh
+	generate_blesh_theme
 	verify_bar_bundle
 
 	info "Verifying installed commands..."

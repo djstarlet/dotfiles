@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Check the deploy logic in install.sh: symlink guard, per-file merge,
 # backup of differing files, preservation of user files, and the ble.sh
-# feature-flag deploy/migration. Run: bash test-deploy.sh
+# feature-flag/theme deploy and migration. Run: bash test-deploy.sh
 set -euo pipefail
 cd "$(dirname "$(readlink -f "$0")")"
 . ./install.sh  # guard in install.sh prevents main() from running when sourced
@@ -61,12 +61,14 @@ ok "re-run is quiet (no backups, no churn)"
 
 # ---- 4. ble.sh feature flags: fresh deploy, idempotency
 cp ./bash/features.sh "$SRC_PATH/bash/features.sh"
+cp ./bash/gen-blesh-theme.sh "$SRC_PATH/bash/gen-blesh-theme.sh"
 rm -f "$HOME/.bashrc" "$HOME/.config/dotfiles/features.sh"
 ensure_features_file >/dev/null
 grep -q 'dotfiles_blesh' "$HOME/.config/dotfiles/features.sh" || fail "features file not deployed"
 ensure_blesh >/dev/null
 grep -q 'dotfiles_blesh' "$HOME/.bashrc" || fail "flag-aware ble block missing"
 grep -q 'dotfiles/features.sh' "$HOME/.bashrc" || fail "features source line missing"
+grep -q 'dotfiles/blesh-theme.sh' "$HOME/.bashrc" || fail "theme source line missing"
 ok "fresh install deploys features file and flag-aware ble block"
 
 # user edits must survive re-deploys
@@ -82,7 +84,33 @@ ensure_blesh >/dev/null
 [[ $(grep -c 'bleopt complete_auto_history=' "$HOME/.bashrc") == 1 ]] || fail "ble block duplicated"
 ok "second run is a no-op"
 
-# ---- 5. migration of the exact block older installers appended
+# ---- 5. ble.sh theme generator: deploy, exec bit, generation, re-run no-op
+gen="$HOME/.config/dotfiles/gen-blesh-theme.sh"
+rm -f "$gen"
+ensure_blesh_theme_gen >/dev/null
+[[ -x $gen ]] || fail "theme generator not deployed executable"
+[[ $(stat -c %a "$gen") == 755 ]] || fail "theme generator mode is not 755"
+cmp -s ./bash/gen-blesh-theme.sh "$gen" || fail "theme generator differs from the repo copy"
+ok "theme generator deployed with mode 755"
+
+mkdir -p "$HOME/.config/ags"
+echo '{"accent":"#55adff"}' > "$HOME/.config/ags/theme-colors.json"
+generate_blesh_theme >/dev/null
+grep -q 'ble-color-setface' "$HOME/.config/dotfiles/blesh-theme.sh" || fail "theme not generated at install time"
+ok "install-time generation writes blesh-theme.sh"
+
+echo 'user edit' > "$gen"
+ensure_blesh_theme_gen >/dev/null
+[[ $(cat "$gen") == 'user edit' ]] || fail "edited theme generator overwritten"
+ok "edited theme generator left alone"
+
+before="$(cat "$gen")"; before_actions="${#SUMMARY_ACTIONS[@]}"
+ensure_blesh_theme_gen >/dev/null
+[[ $(cat "$gen") == "$before" ]] || fail "theme generator re-run changed the file"
+[[ ${#SUMMARY_ACTIONS[@]} == "$before_actions" ]] || fail "theme generator re-run recorded an action"
+ok "theme generator re-run is a no-op"
+
+# ---- 6. migration of the exact block older installers appended
 HOME2="$work/home2"
 mkdir -p "$HOME2"
 printf '\n# ble.sh - live completion suggestions (like CachyOS); no history suggestions\nif [ -f /usr/share/blesh/ble.sh ]; then\n  source /usr/share/blesh/ble.sh\n  bleopt complete_auto_history=\nfi\n' > "$HOME2/.bashrc"
@@ -98,7 +126,29 @@ HOME="$HOME2" ensure_blesh >/dev/null
 [[ $(cat "$HOME2/.bashrc") == "$before" ]] || fail "migration re-run changed the bashrc"
 ok "migration re-run is a no-op"
 
-# ---- 6. feature flag semantics, with the ble.sh path mocked for the test
+# a pre-theme flag-aware block (current public installer output) upgrades once
+HOME3="$work/home3"
+mkdir -p "$HOME3"
+printf '%s\n' \
+	'# dotfiles feature flags - edit ~/.config/dotfiles/features.sh to toggle' \
+	'[ -f "$HOME/.config/dotfiles/features.sh" ] && . "$HOME/.config/dotfiles/features.sh"' \
+	'' \
+	'# ble.sh - live completion suggestions (like CachyOS); toggle via dotfiles_blesh' \
+	'if [ "${dotfiles_blesh:-1}" = 1 ] && [ -f /usr/share/blesh/ble.sh ]; then' \
+	'  source /usr/share/blesh/ble.sh' \
+	'  bleopt complete_auto_history=' \
+	'fi' > "$HOME3/.bashrc"
+HOME="$HOME3" ensure_blesh >/dev/null
+grep -q 'dotfiles/blesh-theme.sh' "$HOME3/.bashrc" || fail "pre-theme block not upgraded"
+[[ $(grep -c 'bleopt complete_auto_history=' "$HOME3/.bashrc") == 1 ]] || fail "upgrade duplicated the ble block"
+ok "pre-theme flag-aware block upgraded exactly once"
+
+before="$(cat "$HOME3/.bashrc")"
+HOME="$HOME3" ensure_blesh >/dev/null
+[[ $(cat "$HOME3/.bashrc") == "$before" ]] || fail "upgraded bashrc changed on re-run"
+ok "upgraded bashrc re-run is a no-op"
+
+# ---- 7. feature flag semantics, with the ble.sh path mocked for the test
 mock="$work/mock/blesh/ble.sh"
 mkdir -p "$(dirname "$mock")"
 printf 'bleopt() { :; }\nBLE_MOCK_SOURCED=1\n' > "$mock"
