@@ -8,7 +8,7 @@
 - SUPER + SHIFT + C - force kill window
 - SUPER + mouse button 1 - move window
 - SUPER + mouse button 2 - resize window
-- SUPER + TAB - hyprexpo toggle (workspace overview)
+
 - SUPER + SHIFT + GRAVE - reload hyprland
 - SUPER + 1 - workspace 1
 - SUPER + 2 - workspace 2
@@ -28,15 +28,15 @@
 
 ## Shell features
 
-The installer deploys `~/.config/dotfiles/features.sh` if it does not already exist; user edits survive re-runs. Edit the file and open a new terminal — no reinstall required. Currently one flag:
+The installer deploys `~/.config/dotfiles/features.sh` if it does not already exist; user edits survive re-runs. edit it, then open a new terminal.
 
-- `dotfiles_blesh=1` — enables ble.sh as-you-type completion & syntax highlighting (the CachyOS bash experience). Set to `0` or delete the file to disable. Requires the blesh/ble.sh package at `/usr/share/blesh/ble.sh`. No Fedora or Gentoo package exists; the guarded block stays dormant unless ble.sh is built from source (akinomyoga/ble.sh) and placed there.
+- `dotfiles_blesh=1` — enables ble.sh as-you-type completion & syntax highlighting. set to `0` or delete the file to turn it off. requires the blesh/ble.sh package at `/usr/share/blesh/ble.sh`; no Fedora or Gentoo package exists (build from akinomyoga/ble.sh). ble.sh colours reflect the active AGS theme: the generator reads `~/.config/ags/theme-colors.json` and writes `~/.config/dotfiles/blesh-theme.sh`, sourced by the shell after ble.sh. the installer deploys and runs it once so a fresh install is themed immediately; changing the preset regenerates it.
 
 ## Hyprland config (lua)
 
 The repo ships `hyprland.lua` (Lua config API, Hyprland 0.57+). Legacy `hyprland.conf` backup is kept alongside it. Gotchas worth knowing:
 
-- The lua file must be an actual file at `~/.config/hypr/hyprland.lua`. A symlink will break it — Hyprland's Lua loader fails with `cannot open ...: No such file or directory` even if the target exists. (The old conf worked fine as a symlink; the lua loader doesn't.)
+- the lua file at `~/.config/hypr/hyprland.lua` may be a symlink, copy, or hardlink. what matters is that the config directory `~/.config/hypr/` is correct.
 - Key names are lowercase and case-sensitive: `+ c` works, `+ C` silently does nothing. Same for `+ space` vs `+ SPACE`.
 - `~` does not expand inside `hl.exec_cmd(...)`. Use absolute paths (`/home/<user>/...`) or the command silently fails.
 - Dispatch syntax changed: `hyprctl dispatch 'hl.dsp.focus({ workspace = 2 })'` (a Lua call as one quoted arg). Old form `hyprctl dispatch workspace 2` errors. Window moves too: `hl.dsp.window.move({ workspace = N })`. AGS bar workspace switching was updated to send this form.
@@ -52,7 +52,7 @@ The repo ships `hyprland.lua` (Lua config API, Hyprland 0.57+). Legacy `hyprland
 - then install the dependencies listed below on your package manager & reboot/logout then login
 
 # Manual:
-- drop `hypr/` into `~/.config/` - for hyprland config (note: `hyprland.lua` must be a real file, not a symlink)
+- drop `hypr/` into `~/.config/` - for hyprland config
 - drop `ags/.config/ags/` into `~/.config/` - for the taskbar
 - no npm install needed: the AGS CLI bundles the `ags` + `gnim` modules itself (the bar is typescript + gnim, compiled at runtime by `ags run`)
 - then install the dependencies listed below on your package manager & reboot/logout then login
@@ -102,7 +102,7 @@ curl
 
 bash-completion (bash tab completion, enabled in ~/.bashrc)
 
-ble.sh (live command/argument completion as you type, like CachyOS - toggle via `dotfiles_blesh` in `~/.config/dotfiles/features.sh`; history suggestions disabled; AUR blesh / Debian ble.sh; no Fedora/Gentoo package)
+ble.sh (live command/argument completion as you type - toggle via `dotfiles_blesh` in `~/.config/dotfiles/features.sh`; history suggestions disabled; AUR blesh / Debian ble.sh; no Fedora/Gentoo package)
 
 brightnessctl / ddcutil (Control Center brightness slider - hardware brightness for capable panels; otherwise a screen-shader overlay is used; external monitors need the ddcci kernel module for brightnessctl or /dev/i2c-* for ddcutil)
 
