@@ -12,7 +12,9 @@ import { isHexColor } from "./color-utils"
 function parseActiveWorkspace(raw: string) {
   try {
     const parsed = JSON.parse(raw)
-    const id = Number(parsed?.id)
+    // Hyprland 0.56 replaced `id` with `address` (numeric id as a string);
+    // keep the `id` fallback for older versions. Do not "simplify" it away.
+    const id = Number(parsed?.address ?? parsed?.id)
     if (Number.isFinite(id) && id > 0) return id
   } catch {
   }
@@ -97,7 +99,11 @@ function parseWorkspaceIds(raw: string) {
   try {
     const parsed = JSON.parse(raw)
     const ids: number[] = (parsed as any[])
-      .map((item) => Number(item?.id))
+      // Hyprland 0.56 replaced `id` with `address` (see parseActiveWorkspace).
+      // Special (scratchpad) workspaces get no dot: their negative ids used to
+      // be dropped by the `> 0` filter, so exclude them explicitly now.
+      .filter((item) => item?.type !== "special")
+      .map((item) => Number(item?.address ?? item?.id))
       .filter((val): val is number => Number.isFinite(val) && val > 0)
     if (ids.length === 0) return [1]
     return [...new Set(ids)].sort((a, b) => a - b)
@@ -702,7 +708,7 @@ export function createStore() {
     execAsync([
       "bash",
       "-lc",
-      "current=$(hyprctl activeworkspace -j | sed -n 's/.*\"id\":\s*\([0-9][0-9]*\).*/\1/p' | head -n1); target=$(hyprctl workspaces -j | sed -n 's/.*\"id\":\s*\([0-9][0-9]*\).*/\1/p' | sort -n | grep -vx \"$current\" | head -n1); hyprctl dispatch removeworkspace \"$current\" >/dev/null 2>&1 || { [[ -n \"$target\" ]] && hyprctl dispatch \"hl.dsp.focus({ workspace = $target })\" >/dev/null 2>&1; }",
+      "current=$(hyprctl activeworkspace -j | jq -r '.address // .id // empty'); target=$(hyprctl workspaces -j | jq -r '.[] | select(.type != \"special\") | (.address // .id)' | sort -n | grep -vx \"$current\" | head -n1); hyprctl dispatch removeworkspace \"$current\" >/dev/null 2>&1 || { [[ -n \"$target\" ]] && hyprctl dispatch \"hl.dsp.focus({ workspace = $target })\" >/dev/null 2>&1; }",
     ]).catch(() => null)
     setDesktopMenuOpen(false)
   }
