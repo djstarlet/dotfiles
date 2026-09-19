@@ -38,7 +38,7 @@ export default function PowerMenuWindow(gdkmonitor: Gdk.Monitor, monitorIndex: n
           spacing={6}
           vexpand
           marginStart={40}
-          marginEnd={10}
+          marginEnd={18}
           marginBottom={40}
         >
           <centerbox>
