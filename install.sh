@@ -35,7 +35,9 @@
 #
 #   - Adds an 'ags-restart()' helper, bash tab completion (bash-completion)
 #     and ble.sh as-you-type suggestions (AUR 'blesh' / Debian 'ble.sh') to
-#     ~/.bashrc - all idempotent.
+#     ~/.bashrc - all idempotent. ble.sh is toggled by the declarative
+#     ~/.config/dotfiles/features.sh (dotfiles_blesh=0/1); install.sh only
+#     creates that file and never overwrites user edits.
 # Set INSTALL_DRY_RUN=1 to print every mutating command instead of running it.
 
 set -euo pipefail
@@ -582,23 +584,91 @@ ensure_bash_completion() {
 	SUMMARY_ACTIONS+=("enabled bash tab completion in ~/.bashrc")
 }
 
-# ble.sh - bash line editor with as-you-type suggestions and syntax
-# highlighting (the CachyOS bash experience). Available via AUR on Arch and
-# the ble.sh package on Debian/Ubuntu trixie+; elsewhere the guarded source
-# block below simply stays dormant.
-ensure_blesh() {
-	local bashrc="$HOME/.bashrc"
-	if grep -q "/usr/share/blesh/ble.sh" "$bashrc" 2>/dev/null; then
-		info "ble.sh already enabled in ${bashrc}."
+# Declarative feature flags: a small user-editable file, deployed once to
+# ~/.config/dotfiles/features.sh and sourced by the ~/.bashrc block below.
+# An existing copy is never overwritten, so toggles survive re-runs.
+ensure_features_file() {
+	local features="$HOME/.config/dotfiles/features.sh"
+	if [[ -e $features || -L $features ]]; then
+		info "Keeping existing feature flags: ${features}"
 		return 0
 	fi
 	if (( DRY_RUN )); then
-		info "[dry-run] append ble.sh source block to ${bashrc}"
+		info "[dry-run] deploy feature flags to ${features}"
 		return 0
 	fi
-	info "Enabling ble.sh as-you-type completion in ${bashrc}..."
-	printf '\n# ble.sh - live completion suggestions (like CachyOS); no history suggestions\nif [ -f /usr/share/blesh/ble.sh ]; then\n  source /usr/share/blesh/ble.sh\n  bleopt complete_auto_history=\nfi\n' >> "$bashrc"
-	SUMMARY_ACTIONS+=("enabled ble.sh in ~/.bashrc")
+	mkdir -p "$(dirname "$features")"
+	cp -p "$SRC_PATH/bash/features.sh" "$features"
+	SUMMARY_ACTIONS+=("deployed feature flags to ~/.config/dotfiles/features.sh (edit to toggle features)")
+}
+
+# ble.sh - bash line editor with as-you-type suggestions and syntax
+# highlighting (the CachyOS bash experience). Available via AUR on Arch and
+# the ble.sh package on Debian/Ubuntu trixie+; elsewhere the guarded source
+# block simply stays dormant. ~/.bashrc sources the feature flags first, so
+# dotfiles_blesh=0 disables it; the :-1 default keeps pre-feature-flag
+# behaviour (on) when the features file is missing.
+
+# The block appended by installer versions before the feature flags existed.
+BLESH_OLD_BLOCK='# ble.sh - live completion suggestions (like CachyOS); no history suggestions
+if [ -f /usr/share/blesh/ble.sh ]; then
+  source /usr/share/blesh/ble.sh
+  bleopt complete_auto_history=
+fi'
+
+# The two pieces appended now, tracked separately so each lands exactly once.
+BLESH_FLAGS_LINE='[ -f "$HOME/.config/dotfiles/features.sh" ] && . "$HOME/.config/dotfiles/features.sh"'
+BLESH_NEW_BLOCK='# ble.sh - live completion suggestions (like CachyOS); toggle via dotfiles_blesh
+if [ "${dotfiles_blesh:-1}" = 1 ] && [ -f /usr/share/blesh/ble.sh ]; then
+  source /usr/share/blesh/ble.sh
+  bleopt complete_auto_history=
+fi'
+
+ensure_blesh() {
+	local bashrc="$HOME/.bashrc" content="" have_old=0 have_flags=0 have_new=0
+	if [[ -f $bashrc ]]; then
+		content="$(<"$bashrc")"
+	fi
+	if [[ $content == *"$BLESH_OLD_BLOCK"* ]]; then have_old=1; fi
+	if [[ $content == *"dotfiles/features.sh"* ]]; then have_flags=1; fi
+	if [[ $content == *"dotfiles_blesh"* ]]; then have_new=1; fi
+
+	if (( !have_old && have_flags && have_new )); then
+		info "ble.sh already enabled (toggle: dotfiles_blesh in ~/.config/dotfiles/features.sh)."
+		return 0
+	fi
+
+	if (( DRY_RUN )); then
+		if (( have_old )); then
+			info "[dry-run] replace the old ble.sh block in ${bashrc} with the feature-flag aware block"
+		else
+			info "[dry-run] add the dotfiles feature-flags + ble.sh block to ${bashrc}"
+		fi
+		return 0
+	fi
+
+	# Migration: drop the exact unconditional block older installers appended,
+	# then add whichever pieces are missing. A second run is a no-op.
+	if (( have_old )); then
+		content="${content/"$BLESH_OLD_BLOCK"/}"
+		# drop the blank line the removed old block left behind
+		while [[ $content == *$'\n' ]]; do content="${content%$'\n'}"; done
+	fi
+	if (( !have_flags )); then
+		content+=$'\n# dotfiles feature flags - edit ~/.config/dotfiles/features.sh to toggle\n'"$BLESH_FLAGS_LINE"
+	fi
+	if (( !have_new )); then
+		content+=$'\n\n'"$BLESH_NEW_BLOCK"
+	fi
+	printf '%s\n' "$content" > "$bashrc"
+
+	if (( have_old )); then
+		info "Updated the ble.sh block in ${bashrc} (toggle: dotfiles_blesh)."
+		SUMMARY_ACTIONS+=("updated the ble.sh block in ~/.bashrc (toggle via ~/.config/dotfiles/features.sh)")
+	else
+		info "Enabled ble.sh as-you-type completion in ${bashrc} (toggle: dotfiles_blesh)."
+		SUMMARY_ACTIONS+=("enabled ble.sh in ~/.bashrc (toggle via ~/.config/dotfiles/features.sh)")
+	fi
 }
 
 # ------------------------------------------------------ bar bundle verification
@@ -819,6 +889,7 @@ main() {
 	deploy_dotfiles
 	ensure_bashrc_helper
 	ensure_bash_completion
+	ensure_features_file
 	ensure_blesh
 	verify_bar_bundle
 
