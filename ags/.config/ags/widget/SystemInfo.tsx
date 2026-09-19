@@ -2,7 +2,7 @@ import app from "ags/gtk4/app"
 import { Gtk } from "ags/gtk4"
 import { execAsync } from "ags/process"
 import { createPoll, timeout } from "ags/time"
-import { For, createEffect, createMemo, createState } from "gnim"
+import { For, createEffect, createState } from "gnim"
 import type { Store } from "./store"
 
 // ─── Parsers ──────────────────────────────────────────────────────────────────
@@ -188,7 +188,7 @@ function parseDisks(lsblkRaw: string, dfRaw: string): DiskInfo[] {
 function Field(label: string, value: string | (() => string)) {
   return (
     <box orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
-      <label class="system-info-label" label={label} widthRequest={130} xalign={1} halign={Gtk.Align.END} />
+      <label class="system-info-label" label={label} widthChars={12} xalign={1} halign={Gtk.Align.END} />
       <label class="system-info-value" label={value} selectable hexpand xalign={0} halign={Gtk.Align.START} ellipsize={3 /* PANGO_ELLIPSIZE_END */} />
     </box>
   )
@@ -230,23 +230,17 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
   const [distroGlyph, setDistroGlyph] = createState("\u{f17c}")
   const [disks, setDisks] = createState<DiskInfo[]>([])
   const [monitors, setMonitors] = createState<ReturnType<typeof parseMonitors>>([])
-  // FIX 3: OS line = distro name + kernel release; skip empty/unknown halves.
-  const osLine = createMemo(() => {
-    const parts = [osName(), kernel()]
-      .map((v) => v.trim())
-      .filter((v) => v && v !== "…" && !/^unknown$/i.test(v))
-    return parts.join(" ") || "unknown"
-  })
-
   createEffect(() => {
     if (!s.systemInfoOpen()) return
-    execAsync(["hostname", "-s"]).then(setHostname).catch(() => setHostname("unknown"))
+    execAsync(["hostname", "-s"]).then(setHostname, () => setHostname("unknown"))
     execAsync(["bash", "-c", "cat /etc/os-release"])
-      .then((out) => {
-        setOsName(parseOsName(out))
-        setDistroGlyph(DISTRO_GLYPHS[parseDistroId(out)] ?? "\u{f17c}")
-      })
-      .catch(() => setOsName("unknown"))
+      .then(
+        (out) => {
+          setOsName(parseOsName(out))
+          setDistroGlyph(DISTRO_GLYPHS[parseDistroId(out)] ?? "\u{f17c}")
+        },
+        () => setOsName("unknown"),
+      )
     Promise.all([
       execAsync(["lsblk", "-b", "-o", "NAME,MODEL,SIZE,MOUNTPOINTS,TYPE", "-J"]),
       execAsync(["df", "-B1", "--output=source,used,size"]),
@@ -258,7 +252,7 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
         ([lsblkOut, dfOut]) => setDisks(parseDisks(lsblkOut, dfOut)),
         () => setDisks([]),
       )
-    execAsync(["uname", "-r"]).then(setKernel).catch(() => setKernel("unknown"))
+    execAsync(["uname", "-r"]).then((out) => setKernel(out.trim() || "unknown"), () => setKernel("unknown"))
     // product_name is the short model code fastfetch shows (MS-7D54); board_name
     // on this board is the long marketing name (MAG X570S TOMAHAWK MAX WIFI).
     execAsync([
@@ -266,18 +260,15 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
       "-c",
       "cat /sys/devices/virtual/dmi/id/product_name 2>/dev/null || cat /sys/devices/virtual/dmi/id/board_name 2>/dev/null",
     ])
-      .then((out) => setHost(parseBoard(out)))
-      .catch(() => setHost("unknown"))
+      .then((out) => setHost(parseBoard(out)), () => setHost("unknown"))
     execAsync([
       "bash",
       "-c",
       "if command -v qlist >/dev/null 2>&1; then printf '%s emerge' \"$(qlist -I | wc -l)\"; elif command -v pacman >/dev/null 2>&1; then printf '%s pacman' \"$(pacman -Q | wc -l)\"; elif command -v dpkg-query >/dev/null 2>&1; then printf '%s dpkg' \"$(dpkg-query -f '.\\n' -W | wc -l)\"; elif command -v rpm >/dev/null 2>&1; then printf '%s rpm' \"$(rpm -qa | wc -l)\"; fi",
     ])
-      .then((out) => setPackages(parsePackages(out)))
-      .catch(() => setPackages("unknown"))
+      .then((out) => setPackages(parsePackages(out)), () => setPackages("unknown"))
     execAsync(["bash", "-c", "hyprctl version | head -1"])
-      .then((out) => setWm(parseWm(out)))
-      .catch(() => setWm("unknown"))
+      .then((out) => setWm(parseWm(out)), () => setWm("unknown"))
     // Dots (bar) version; $HOME is expanded by the shell so no machine path is baked in.
     execAsync(["bash", "-c", "cat \"$HOME/.config/ags/BAR_VERSION\""])
       // Two-arg then: no .catch(), so a render error can't wipe the value.
@@ -290,8 +281,7 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
       "-c",
       "lscpu | awk -F: '/^Model name/{m=$2} /^CPU\\(s\\):/{c=$2} /^CPU max MHz/{f=$2} END{print m\"|\"c\"|\"f}'",
     ])
-      .then((out) => setCpu(parseCpuInfo(out)))
-      .catch(() => setCpu("unknown"))
+      .then((out) => setCpu(parseCpuInfo(out)), () => setCpu("unknown"))
     // GPU: lspci -nn device-id lookup (text parsing is ambiguous across SKUs).
     execAsync([
       "bash",
@@ -307,13 +297,12 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
             "-c",
             "lspci | grep -iE 'vga|3d controller' | head -1 | sed -E 's/.*\\[([^]]*)\\].*/\\1/; s|/.*||; s/OEM//g; s/ *$//'",
           ])
-            .then((o) => setGpu(o.trim() || "unknown"))
-            .catch(() => setGpu("unknown"))
-      })
-      .catch(() => setGpu("unknown"))
+            .then((o) => setGpu(o.trim() || "unknown"), () => setGpu("unknown"))
+      },
+      () => setGpu("unknown"),
+    )
     execAsync(["bash", "-c", "hyprctl monitors -j"])
-      .then((out) => setMonitors(sortMonitors(parseMonitors(out))))
-      .catch(() => setMonitors([]))
+      .then((out) => setMonitors(sortMonitors(parseMonitors(out))), () => setMonitors([]))
   })
 
   // ── Content (same flyout box JSX, extracted) ───────────────────────────────
@@ -336,7 +325,8 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
         <box orientation={Gtk.Orientation.HORIZONTAL} spacing={12}>
           <box orientation={Gtk.Orientation.VERTICAL} spacing={2} hexpand>
             {Field("Hostname", hostname)}
-            {Field("OS", osLine)}
+            {Field("OS", osName)}
+            {Field("Kernel", kernel)}
             {Field("Uptime", uptime)}
             {Field("Host", host)}
             {Field("Packages", packages)}
@@ -360,7 +350,7 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
           <For each={disks}>{(d, i) => (
             <box class="system-info-disk" orientation={Gtk.Orientation.VERTICAL} spacing={2}>
               <box orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
-                <label class="system-info-label" label={`Disk ${i() + 1}`} widthRequest={130} xalign={1} halign={Gtk.Align.END} />
+                <label class="system-info-label" label={`Disk ${i() + 1}`} widthChars={12} xalign={1} halign={Gtk.Align.END} />
                 <label class="system-info-value" label={`${d.model} · ${d.size}`} hexpand xalign={0} halign={Gtk.Align.START} ellipsize={3 /* PANGO_ELLIPSIZE_END */} />
               </box>
               {d.percent != null ? (
@@ -390,11 +380,17 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
         <SectionTitle label="DISPLAY" />
         <box orientation={Gtk.Orientation.VERTICAL} spacing={6}>
         <For each={monitors}>{(m, i) => {
-          const desc = `${m.model ? `${m.model} — ` : ""}${m.width}x${m.height} @ ${Math.round(m.refreshRate)}Hz${m.inches ? ` (${m.inches}")` : ""}`
+          const mode = `${m.width}x${m.height} @ ${Math.round(m.refreshRate)}Hz${m.inches ? ` (${m.inches}")` : ""}`
           return (
             <box orientation={Gtk.Orientation.VERTICAL} spacing={2}>
-              <label class="system-info-monitor" label={`Monitor ${i() + 1} — ${m.name}`} halign={Gtk.Align.START} xalign={0} />
-              {Field("Resolution", desc)}
+              {Field(`Monitor ${i() + 1}`, m.name)}
+              <box orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
+                <label class="system-info-label" label="Resolution" widthChars={12} xalign={1} halign={Gtk.Align.END} />
+                <box orientation={Gtk.Orientation.HORIZONTAL} spacing={4} hexpand>
+                  {m.model ? <label class="system-info-value" label={`${m.model} —`} hexpand xalign={0} halign={Gtk.Align.START} ellipsize={2 /* PANGO_ELLIPSIZE_MIDDLE */} /> : null}
+                  <label class="system-info-value" label={mode} xalign={0} halign={Gtk.Align.START} />
+                </box>
+              </box>
             </box>
           )
         }}
@@ -463,15 +459,17 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
         if (rectPending || Date.now() - rectAt < 5000) return
         rectPending = true
         execAsync(["hyprctl", "clients", "-j"])
-          .then((out) => {
-            const list = JSON.parse(out)
-            const c = Array.isArray(list) ? list.find((c: any) => c.title === "System Info") : null
-            if (c?.at && c?.size) {
-              rect = { x: Number(c.at[0]), y: Number(c.at[1]), w: Number(c.size[0]), h: Number(c.size[1]) }
-              rectAt = Date.now()
-            }
-          })
-          .catch(() => {})
+          .then(
+            (out) => {
+              const list = JSON.parse(out)
+              const c = Array.isArray(list) ? list.find((c: any) => c.title === "System Info") : null
+              if (c?.at && c?.size) {
+                rect = { x: Number(c.at[0]), y: Number(c.at[1]), w: Number(c.size[0]), h: Number(c.size[1]) }
+                rectAt = Date.now()
+              }
+            },
+            () => {},
+          )
           .finally(() => {
             rectPending = false
           })
@@ -546,7 +544,7 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
   // re-render the once-built tree reliably). Only rebuild on real changes.
   let lastBuiltKey = ""
   createEffect(() => {
-    const key = `${distroGlyph()}|${monitors().length}|${disks().map((d) => `${d.name}:${d.size}:${d.percent}`).join(",")}|${monitors().map((m) => m.model).join(",")}`
+    const key = `${distroGlyph()}|${monitors().map((m) => `${m.name}:${m.model}:${m.width}x${m.height}@${m.refreshRate}:${m.inches}`).join(",")}|${disks().map((d) => `${d.name}:${d.size}:${d.percent}`).join(",")}`
     if (key === lastBuiltKey) return
     lastBuiltKey = key
     if (win) win.set_child(SystemInfoContent())
