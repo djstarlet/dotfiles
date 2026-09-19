@@ -26,6 +26,12 @@
 - SUPER + L - layout: dwindle
 - SUPER + SHIFT + L - layout: master
 
+## Shell features
+
+The installer deploys `~/.config/dotfiles/features.sh` if it does not already exist; user edits survive re-runs. Edit the file and open a new terminal — no reinstall required. Currently one flag:
+
+- `dotfiles_blesh=1` — enables ble.sh as-you-type completion & syntax highlighting (the CachyOS bash experience). Set to `0` or delete the file to disable. Requires the blesh/ble.sh package at `/usr/share/blesh/ble.sh`. No Fedora or Gentoo package exists; the guarded block stays dormant unless ble.sh is built from source (akinomyoga/ble.sh) and placed there.
+
 ## Hyprland config (lua)
 
 The repo ships `hyprland.lua` (Lua config API, Hyprland 0.57+). Legacy `hyprland.conf` backup is kept alongside it. Gotchas worth knowing:
@@ -96,7 +102,7 @@ curl
 
 bash-completion (bash tab completion, enabled in ~/.bashrc)
 
-ble.sh (live command/argument completion as you type, like CachyOS - AUR blesh / Debian ble.sh; history suggestions disabled, enabled in ~/.bashrc)
+ble.sh (live command/argument completion as you type, like CachyOS - toggle via `dotfiles_blesh` in `~/.config/dotfiles/features.sh`; history suggestions disabled; AUR blesh / Debian ble.sh; no Fedora/Gentoo package)
 
 brightnessctl / ddcutil (Control Center brightness slider - hardware brightness for capable panels; otherwise a screen-shader overlay is used; external monitors need the ddcci kernel module for brightnessctl or /dev/i2c-* for ddcutil)
 
