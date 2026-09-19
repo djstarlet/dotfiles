@@ -224,6 +224,7 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
   const [host, setHost] = createState("…")
   const [packages, setPackages] = createState("…")
   const [wm, setWm] = createState("…")
+  const [dotsVersion, setDotsVersion] = createState("…")
   const [cpu, setCpu] = createState("…")
   const [gpu, setGpu] = createState("…")
   const [distroGlyph, setDistroGlyph] = createState("\u{f17c}")
@@ -277,6 +278,13 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
     execAsync(["bash", "-c", "hyprctl version | head -1"])
       .then((out) => setWm(parseWm(out)))
       .catch(() => setWm("unknown"))
+    // Dots (bar) version; $HOME is expanded by the shell so no machine path is baked in.
+    execAsync(["bash", "-c", "cat \"$HOME/.config/ags/BAR_VERSION\""])
+      // Two-arg then: no .catch(), so a render error can't wipe the value.
+      .then(
+        (out) => setDotsVersion(out.trim() || "unknown"),
+        () => setDotsVersion("unknown"),
+      )
     execAsync([
       "bash",
       "-c",
@@ -333,6 +341,7 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
             {Field("Host", host)}
             {Field("Packages", packages)}
             {Field("WM", wm)}
+            {Field("Dots", dotsVersion)}
           </box>
           <label class="system-info-logo" label={distroGlyph} valign={Gtk.Align.CENTER} />
         </box>
