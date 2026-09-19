@@ -205,6 +205,7 @@ case "$cmd" in
         printf '{"background":"%s","accent":"%s","text":"%s"}\n' "$bg" "$ac" "$tx" > "$tmp"
         chmod 600 "$tmp"
         mv -f "$tmp" "$colorsfile"
+        { [ -x "$HOME/.config/dotfiles/gen-blesh-theme.sh" ] && "$HOME/.config/dotfiles/gen-blesh-theme.sh"; } || true
         echo "ok"
         ;;
 
