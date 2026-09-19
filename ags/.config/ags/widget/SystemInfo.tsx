@@ -386,10 +386,14 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
               {Field(`Monitor ${i() + 1}`, m.name)}
               <box orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
                 <label class="system-info-label" label="Resolution" widthChars={12} xalign={1} halign={Gtk.Align.END} />
-                <box orientation={Gtk.Orientation.HORIZONTAL} spacing={4} hexpand>
-                  {m.model ? <label class="system-info-value" label={`${m.model} —`} hexpand xalign={0} halign={Gtk.Align.START} ellipsize={2 /* PANGO_ELLIPSIZE_MIDDLE */} /> : null}
-                  <label class="system-info-value" label={mode} xalign={0} halign={Gtk.Align.START} />
-                </box>
+                <label
+                  class="system-info-value"
+                  label={`${m.model ? `${m.model} — ` : ""}${mode}`}
+                  hexpand
+                  xalign={0}
+                  halign={Gtk.Align.START}
+                  ellipsize={2 /* PANGO_ELLIPSIZE_MIDDLE */}
+                />
               </box>
             </box>
           )
