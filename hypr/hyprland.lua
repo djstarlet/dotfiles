@@ -209,3 +209,11 @@ hl.window_rule({
     float = true,
     center = true,
 })
+-- Swayimg (screenshot notification viewer): float + centre so images get their
+-- natural size instead of being squashed into a tiling slot.
+hl.window_rule({
+    name = "swayimg",
+    match = { class = "^(swayimg)$" },
+    float = true,
+    center = true,
+})
