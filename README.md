@@ -54,21 +54,23 @@ The repo ships `hyprland.lua` (Lua config API, Hyprland 0.57+). Legacy `hyprland
 
 ## Install Dependencies
 
-Gentoo - ags, albert, librewolf, wl-clip-persist, grimblast, nwg-displays are in GURU/overlays
+Gentoo - ags, albert, librewolf, wl-clip-persist, grimblast, nwg-displays, media-gfx/swayimg are in GURU/overlays
 
-`emerge hyprland gui-libs/gtk4-layer-shell net-libs/nodejs net-misc/curl dev-lang/python x11-terms/kitty x11-misc/pcmanfm gui-apps/swaybg gui-apps/wl-clipboard media-video/wireplumber media-video/pipewire net-misc/networkmanager xfce-base/xfce4-settings media-sound/pavucontrol gui-apps/grim gui-apps/slurp x11-libs/libnotify media-fonts/symbols-nerd-font app-shells/bash-completion`
+`emerge hyprland gui-libs/gtk4-layer-shell net-libs/nodejs net-misc/curl dev-lang/python x11-terms/kitty x11-misc/pcmanfm gui-apps/swaybg gui-apps/wl-clipboard media-video/wireplumber media-video/pipewire net-misc/networkmanager xfce-base/xfce4-settings media-sound/pavucontrol gui-apps/grim gui-apps/slurp media-gfx/swayimg x11-libs/libnotify media-fonts/symbols-nerd-font app-shells/bash-completion`
+
+Note: GURU overlay must be enabled if not already. Image-format support in swayimg is compile-time; build with USE flags like `-svg png jpeg webp gif` (or whatever formats you need) in `package.use` or the viewer fails with "Unsupported image format".
 
 Arch - ags, albert-bin, grimblast, blesh are in the AUR
 
-`sudo pacman -S --needed hyprland gtk4 gtk4-layer-shell nodejs npm curl python wtype kitty librewolf pcmanfm swaybg wl-clipboard wl-clip-persist wireplumber pipewire networkmanager xfce4-settings pavucontrol grim slurp libnotify ttf-nerd-fonts-symbols nwg-displays bash-completion brightnessctl ddcutil`
+`sudo pacman -S --needed hyprland gtk4 gtk4-layer-shell nodejs npm curl python wtype kitty librewolf pcmanfm swaybg wl-clipboard wl-clip-persist wireplumber pipewire networkmanager xfce4-settings pavucontrol grim slurp swayimg libnotify ttf-nerd-fonts-symbols nwg-displays bash-completion brightnessctl ddcutil`
 
 Debian / Ubuntu (hyprland needs trixie+/universe) - albert: OBS repo, librewolf: flatpak, grimblast: install script from https://github.com/hyprwm/contrib (needs jq, put it in PATH), nwg-displays: manual install from https://github.com/nwg-piotr/nwg-displays
 
-`sudo apt install hyprland gtk4-layer-shell-dev libgtk-4-dev wtype nodejs npm curl python3 kitty pcmanfm swaybg wl-clipboard wireplumber pipewire network-manager xfce4-settings pavucontrol grim slurp libnotify-bin jq bash-completion ble.sh brightnessctl ddcutil`
+`sudo apt install hyprland gtk4-layer-shell-dev libgtk-4-dev wtype nodejs npm curl python3 kitty pcmanfm swaybg wl-clipboard wireplumber pipewire network-manager xfce4-settings pavucontrol grim slurp libnotify-bin jq swayimg bash-completion ble.sh brightnessctl ddcutil`
 
 Fedora (hyprland 41+) - hyprland-contrib (grimblast): COPR, nwg-displays: community COPR (e.g. tofik/nwg-shell) or manual from https://github.com/nwg-piotr/nwg-displays, albert: OBS, librewolf: flatpak, wl-clip-persist must be compiled from source: https://github.com/Linus789/wl-clip-persist.git
 
-`sudo dnf install hyprland gtk4 gtk4-layer-shell gtk4-layer-shell-devel wtype nodejs npm curl python3 kitty pcmanfm swaybg wl-clipboard wireplumber pipewire NetworkManager xfce4-settings pavucontrol grim slurp libnotify bash-completion brightnessctl ddcutil`
+`sudo dnf install hyprland gtk4 gtk4-layer-shell gtk4-layer-shell-devel wtype nodejs npm curl python3 kitty pcmanfm swaybg wl-clipboard wireplumber pipewire NetworkManager xfce4-settings pavucontrol grim slurp swayimg libnotify bash-completion brightnessctl ddcutil`
 
 
 for Debian/Fedora repos: install Nerd Fonts manually from https://github.com/ryanoasis/nerd-fonts

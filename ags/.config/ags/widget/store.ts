@@ -121,6 +121,7 @@ export type Notification = {
   detail: string
   openUrl?: string
   openPath?: string
+  openImage?: string // screenshot file to open in a viewer
   action?: string // "update-dotfiles" renders the Update button
   image?: string // image-path hint (e.g. screenshot thumbnail)
 }
@@ -222,8 +223,11 @@ export function createStore() {
       const img = String(n.image ?? "")
       if (img && img.startsWith("/")) item.image = img
       if (summary === "Screenshot saved" && body) {
-        // body carries the file path; open its folder in pcmanfm
+        // body carries the file path; open the file in a viewer, falling
+        // back to its folder in pcmanfm
         item.openPath = body.replace(/[^/]*$/, "")
+        const file = body.trim()
+        if (file.startsWith("/")) item.openImage = file
       } else if (summary === "Hyprland config errors") {
         item.openPath = "~/.config/hypr"
       } else if (summary.startsWith("Failed user unit") || summary === "Home disk almost full") {

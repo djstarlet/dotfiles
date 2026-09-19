@@ -3,10 +3,12 @@ import { Astal, Gtk, Gdk } from "ags/gtk4"
 import { execAsync } from "ags/process"
 import { createComputed, createEffect } from "gnim"
 import type { Store, Notification } from "./store"
+import { imageViewer } from "./widgets.config"
 
 // One notification row: the bubble (box.notif-bubble) carries the raised
-// look; the body button inside is flat and opens the row's action (folder in
-// pcmanfm for screenshots / openPath, URL otherwise). The X dismisses until
+// look; the body button inside is flat and opens the row's action (screenshot
+// in the configured viewer, falling back to its folder in pcmanfm; URL
+// otherwise). The X dismisses until
 // the condition's sig changes. `item` is a computed binding so rows appear
 // and disappear as notifications arrive (fixed row slots, matching the
 // Settings presets list pattern).
@@ -23,7 +25,11 @@ function NotificationRow({ item, s }: { item: () => Notification | null; s: Stor
         onClicked={() => {
           const n = item()
           if (!n) return
-          if (n.openPath) {
+          if (n.openImage) {
+            execAsync([imageViewer, n.openImage]).catch(() =>
+              n.openPath ? execAsync(["pcmanfm", n.openPath]).catch(() => null) : null,
+            )
+          } else if (n.openPath) {
             execAsync(["pcmanfm", n.openPath]).catch(() => null)
           } else if (n.openUrl) {
             execAsync(["xdg-open", n.openUrl]).catch(() => null)

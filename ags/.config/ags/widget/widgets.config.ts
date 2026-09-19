@@ -22,5 +22,9 @@ if (!config.controlCenter) config.settings = false
 // the display settings tile lives inside Control Center
 if (!config.controlCenter) config.displaySettings = false
 
+// Image viewer used when opening a screenshot notification (falls back to
+// pcmanfm on the containing folder if the viewer is not installed).
+export const imageViewer = "swayimg"
+
 // NOTE: config is static per launch - edit this then restart via start-bar.sh (no hot reload)
 export default config

@@ -18,14 +18,15 @@ out="$dir/$(date +%Y%m%d_%H%M%S).png"
 grimblast copysave "$target" "$out" || exit 1
 
 # Toast via mako (also lands in the bar's bell over dbus). The action
-# handler waits for the user to pick "Open folder" and opens pcmanfm.
+# handler opens the saved image in the viewer, falling back to the folder
+# in pcmanfm when the viewer is not installed.
 if command -v notify-send >/dev/null 2>&1; then
   # Persistent in the daemon (bell keeps it until dismissed); the popup
   # auto-slides away after ~6s via Toasts.tsx.
   (
-    choice=$(notify-send -i "$out" -a "dotfiles-bar" -A "open=Open folder" \
+    choice=$(notify-send -i "$out" -a "dotfiles-bar" -A "open=Open image" \
       "Screenshot saved" "$out" 2>/dev/null)
-    [ "$choice" = "open" ] && pcmanfm "$dir"
+    [ "$choice" = "open" ] && { command -v swayimg >/dev/null 2>&1 && swayimg "$out" || pcmanfm "$dir"; }
   ) >/dev/null 2>&1 &
 fi
 
