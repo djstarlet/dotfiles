@@ -437,20 +437,18 @@ label.system-info-monitor {
   color: var(--bar-text);
 }
 
-levelbar.system-info-disk-bar {
-  min-height: 5px;
-  border-radius: 3px;
-}
-
+levelbar.system-info-disk-bar,
 levelbar.system-info-disk-bar > trough,
 levelbar.system-info-disk-bar > trough > block,
 levelbar.system-info-disk-bar > trough > block.filled {
-  min-height: 5px;
-  border-radius: 3px;
+  min-height: 10px;
+  border-radius: 999px;
 }
 
 levelbar.system-info-disk-bar > trough {
-  background: color-mix(in srgb, var(--bar-text) 14%, transparent);
+  border: 1px solid var(--bar-bg-dark);
+  background: linear-gradient(180deg, var(--bar-bg-dark) 0%, var(--bar-bg-light) 100%);
+  box-shadow: inset 0 3px 4px rgba(0, 0, 0, 0.32), inset 0 -1px 0 rgba(255, 255, 255, 0.6), 0 0 8px color-mix(in srgb, var(--bar-accent) 16%, transparent);
 }
 
 levelbar.system-info-disk-bar > trough > block,
@@ -458,6 +456,7 @@ levelbar.system-info-disk-bar.low > trough > block,
 levelbar.system-info-disk-bar.high > trough > block,
 levelbar.system-info-disk-bar.full > trough > block {
   border: 0;
+  background: transparent;
   box-shadow: none;
 }
 
@@ -465,7 +464,9 @@ levelbar.system-info-disk-bar > trough > block.filled,
 levelbar.system-info-disk-bar.low > trough > block.filled,
 levelbar.system-info-disk-bar.high > trough > block.filled,
 levelbar.system-info-disk-bar.full > trough > block.filled {
-  background: var(--bar-accent);
+  border: 1px solid var(--bar-accent-dark);
+  background: linear-gradient(180deg, color-mix(in srgb, #ffffff 65%, transparent) 0%, color-mix(in srgb, #ffffff 12%, transparent) 40%, transparent 60%), linear-gradient(90deg, var(--bar-accent-dark) 0%, var(--bar-accent) 44%, var(--bar-accent-light) 100%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 55%, transparent), inset 0 -1px 0 rgba(0, 0, 0, 0.24), 0 0 10px color-mix(in srgb, var(--bar-accent) 40%, transparent);
 }
 
 label.system-info-disk-pct,
