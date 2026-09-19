@@ -229,7 +229,6 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
   const [distroGlyph, setDistroGlyph] = createState("\u{f17c}")
   const [disks, setDisks] = createState<DiskInfo[]>([])
   const [monitors, setMonitors] = createState<ReturnType<typeof parseMonitors>>([])
-
   // FIX 3: OS line = distro name + kernel release; skip empty/unknown halves.
   const osLine = createMemo(() => {
     const parts = [osName(), kernel()]
@@ -349,11 +348,11 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
 
         <SectionTitle label="STORAGE" />
         <box orientation={Gtk.Orientation.VERTICAL} spacing={6}>
-          <For each={disks}>{(d) => (
+          <For each={disks}>{(d, i) => (
             <box class="system-info-disk" orientation={Gtk.Orientation.VERTICAL} spacing={2}>
               <box orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
-                <label class="system-info-label" label={d.model} widthRequest={130} xalign={1} halign={Gtk.Align.END} ellipsize={3 /* PANGO_ELLIPSIZE_END */} />
-                <label class="system-info-value" label={d.size} hexpand xalign={0} halign={Gtk.Align.START} />
+                <label class="system-info-label" label={`Disk ${i() + 1}`} widthRequest={130} xalign={1} halign={Gtk.Align.END} />
+                <label class="system-info-value" label={`${d.model} · ${d.size}`} hexpand xalign={0} halign={Gtk.Align.START} ellipsize={3 /* PANGO_ELLIPSIZE_END */} />
               </box>
               {d.percent != null ? (
                 <box orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
@@ -367,7 +366,7 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
                     heightRequest={5}
                     valign={Gtk.Align.CENTER}
                   />
-                  <label class="system-info-disk-pct" label={`${d.percent}%`} widthChars={4} xalign={0} halign={Gtk.Align.START} />
+                  <label class="system-info-disk-pct" label={`${d.percent}%`} widthChars={4} xalign={1} halign={Gtk.Align.END} />
                 </box>
               ) : (
                 <label class="system-info-disk-note" label="not mounted" xalign={0} halign={Gtk.Align.START} />

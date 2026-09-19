@@ -442,14 +442,30 @@ levelbar.system-info-disk-bar {
   border-radius: 3px;
 }
 
-levelbar.system-info-disk-bar > trough {
+levelbar.system-info-disk-bar > trough,
+levelbar.system-info-disk-bar > trough > block,
+levelbar.system-info-disk-bar > trough > block.filled {
+  min-height: 5px;
   border-radius: 3px;
+}
+
+levelbar.system-info-disk-bar > trough {
   background: color-mix(in srgb, var(--bar-text) 14%, transparent);
 }
 
-levelbar.system-info-disk-bar > trough > block.filled {
-  border-radius: 3px;
-  background: linear-gradient(90deg, var(--bar-accent-light) 0%, var(--bar-accent) 100%);
+levelbar.system-info-disk-bar > trough > block,
+levelbar.system-info-disk-bar.low > trough > block,
+levelbar.system-info-disk-bar.high > trough > block,
+levelbar.system-info-disk-bar.full > trough > block {
+  border: 0;
+  box-shadow: none;
+}
+
+levelbar.system-info-disk-bar > trough > block.filled,
+levelbar.system-info-disk-bar.low > trough > block.filled,
+levelbar.system-info-disk-bar.high > trough > block.filled,
+levelbar.system-info-disk-bar.full > trough > block.filled {
+  background: var(--bar-accent);
 }
 
 label.system-info-disk-pct,
