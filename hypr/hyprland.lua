@@ -202,10 +202,11 @@ hl.window_rule({
     decorate = false,
     suppress_event = "maximize",
 })
--- System Info (AGS Gtk.ApplicationWindow): real toplevel, centered + floating.
+-- AGS Gtk.ApplicationWindow panels (System Info, Widgets): real toplevels,
+-- floated + centered. The title still matches the window's title property.
 hl.window_rule({
-    name = "system-info",
-    match = { title = "^(System Info)$" },
+    name = "ags-panels",
+    match = { title = "^(System Info|Widgets)$" },
     float = true,
     center = true,
 })
