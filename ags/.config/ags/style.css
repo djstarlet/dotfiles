@@ -24,7 +24,8 @@ window.FlyoutWindow {
 window.Bar,
 window.FlyoutWindow,
 window.DismissWindow,
-window.SystemInfoWindow {
+window.SystemInfoWindow,
+window.WidgetsPanelWindow {
   --bar-bg: #f6faff;
   --bar-bg-light: #ffffff;
   --bar-bg-dark: #dbe7f5;
@@ -414,6 +415,35 @@ label.notif-dismiss-icon {
 /* System Info flyout (SystemInfo.tsx) */
 .system-info-flyout {
   min-width: 340px;
+}
+
+/* Widgets panel (WidgetsPanel.tsx) - same real-Gtk-window shell as System Info */
+.widgets-panel-flyout {
+  min-width: 340px;
+}
+
+box.widgets-row {
+  min-height: 32px;
+}
+
+label.widgets-row-label {
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--bar-text);
+}
+
+label.widgets-row-hint {
+  font-size: 10px;
+  color: var(--bar-text-dim);
+}
+
+.widgets-panel-flyout switch:checked {
+  background-color: var(--bar-accent);
+  border-color: var(--bar-accent-dark);
+}
+
+.widgets-panel-flyout switch:checked slider {
+  background-color: #ffffff;
 }
 
 label.system-info-section-title {

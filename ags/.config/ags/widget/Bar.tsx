@@ -12,6 +12,7 @@ import ControlCenterWindow from "./ControlCenter"
 import SystemInfoWindow from "./SystemInfo"
 import NotificationsWindow from "./Notifications"
 import NotificationToasts from "./Toasts"
+import WidgetsPanelWindow from "./WidgetsPanel"
 import { ClockElement } from "./Clock"
 import { WorkspacesElement } from "./Workspaces"
 import { BarCap } from "./buttons"
@@ -194,63 +195,75 @@ export default function Bar(gdkmonitor: Gdk.Monitor, s: Store) {
             halign={Gtk.Align.FILL}
           >
             <box $type="start" spacing={8}>
-              {config.desktopMenu && (
-                <BarCap open={s.desktopMenuOpen} onClicked={s.toggleDesktopMenu}>
-                  <label class="desktop-menu-icon" label={"\u{F0C9}"} />
-                </BarCap>
-              )}
-              {config.workspaces && WorkspacesElement(s)}
+              <BarCap
+                open={s.desktopMenuOpen}
+                onClicked={s.toggleDesktopMenu}
+                visible={createComputed(() => s.widgetsEnabled().desktopMenu)}
+              >
+                <label class="desktop-menu-icon" label={"\u{F0C9}"} />
+              </BarCap>
+              <box spacing={8} visible={createComputed(() => s.widgetsEnabled().workspaces)}>
+                {WorkspacesElement(s)}
+              </box>
             </box>
 
             {ClockElement(s)}
 
             <box $type="end" spacing={8}>
-              {config.notifications && (
-                <BarCap open={s.notifOpen} onClicked={s.toggleNotifications}>
-                  <overlay>
-                    <label class="notif-bell" label={"\u{F0F3}"} />
-                    <label
-                      $type="overlay"
-                      class="notif-badge"
-                      label="●"
-                      canTarget={false}
-                      halign={Gtk.Align.END}
-                      valign={Gtk.Align.START}
-                      visible={s.hasNotifications}
-                    />
-                  </overlay>
-                </BarCap>
-              )}
-              {config.controlCenter && (
-                <BarCap open={s.controlOpen} onClicked={s.toggleControl}>
-                  <label class="gear-icon" label={"\u{F013}"} />
-                </BarCap>
-              )}
-              {config.powerMenu && (
-                <BarCap open={s.powerMenuOpen} onClicked={s.togglePowerMenu}>
-                  <label class="power-icon" label={"\u{F011}"} />
-                </BarCap>
-              )}
+              <BarCap
+                open={s.notifOpen}
+                onClicked={s.toggleNotifications}
+                visible={createComputed(() => s.widgetsEnabled().notifications)}
+              >
+                <overlay>
+                  <label class="notif-bell" label={"\u{F0F3}"} />
+                  <label
+                    $type="overlay"
+                    class="notif-badge"
+                    label="●"
+                    canTarget={false}
+                    halign={Gtk.Align.END}
+                    valign={Gtk.Align.START}
+                    visible={s.hasNotifications}
+                  />
+                </overlay>
+              </BarCap>
+              <BarCap
+                open={s.controlOpen}
+                onClicked={s.toggleControl}
+                visible={createComputed(() => s.widgetsEnabled().controlCenter)}
+              >
+                <label class="gear-icon" label={"\u{F013}"} />
+              </BarCap>
+              <BarCap
+                open={s.powerMenuOpen}
+                onClicked={s.togglePowerMenu}
+                visible={createComputed(() => s.widgetsEnabled().powerMenu)}
+              >
+                <label class="power-icon" label={"\u{F011}"} />
+              </BarCap>
             </box>
           </centerbox>
         </box>
       </window>
 
-      {config.desktopMenu && DesktopMenuWindow(gdkmonitor, monitorIndex, s)}
+      {DesktopMenuWindow(gdkmonitor, monitorIndex, s)}
 
       {config.controlCenter && ControlCenterWindow(gdkmonitor, monitorIndex, s)}
 
-      {config.systemInfo && SystemInfoWindow(gdkmonitor, monitorIndex, s)}
+      {SystemInfoWindow(gdkmonitor, monitorIndex, s)}
 
-      {config.notifications && NotificationsWindow(gdkmonitor, monitorIndex, s)}
+      {NotificationsWindow(gdkmonitor, monitorIndex, s)}
 
-      {config.toasts && NotificationToasts(gdkmonitor, monitorIndex, s)}
+      {NotificationToasts(gdkmonitor, monitorIndex, s)}
 
-      {config.powerMenu && PowerMenuWindow(gdkmonitor, monitorIndex, s)}
+      {PowerMenuWindow(gdkmonitor, monitorIndex, s)}
 
-      {config.calendar && CalendarWindows(gdkmonitor, monitorIndex, s)}
+      {CalendarWindows(gdkmonitor, monitorIndex, s)}
 
-      {config.settings && SettingsWindows(gdkmonitor, monitorIndex, s)}
+      {SettingsWindows(gdkmonitor, monitorIndex, s)}
+
+      {WidgetsPanelWindow(gdkmonitor, monitorIndex, s)}
     </>
   )
 }

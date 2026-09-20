@@ -1,3 +1,7 @@
+// Widget DEFAULTS. The GUI (Control Center -> Widgets panel) persists sparse
+// overrides to widget-toggles.json; widget/store.ts merges them over these
+// values at runtime, so a key absent from the JSON inherits the value below.
+// Editing this file only changes the default, it never overrides a saved choice.
 export type WidgetId =
   | "clock" | "workspaces" | "desktopMenu" | "controlCenter" | "powerMenu" | "calendar" | "settings" | "displaySettings" | "notifications" | "toasts" | "systemInfo"
 
@@ -26,5 +30,4 @@ if (!config.controlCenter) config.displaySettings = false
 // pcmanfm on the containing folder if the viewer is not installed).
 export const imageViewer = "swayimg"
 
-// NOTE: config is static per launch - edit this then restart via start-bar.sh (no hot reload)
 export default config

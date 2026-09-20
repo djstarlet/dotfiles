@@ -83,6 +83,10 @@ function ToastRow({
   }
 
   createEffect(() => {
+    // Read the toggle inside the effect so it re-runs when toasts come back:
+    // recording bodies while hidden would mark every notification as already
+    // popped, and none would show after re-enabling.
+    if (!s.widgetsEnabled().toasts) return
     const n = item()
     if (n && n.id !== lastShownId) {
       if (lastShownId !== "_none_") {
@@ -205,7 +209,7 @@ export default function NotificationToasts(gdkmonitor: Gdk.Monitor, monitorIndex
 
   return (
     <window
-      visible={anyOnScreen}
+      visible={createComputed(() => s.widgetsEnabled().toasts && anyOnScreen())}
       name={`ags-toast-${monitorIndex}`}
       namespace="ags-toast"
       class="ToastWindow"

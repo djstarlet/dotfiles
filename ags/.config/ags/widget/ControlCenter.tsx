@@ -4,7 +4,6 @@ import { execAsync } from "ags/process"
 import { createPoll, timeout } from "ags/time"
 import { createComputed, createEffect, createState } from "gnim"
 import type { Store } from "./store"
-import config from "./widgets.config"
 import { DisplaySettingsTile } from "./DisplaySettings"
 import { RoundTile } from "./buttons"
 
@@ -154,15 +153,14 @@ export default function ControlCenterWindow(gdkmonitor: Gdk.Monitor, monitorInde
         <centerbox>
           <box $type="start" widthRequest={34} />
           <label $type="center" class="flyout-title" label="Control Center" xalign={0.5} />
-          {config.settings && (
-            <button
-              $type="end"
-              class="mini-gear"
-              onClicked={s.toggleSettings}
-            >
-              <label class="palette-icon" label={"\u{F1FC}"} />
-            </button>
-          )}
+          <button
+            $type="end"
+            class="mini-gear"
+            visible={createComputed(() => s.widgetsEnabled().settings)}
+            onClicked={s.toggleSettings}
+          >
+            <label class="palette-icon" label={"\u{F1FC}"} />
+          </button>
         </centerbox>
 
         <box class="slider-row" orientation={Gtk.Orientation.VERTICAL} spacing={4}>
@@ -246,22 +244,22 @@ export default function ControlCenterWindow(gdkmonitor: Gdk.Monitor, monitorInde
               <image class="symbol-icon" iconName="network-workgroup-symbolic" pixelSize={20} />
             </RoundTile>
             {DisplaySettingsTile(s)}
-            {config.powerMenu && (
-              <RoundTile
-                label="Power"
-                class={s.powerMenuOpen((open) => (open ? "round-icon active" : "round-icon"))}
-                onClicked={s.togglePowerMenu}
-              >
-                <label class="power-icon" label="⏻" />
-              </RoundTile>
-            )}
+            <RoundTile
+              label="Power"
+              visible={createComputed(() => s.widgetsEnabled().powerMenu)}
+              class={s.powerMenuOpen((open) => (open ? "round-icon active" : "round-icon"))}
+              onClicked={s.togglePowerMenu}
+            >
+              <label class="power-icon" label="⏻" />
+            </RoundTile>
           </box>
           <box class="control-actions-row" orientation={Gtk.Orientation.HORIZONTAL} spacing={10} halign={Gtk.Align.CENTER}>
-            {config.systemInfo && (
-              <RoundTile label="System" onClicked={s.toggleSystemInfo}>
-                <label class="info-icon" label={"\u{F05A}"} />
-              </RoundTile>
-            )}
+            <RoundTile label="System" visible={createComputed(() => s.widgetsEnabled().systemInfo)} onClicked={s.toggleSystemInfo}>
+              <label class="info-icon" label={"\u{F05A}"} />
+            </RoundTile>
+            <RoundTile label="Widgets" onClicked={s.toggleWidgetsPanel}>
+              <label class="gear-icon" label={"\uF013"} />
+            </RoundTile>
           </box>
         </box>
 

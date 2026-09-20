@@ -5,6 +5,8 @@ import GLib from "gi://GLib"
 import Notifd from "gi://AstalNotifd"
 import { theme } from "./theme.config"
 import type { ThemeConfig } from "./theme.config"
+import config from "./widgets.config"
+import type { WidgetId } from "./widgets.config"
 import { isHexColor } from "./color-utils"
 
 // ─── Parser helpers ───────────────────────────────────────────────────────────
@@ -132,6 +134,49 @@ function parseWsDotColors(raw: string | undefined) {
   return colors.length === 8 && colors.every(isHexColor) ? colors : null
 }
 
+const WIDGET_IDS = Object.keys(config) as WidgetId[]
+
+// widget-toggles.json is sparse: keys present there override widgets.config.ts.
+// Unknown keys and non-boolean values are dropped (the file is user-editable).
+function parseWidgetOverrides(raw: unknown): Partial<Record<WidgetId, boolean>> {
+  const overrides: Partial<Record<WidgetId, boolean>> = {}
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return overrides
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (WIDGET_IDS.includes(key as WidgetId) && typeof value === "boolean") {
+      overrides[key as WidgetId] = value
+    }
+  }
+  return overrides
+}
+
+// Merge the persisted widget-toggles.json synchronously at store build, so the
+// first frame already reflects saved overrides (the exec below then only
+// reconciles edits made while the bar is running - a ~50ms defaults flash
+// otherwise). Shape matches `settings.sh get widgets`: { widgets: {...} }.
+function readWidgetOverridesSync(): Partial<Record<WidgetId, boolean>> {
+  const path = GLib.build_filenamev([GLib.get_home_dir(), ".config", "ags", "widget-toggles.json"])
+  try {
+    const [ok, contents] = GLib.file_get_contents(path)
+    if (!ok) return {}
+    const parsed = JSON.parse(new TextDecoder().decode(contents))
+    return parseWidgetOverrides(parsed?.widgets)
+  } catch {
+    return {}
+  }
+}
+
+// Single merge point for widget state: widgets.config.ts are the defaults,
+// widget-toggles.json the overrides. controlCenter off forces the widgets it
+// hosts off - derived here only, never written back to either file.
+function mergeWidgets(overrides: Partial<Record<WidgetId, boolean>>): Record<WidgetId, boolean> {
+  const enabled = { ...config, ...overrides }
+  if (!enabled.controlCenter) {
+    enabled.settings = false
+    enabled.displaySettings = false
+  }
+  return enabled
+}
+
 function parseSavedPresets(raw: unknown): SavedPreset[] | null {
   if (!Array.isArray(raw)) return null
   const valid = raw.every((preset) =>
@@ -254,6 +299,7 @@ export function createStore() {
   const [desktopMenuOpen, setDesktopMenuOpen] = createState(false)
   const [settingsOpen, setSettingsOpen] = createState(false)
   const [systemInfoOpen, setSystemInfoOpen] = createState(false)
+  const [widgetsPanelOpen, setWidgetsPanelOpen] = createState(false)
   const [settingsStatus, setSettingsStatus] = createState("")
 
   const [activeList, setActiveList] = createState<"theme" | "icon" | "font" | "cursor" | "preset" | null>(null)
@@ -282,6 +328,7 @@ export function createStore() {
   const [workspaceFx, setWorkspaceFx] = createState<Record<number, "born" | "dying" | "collapsing" | "settled">>({})
   const [wsDotColors, setWsDotColors] = createState<string[]>(envWsDotColors ?? [...DEFAULT_WS_DOT_COLORS])
   const [savedPresets, setSavedPresets] = createState<SavedPreset[]>([])
+  const [widgetOverrides, setWidgetOverrides] = createState<Partial<Record<WidgetId, boolean>>>(readWidgetOverridesSync())
 
   if (!envWsDotColors) {
     execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh get ws-dots"])
@@ -308,6 +355,23 @@ export function createStore() {
       }
     })
     .catch(() => null)
+
+  // Widget overrides load like saved presets. Two-arg then: a throw from
+  // setWidgetOverrides must not read as a fetch failure. The state already
+  // starts from the same file via readWidgetOverridesSync(), so this only
+  // reconciles edits made while the bar is running.
+  execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh get widgets"])
+    .then(
+      (out) => {
+        try {
+          const parsed = JSON.parse(out)
+          setWidgetOverrides(parseWidgetOverrides(parsed?.widgets))
+        } catch {
+          // Keep the widgets.config.ts defaults when the override file is unavailable.
+        }
+      },
+      () => null,
+    )
 
   function setWsDotColor(index: number, hex: string) {
     if (index < 0 || index >= 8 || !isHexColor(hex)) return
@@ -370,7 +434,12 @@ export function createStore() {
     if (ids.includes(active)) return ids
     return [...ids, active].sort((a, b) => a - b)
   })
-  const centerDisplay = createComputed(() => (calendarOpen() ? clock() : focusedWindowTitle()))
+  const widgetsEnabled = createComputed(() => mergeWidgets(widgetOverrides()))
+  // Calendar widget off ⇒ the bar centre stays clock text (never the window
+  // title); calendar on ⇒ clock while the flyout is open, window title otherwise.
+  const centerDisplay = createComputed(() =>
+    calendarOpen() ? clock() : (widgetsEnabled().calendar ? focusedWindowTitle() : clock()),
+  )
   const isClientIdMissing = createComputed(() => {
     const err = authDialogInfo().error
     return err.startsWith("No Google OAuth client_id configured")
@@ -433,6 +502,7 @@ export function createStore() {
     setDesktopMenuOpen(false)
     setSettingsOpen(false)
     setSystemInfoOpen(false)
+    setWidgetsPanelOpen(false)
     setListPopupOpen(false)
     setActiveList(null)
     setAuthDialogOpen(false)
@@ -449,7 +519,19 @@ export function createStore() {
     desktop: () => setDesktopMenuOpen(false),
     settings: () => setSettingsOpen(false),
     sysinfo: () => setSystemInfoOpen(false),
+    widgets: () => setWidgetsPanelOpen(false),
   } as const
+
+  // Widget → flyout it owns, so switching one off also closes its flyout.
+  const WIDGET_FLYOUTS: Partial<Record<WidgetId, keyof typeof FLYOUT_CLOSERS>> = {
+    controlCenter: "control",
+    notifications: "notif",
+    powerMenu: "power",
+    calendar: "calendar",
+    desktopMenu: "desktop",
+    settings: "settings",
+    systemInfo: "sysinfo",
+  }
 
   function closeOtherFlyouts(except: keyof typeof FLYOUT_CLOSERS) {
     for (const [key, close] of Object.entries(FLYOUT_CLOSERS)) {
@@ -457,7 +539,35 @@ export function createStore() {
     }
   }
 
+  // controlCenter is not user-toggleable: it hosts the Widgets panel and the
+  // mini-gear. GUI changes are sparse - a value equal to the widgets.config.ts
+  // default deletes the override instead of storing it.
+  function setWidgetEnabled(id: WidgetId, on: boolean) {
+    if (id === "controlCenter") return
+    setWidgetOverrides((current) => {
+      if (on === config[id]) {
+        if (!(id in current)) return current
+        const next = { ...current }
+        delete next[id]
+        return next
+      }
+      return { ...current, [id]: on }
+    })
+    if (!on) {
+      const closer = WIDGET_FLYOUTS[id]
+      if (closer) FLYOUT_CLOSERS[closer]()
+    }
+    execAsync(["bash", "-c", `$HOME/.config/ags/settings.sh set widget ${id} ${on ? "on" : "off"}`]).catch(() => null)
+  }
+
+  function toggleWidgetsPanel() {
+    const next = !widgetsPanelOpen()
+    setWidgetsPanelOpen(next)
+    if (next) closeOtherFlyouts("widgets")
+  }
+
   function toggleNotifications() {
+    if (!widgetsEnabled().notifications) return
     const next = !notifOpen()
     setNotifOpen(next)
     if (next) closeOtherFlyouts("notif")
@@ -478,6 +588,7 @@ export function createStore() {
   }
 
   function togglePowerMenu() {
+    if (!widgetsEnabled().powerMenu) return
     const next = !powerMenuOpen()
     setPowerMenuOpen(next)
     if (next) closeOtherFlyouts("power")
@@ -485,6 +596,7 @@ export function createStore() {
   }
 
   function toggleControl() {
+    if (!widgetsEnabled().controlCenter) return
     const next = !controlOpen()
     setControlOpen(next)
     if (next) closeOtherFlyouts("control")
@@ -495,6 +607,7 @@ export function createStore() {
   }
 
   function toggleCalendar() {
+    if (!widgetsEnabled().calendar) return
     const next = !calendarOpen()
     setCalendarOpen(next)
     if (next) closeOtherFlyouts("calendar")
@@ -505,12 +618,14 @@ export function createStore() {
   }
 
   function toggleDesktopMenu() {
+    if (!widgetsEnabled().desktopMenu) return
     const next = !desktopMenuOpen()
     setDesktopMenuOpen(next)
     if (next) closeOtherFlyouts("desktop")
   }
 
   function toggleSettings() {
+    if (!widgetsEnabled().settings) return
     const next = !settingsOpen()
     setSettingsOpen(next)
     if (next) closeOtherFlyouts("settings")
@@ -521,6 +636,7 @@ export function createStore() {
   }
 
   function toggleSystemInfo() {
+    if (!widgetsEnabled().systemInfo) return
     const next = !systemInfoOpen()
     setSystemInfoOpen(next)
     if (next) closeOtherFlyouts("sysinfo")
@@ -767,6 +883,8 @@ export function createStore() {
     settingsOpen,
     systemInfoOpen,
     setSystemInfoOpen,
+    widgetsPanelOpen,
+    setWidgetsPanelOpen,
     settingsStatus,
     setSettingsStatus,
     activeList,
@@ -801,6 +919,7 @@ export function createStore() {
     savedPresets,
     addSavedPreset,
     removeSavedPreset,
+    setWidgetEnabled,
 
     // Computeds
     popupOpen,
@@ -812,6 +931,8 @@ export function createStore() {
 
     // Functions
     closeFlyouts,
+    widgetsEnabled,
+    toggleWidgetsPanel,
     toggleNotifications,
     refreshNotifications,
     dismissNotification,

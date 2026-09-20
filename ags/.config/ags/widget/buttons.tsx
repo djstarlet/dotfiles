@@ -7,6 +7,7 @@ export function RoundTile(p: {
   onClicked: () => void
   class?: string | Accessor<string>
   css?: string | Accessor<string>
+  visible?: Accessor<boolean>
   children: JSX.Element
 }) {
   return (
@@ -15,6 +16,7 @@ export function RoundTile(p: {
       orientation={Gtk.Orientation.VERTICAL}
       spacing={3}
       halign={Gtk.Align.CENTER}
+      visible={p.visible}
     >
       <button
         hexpand={false}
@@ -33,12 +35,18 @@ export function RoundTile(p: {
 }
 
 // Square cap button on the bar itself.
-export function BarCap(p: { open: Accessor<boolean>; onClicked: () => void; children: JSX.Element }) {
+export function BarCap(p: {
+  open: Accessor<boolean>
+  onClicked: () => void
+  visible?: Accessor<boolean>
+  children: JSX.Element
+}) {
   return (
     <button
       valign={Gtk.Align.CENTER}
       halign={Gtk.Align.CENTER}
       class={p.open((o) => (o ? "bar-cap-button active" : "bar-cap-button"))}
+      visible={p.visible}
       onClicked={p.onClicked}
     >
       {p.children}
