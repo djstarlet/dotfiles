@@ -36,7 +36,7 @@ The installer deploys `~/.config/dotfiles/features.sh` if it does not already ex
 
 The repo ships `hyprland.lua` (Lua config API, Hyprland 0.57+). Legacy `hyprland.conf` backup is kept alongside it. Gotchas worth knowing:
 
-- the lua file at `~/.config/hypr/hyprland.lua` may be a symlink, copy, or hardlink. what matters is that the config directory `~/.config/hypr/` is correct.
+- `~/.config/hypr/hyprland.lua` must be a real file. a symlink makes Hyprland fail to open it (`cannot open ...: No such file or directory` in `hyprctl configerrors`) even when the target exists; hardlink or copy it instead. `hyprctl reload` prints `ok` regardless, so check `hyprctl configerrors`.
 - Key names are lowercase and case-sensitive: `+ c` works, `+ C` silently does nothing. Same for `+ space` vs `+ SPACE`.
 - `~` does not expand inside `hl.exec_cmd(...)`. Use absolute paths (`/home/<user>/...`) or the command silently fails.
 - Dispatch syntax changed: `hyprctl dispatch 'hl.dsp.focus({ workspace = 2 })'` (a Lua call as one quoted arg). Old form `hyprctl dispatch workspace 2` errors. Window moves too: `hl.dsp.window.move({ workspace = N })`. AGS bar workspace switching was updated to send this form.
