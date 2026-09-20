@@ -26,7 +26,9 @@ The bar auto-hides - move the cursor to the top edge to bring it back. Wallpaper
 
 The bar has two TypeScript configuration files under `ags/.config/ags/widget/`:
 
-- `widgets.config.ts` - the `config: Record<WidgetId, boolean>` map toggles `clock`, `workspaces`, `desktopMenu`, `controlCenter`, `powerMenu`, `calendar`, `settings`, `notifications`, `toasts`, and `systemInfo`. It is static per launch: edit it, then restart the bar with `start-bar.sh` (there is no hot reload). Settings is launched from the control center, so disabling `controlCenter` also disables `settings`.
+- `widgets.config.ts` - provides defaults via the `config: Record<WidgetId, boolean>` map for `clock`, `workspaces`, `desktopMenu`, `controlCenter`, `powerMenu`, `calendar`, `settings`, `displaySettings`, `notifications`, `toasts`, and `systemInfo`. These values are never written back; they serve as the baseline when `widget-toggles.json` is absent.
+- `~/.config/ags/widget-toggles.json` - sparse JSON holding only the keys a user has changed through the GUI or CLI. Per-key precedence: config defaults, then JSON override. Deleting this file (or running `settings.sh reset widgets`) returns everything to the config baseline.
+- Widgets panel - accessed from the Control Center cog tile, offers live-on-the-fly toggles for all 10 widget IDs without restarting the bar. The Control Center tile itself is greyed out and non-toggleable (it hosts the panel); `settings.sh set widget controlCenter ...` is rejected with a recovery hint. Calendar carries a dependency note on the clock — disabling the clock leaves calendar unreachable. Cascade rules still apply at render time but are not persisted or written back: disabling `controlCenter` still takes down `settings` and `displaySettings`.
 - `imageViewer` in `widgets.config.ts` - command name used to open screenshot images from notification bubbles; defaults to `swayimg`. Falls back to opening the containing folder in pcmanfm if the viewer is not installed.
 - `theme.config.ts` - the declarative theme source of truth. `theme.defaults` defines `background`, `accent`, and `text`; `theme.workspaceDotColors` defines eight hex colors; and `theme.presets` defines 11 named presets, each with a background, accent, text, and eight dot colors. The default theme is background `#f6faff`, accent `#55adff`, text `#0f2235`, with dot colors `#ef3d34`, `#f0a114`, `#24a337`, `#3b83e6`, `#9b5ad7`, `#28a9a0`, `#e96f3a`, and `#cf5398`.
 
@@ -49,3 +51,13 @@ Useful `settings.sh` commands:
 - `settings.sh get ws-dots` - read the saved workspace-dot colors
 - `settings.sh set ws-dot <1-8> <hex>` - save one workspace-dot color
 - `settings.sh reset ws-dots` - remove the saved dot overrides and return to the defaults
+
+### Widget toggles (GUI + CLI)
+
+The widgets panel lives in the Control Center as a cog tile, offering 10 live-on-the-fly toggleable widgets: clock, workspaces, desktop menu, calendar, settings, display settings, notifications, toasts, system info, power menu. The Control Center itself stays config-only.
+
+Useful `settings.sh` commands:
+
+- `settings.sh get widgets` - show current state (config defaults merged with any JSON overrides)
+- `settings.sh set widget <id> <on|off>` - persist one override in the sparse JSON; a value matching the config default is removed automatically; `controlCenter` is rejected with a recovery hint
+- `settings.sh reset widgets` - delete `widget-toggles.json`, returning all widgets to the config defaults
