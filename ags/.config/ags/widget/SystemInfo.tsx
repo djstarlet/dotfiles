@@ -381,14 +381,15 @@ export default function SystemInfoWindow(gdkmonitor: Gdk.Monitor, monitorIndex: 
         <box orientation={Gtk.Orientation.VERTICAL} spacing={6}>
         <For each={monitors}>{(m, i) => {
           const mode = `${m.width}x${m.height} @ ${Math.round(m.refreshRate)}Hz${m.inches ? ` (${m.inches}")` : ""}`
+          const monitor = m.model ? `${m.model} (${m.name})` : m.name
           return (
             <box orientation={Gtk.Orientation.VERTICAL} spacing={2}>
-              {Field(`Monitor ${i() + 1}`, m.name)}
+              {Field(`Monitor ${i() + 1}`, monitor)}
               <box orientation={Gtk.Orientation.HORIZONTAL} spacing={8}>
                 <label class="system-info-label" label="Resolution" widthChars={12} xalign={1} halign={Gtk.Align.END} />
                 <label
                   class="system-info-value"
-                  label={`${m.model ? `${m.model} — ` : ""}${mode}`}
+                  label={mode}
                   hexpand
                   xalign={0}
                   halign={Gtk.Align.START}
