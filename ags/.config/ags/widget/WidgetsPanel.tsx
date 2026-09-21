@@ -9,7 +9,7 @@ import type { WidgetId } from "./widgets.config"
 const WIDGET_ROWS: { id: WidgetId; label: string; hint?: string }[] = [
   { id: "clock", label: "Clock", hint: "bar centre" },
   { id: "workspaces", label: "Workspaces", hint: "bar left" },
-  { id: "desktopMenu", label: "Desktop menu", hint: "bar left button" },
+  { id: "desktopMenu", label: "Quick Actions", hint: "bar left button" },
   { id: "calendar", label: "Calendar", hint: "opens from the clock" },
   { id: "controlCenter", label: "Control Center", hint: "hosts this panel - set in widgets.config.ts" },
   { id: "settings", label: "Settings", hint: "Control Center mini-gear" },

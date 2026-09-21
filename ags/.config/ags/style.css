@@ -422,9 +422,8 @@ label.notif-dismiss-icon {
   min-width: 340px;
 }
 
-box.widgets-row {
-  min-height: 32px;
-}
+/* no height on the rows on purpose: each row sizes to its two labels, so a
+   hint that wraps to a second line grows the row instead of being clipped */
 
 label.widgets-row-label {
   font-weight: 700;

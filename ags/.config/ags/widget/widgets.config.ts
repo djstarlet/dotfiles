@@ -7,7 +7,7 @@ export type WidgetId =
   | "clock" | "workspaces" | "desktopMenu" | "controlCenter" | "powerMenu" | "calendar" | "settings" | "displaySettings" | "notifications" | "toasts" | "systemInfo"
 
 export const config: Record<WidgetId, boolean> = {
-  clock: false,
+  clock: true,
   workspaces: true,
   desktopMenu: true,
   controlCenter: true,
