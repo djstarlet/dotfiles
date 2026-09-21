@@ -437,40 +437,68 @@ label.widgets-row-hint {
   color: var(--bar-text-dim);
 }
 
-/* Switches wear the same aero gloss as the sliders: the track reuses the
-   scale trough (off) / scale highlight (on) recipe, the knob reuses the
-   scale slider sphere. Scoped to this panel so no other switch changes. */
+/* Switches are old-iOS toggles: a pill track with a beveled hairline, an
+   inset top shadow for the recess and a raised white knob. The accent stops
+   come from the theme, so presets still recolour the track. Scoped to this
+   panel so no other switch changes. */
 .widgets-panel-flyout switch {
   border: 1px solid var(--bar-bg-dark);
+  border-top-color: color-mix(in srgb, var(--bar-bg-dark) 80%, #7b8898);
+  border-bottom-color: color-mix(in srgb, var(--bar-bg-dark) 45%, #ffffff);
+  border-radius: 999px;
   background: linear-gradient(180deg, var(--bar-bg-dark) 0%, var(--bar-bg-light) 100%);
-  box-shadow: inset 0 3px 4px rgba(0, 0, 0, 0.32), inset 0 -1px 0 rgba(255, 255, 255, 0.6), 0 0 8px color-mix(in srgb, var(--bar-accent) 16%, transparent);
+  box-shadow: inset 0 3px 4px rgba(0, 0, 0, 0.32), inset 0 -1px 0 rgba(255, 255, 255, 0.7), 0 0 8px color-mix(in srgb, var(--bar-accent) 16%, transparent);
 }
 
+/* On track keeps the slider fill's specular streak and accent stops, but runs
+   them vertically (bright top -> deep base) and adds the recess shadow.
+   Off the slider highlight recipe the horizontal fill did not need. */
 .widgets-panel-flyout switch:checked {
-  border-color: var(--bar-accent-dark);
-  background: linear-gradient(180deg, color-mix(in srgb, #ffffff 65%, transparent) 0%, color-mix(in srgb, #ffffff 12%, transparent) 40%, transparent 60%), linear-gradient(90deg, var(--bar-accent-dark) 0%, var(--bar-accent) 44%, var(--bar-accent-light) 100%);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 55%, transparent), inset 0 -1px 0 rgba(0, 0, 0, 0.24), 0 0 10px color-mix(in srgb, var(--bar-accent) 40%, transparent);
+  border-color: color-mix(in srgb, var(--bar-accent-dark) 80%, #0c2240);
+  background: linear-gradient(180deg, color-mix(in srgb, #ffffff 65%, transparent) 0%, color-mix(in srgb, #ffffff 12%, transparent) 42%, transparent 60%), linear-gradient(180deg, var(--bar-accent-light) 0%, var(--bar-accent) 46%, var(--bar-accent-dark) 100%);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.34), inset 0 -1px 0 color-mix(in srgb, #ffffff 40%, transparent), 0 0 10px color-mix(in srgb, var(--bar-accent) 40%, transparent);
 }
 
 .widgets-panel-flyout switch:hover {
-  box-shadow: inset 0 3px 4px rgba(0, 0, 0, 0.32), inset 0 -1px 0 rgba(255, 255, 255, 0.6), 0 0 11px color-mix(in srgb, var(--bar-accent) 32%, transparent);
+  box-shadow: inset 0 3px 4px rgba(0, 0, 0, 0.32), inset 0 -1px 0 rgba(255, 255, 255, 0.7), 0 0 11px color-mix(in srgb, var(--bar-accent) 32%, transparent);
 }
 
 .widgets-panel-flyout switch:checked:hover {
-  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 60%, transparent), inset 0 -1px 0 rgba(0, 0, 0, 0.24), 0 0 12px color-mix(in srgb, var(--bar-accent) 60%, transparent);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.34), inset 0 -1px 0 color-mix(in srgb, #ffffff 46%, transparent), 0 0 12px color-mix(in srgb, var(--bar-accent) 60%, transparent);
 }
 
-/* Off knob keeps the scale slider's sphere recipe with neutral stops. */
+/* Knob is white in both states, like ios: vertical near-white -> grey gradient
+   with a specular cap, hairline border and a real drop shadow. The 1px margin
+   (theme default is -1px, which made the knob swallow the track's edge) keeps
+   a sliver of recessed track visible around it. */
 .widgets-panel-flyout switch slider {
-  border: 1px solid var(--bar-bg-dark);
-  background: radial-gradient(circle at 30% 24%, #ffffff 0%, #ffffff 38%, var(--bar-bg-light) 60%, var(--bar-bg-dark) 100%);
-  box-shadow: inset 0 2px 3px color-mix(in srgb, #ffffff 75%, transparent), inset 0 -2px 3px rgba(0, 0, 0, 0.22), 0 2px 5px rgba(0, 0, 0, 0.28);
+  min-width: 24px;
+  min-height: 24px;
+  margin: 1px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--bar-bg-dark) 62%, #8e9aab);
+  background: radial-gradient(circle at 50% 16%, color-mix(in srgb, #ffffff 95%, transparent) 0%, color-mix(in srgb, #ffffff 30%, transparent) 34%, transparent 62%), linear-gradient(180deg, #ffffff 0%, #fcfdff 38%, color-mix(in srgb, var(--bar-bg-light) 62%, #e8ecf1) 78%, color-mix(in srgb, var(--bar-bg-dark) 55%, #d3dae3) 100%);
+  box-shadow: inset 0 1px 0 #ffffff, inset 0 -2px 3px rgba(0, 0, 0, 0.16), 0 1px 2px rgba(0, 0, 0, 0.34), 0 1px 0 color-mix(in srgb, #ffffff 45%, transparent);
 }
 
-.widgets-panel-flyout switch:checked slider {
-  border-color: var(--bar-accent-dark);
-  background: radial-gradient(circle at 30% 24%, #ffffff 0%, var(--bar-accent-pale) 22%, var(--bar-accent) 55%, var(--bar-accent-dark) 100%);
-  box-shadow: inset 0 2px 3px color-mix(in srgb, #ffffff 55%, transparent), inset 0 -2px 3px rgba(0, 0, 0, 0.3), 0 2px 5px rgba(0, 0, 0, 0.3), 0 0 8px color-mix(in srgb, var(--bar-accent) 50%, transparent);
+/* Locked rows (controlCenter is set in widgets.config.ts) stay legible: the
+   track goes flat grey, the knob keeps its shape but loses the gloss. */
+.widgets-panel-flyout switch:disabled {
+  border-color: color-mix(in srgb, var(--bar-bg-dark) 78%, #b9c2cd);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bar-bg-dark) 62%, #f1f4f8) 0%, color-mix(in srgb, var(--bar-bg-light) 58%, #f7f9fb) 100%);
+  box-shadow: inset 0 3px 4px rgba(0, 0, 0, 0.16), inset 0 -1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.widgets-panel-flyout switch:disabled:checked {
+  border-color: color-mix(in srgb, var(--bar-accent-dark) 40%, #b8c1cc);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bar-accent-light) 55%, #e9edf2) 0%, color-mix(in srgb, var(--bar-accent) 45%, #dde3ea) 52%, color-mix(in srgb, var(--bar-accent-dark) 40%, #cdd5df) 100%);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2), inset 0 -1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.widgets-panel-flyout switch:disabled slider {
+  border-color: color-mix(in srgb, var(--bar-bg-dark) 78%, #aab4c0);
+  background: linear-gradient(180deg, color-mix(in srgb, #ffffff 88%, var(--bar-bg-light)) 0%, color-mix(in srgb, var(--bar-bg-light) 60%, #dfe4ea) 100%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 80%, transparent), 0 1px 2px rgba(0, 0, 0, 0.18);
 }
 
 label.system-info-section-title {
