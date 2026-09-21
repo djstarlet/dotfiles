@@ -437,13 +437,40 @@ label.widgets-row-hint {
   color: var(--bar-text-dim);
 }
 
+/* Switches wear the same aero gloss as the sliders: the track reuses the
+   scale trough (off) / scale highlight (on) recipe, the knob reuses the
+   scale slider sphere. Scoped to this panel so no other switch changes. */
+.widgets-panel-flyout switch {
+  border: 1px solid var(--bar-bg-dark);
+  background: linear-gradient(180deg, var(--bar-bg-dark) 0%, var(--bar-bg-light) 100%);
+  box-shadow: inset 0 3px 4px rgba(0, 0, 0, 0.32), inset 0 -1px 0 rgba(255, 255, 255, 0.6), 0 0 8px color-mix(in srgb, var(--bar-accent) 16%, transparent);
+}
+
 .widgets-panel-flyout switch:checked {
-  background-color: var(--bar-accent);
   border-color: var(--bar-accent-dark);
+  background: linear-gradient(180deg, color-mix(in srgb, #ffffff 65%, transparent) 0%, color-mix(in srgb, #ffffff 12%, transparent) 40%, transparent 60%), linear-gradient(90deg, var(--bar-accent-dark) 0%, var(--bar-accent) 44%, var(--bar-accent-light) 100%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 55%, transparent), inset 0 -1px 0 rgba(0, 0, 0, 0.24), 0 0 10px color-mix(in srgb, var(--bar-accent) 40%, transparent);
+}
+
+.widgets-panel-flyout switch:hover {
+  box-shadow: inset 0 3px 4px rgba(0, 0, 0, 0.32), inset 0 -1px 0 rgba(255, 255, 255, 0.6), 0 0 11px color-mix(in srgb, var(--bar-accent) 32%, transparent);
+}
+
+.widgets-panel-flyout switch:checked:hover {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 60%, transparent), inset 0 -1px 0 rgba(0, 0, 0, 0.24), 0 0 12px color-mix(in srgb, var(--bar-accent) 60%, transparent);
+}
+
+/* Off knob keeps the scale slider's sphere recipe with neutral stops. */
+.widgets-panel-flyout switch slider {
+  border: 1px solid var(--bar-bg-dark);
+  background: radial-gradient(circle at 30% 24%, #ffffff 0%, #ffffff 38%, var(--bar-bg-light) 60%, var(--bar-bg-dark) 100%);
+  box-shadow: inset 0 2px 3px color-mix(in srgb, #ffffff 75%, transparent), inset 0 -2px 3px rgba(0, 0, 0, 0.22), 0 2px 5px rgba(0, 0, 0, 0.28);
 }
 
 .widgets-panel-flyout switch:checked slider {
-  background-color: #ffffff;
+  border-color: var(--bar-accent-dark);
+  background: radial-gradient(circle at 30% 24%, #ffffff 0%, var(--bar-accent-pale) 22%, var(--bar-accent) 55%, var(--bar-accent-dark) 100%);
+  box-shadow: inset 0 2px 3px color-mix(in srgb, #ffffff 55%, transparent), inset 0 -2px 3px rgba(0, 0, 0, 0.3), 0 2px 5px rgba(0, 0, 0, 0.3), 0 0 8px color-mix(in srgb, var(--bar-accent) 50%, transparent);
 }
 
 label.system-info-section-title {
