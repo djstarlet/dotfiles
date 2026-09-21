@@ -2,7 +2,7 @@
 
 - clock (center of the bar) - shows the date/time; click to open the calendar flyout
 - workspace dots (1-8) - click to switch workspaces, middle-click to create a new desktop; eight dot colors can be customized in Settings
-- desktop menu (hamburger, top left) - quick actions for the focused app, app launcher (albert), screenshot, and desktop tools (new desktop, close current, overview, move window)
+- desktop menu (hamburger, top left) - quick actions for the focused app, app launcher (albert), screenshot, and desktop tools (new desktop, close current, overview, move window); listed as "Quick Actions" in the Widgets panel
 - control center (gear, top right) - volume and brightness sliders with glossy knobs, Wi-Fi toggle, network settings, and a power tile that opens the power menu
 - notifications (bell, left of the control center) — a daemon-fed flyout plus pop-up toasts. New toasts appear top-right, auto-hide after ~6 seconds, and show an 80×80 cover-scaled screenshot thumbnail. The bell keeps all notifications pinned until dismissed. Notifications are split IMPORTANT vs TRIVIAL:
   - Important (dotfiles update, failed systemd units, low disk, calendar auth failure, hyprland config errors) — pop on every bar start/login AND when the condition changes again later.
