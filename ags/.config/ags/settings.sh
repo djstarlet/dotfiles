@@ -10,12 +10,9 @@ command -v hyprctl >/dev/null 2>&1 || { echo '{"error": "hyprctl not found — i
 cmd="${1:-}"
 # SYNC WITH widget/theme.config.ts workspaceDotColors
 DEFAULT_WS_DOTS='{"dots":["#ef3d34","#f0a114","#24a337","#3b83e6","#9b5ad7","#28a9a0","#e96f3a","#cf5398"]}'
-# SYNC WITH widget/widgets.config.ts (defaults; only non-default values are persisted).
-# controlCenter is deliberately absent: it hosts the Widgets panel and the
-# mini-gear, so switching it off makes the panel unreachable with no UI path
-# back. It stays a build-time decision in widget/widgets.config.ts.
-TOGGLEABLE_WIDGET_IDS="clock workspaces desktopMenu powerMenu calendar settings displaySettings notifications toasts systemInfo"
-DEFAULT_WIDGETS='{"clock":true,"workspaces":true,"desktopMenu":true,"controlCenter":true,"powerMenu":true,"calendar":true,"settings":true,"displaySettings":true,"notifications":true,"toasts":true,"systemInfo":true}'
+# SYNC WITH widget/widgets.config.ts (the GUI writes the same file).
+# controlCenter is included: the GUI locks its switch, but the CLI may set it.
+WIDGET_IDS="clock workspaces desktopMenu controlCenter powerMenu calendar settings displaySettings notifications toasts systemInfo"
 
 case "$cmd" in
   list-themes)
@@ -111,24 +108,28 @@ case "$cmd" in
         ;;
 
       widgets)
-        widgetsfile="$HOME/.config/ags/widget-toggles.json"
-        python3 - "$widgetsfile" "$DEFAULT_WIDGETS" <<'PY'
+        widgetsfile="$HOME/.config/ags/widget/widgets.config.ts"
+        python3 - "$widgetsfile" <<'PY'
 import json
+import re
 import sys
 
-path, defaults_raw = sys.argv[1:]
-defaults = json.loads(defaults_raw)
+path = sys.argv[1]
+widgets = ["clock", "workspaces", "desktopMenu", "controlCenter", "powerMenu", "calendar", "settings", "displaySettings", "notifications", "toasts", "systemInfo"]
 try:
     with open(path) as handle:
-        value = json.load(handle)
-    widgets = value.get("widgets") if isinstance(value, dict) else None
-    if not isinstance(widgets, dict):
-        widgets = {}
-except (OSError, ValueError, TypeError):
-    widgets = {}
-# Sparse and hand-editable: drop unknown widgets and non-boolean values.
-clean = {key: val for key, val in widgets.items() if key in defaults and isinstance(val, bool)}
-print(json.dumps({"widgets": clean}, separators=(",", ":")))
+        text = handle.read()
+except OSError as error:
+    print('{"error": "cannot read widgets.config.ts: ' + str(error) + '"}', file=sys.stderr)
+    raise SystemExit(1)
+state = {}
+for widget in widgets:
+    match = re.search(rf"^\s*{widget}\s*:\s*(true|false)", text, re.MULTILINE)
+    if not match:
+        print('{"error": "no boolean line for widget: ' + widget + '"}', file=sys.stderr)
+        raise SystemExit(1)
+    state[widget] = match.group(1) == "true"
+print(json.dumps({"widgets": state}, separators=(",", ":")))
 PY
         ;;
 
@@ -270,16 +271,7 @@ PY
       widget)
         id="${3:-}"
         value="${4:-}"
-        case "$id" in
-          controlCenter)
-            # Hand-typed controlCenter off persists; mergeWidgets neutralises the
-            # cascade but the CC window still mounts (static config gate), so its
-            # polls keep running and the panel becomes unreachable.
-            # Recover with `settings.sh set widget controlCenter on` or `reset widgets`.
-            echo '{"error": "controlCenter is not toggleable; recover with `set widget controlCenter on` or `reset widgets`"}' >&2
-            exit 1 ;;
-        esac
-        case " $TOGGLEABLE_WIDGET_IDS " in
+        case " $WIDGET_IDS " in
           *" $id "*) ;;
           *) echo '{"error": "unknown widget: '"$id"'"}' >&2; exit 1 ;;
         esac
@@ -287,30 +279,26 @@ PY
           on|off) ;;
           *) echo '{"error": "invalid widget value: '"$value"' (expected on|off)"}' >&2; exit 1 ;;
         esac
-        widgetsfile="$HOME/.config/ags/widget-toggles.json"
+        widgetsfile="$HOME/.config/ags/widget/widgets.config.ts"
         tmp="${widgetsfile}.tmp.$$"
-        python3 - "$widgetsfile" "$DEFAULT_WIDGETS" "$id" "$value" <<'PY' > "$tmp"
-import json
+        python3 - "$widgetsfile" "$id" "$value" <<'PY' > "$tmp"
+import re
 import sys
 
-path, defaults_raw, widget, value = sys.argv[1:]
-defaults = json.loads(defaults_raw)
+path, widget, value = sys.argv[1:]
+replacement = "true" if value == "on" else "false"
 try:
     with open(path) as handle:
-        data = json.load(handle)
-    widgets = data.get("widgets") if isinstance(data, dict) else None
-    if not isinstance(widgets, dict):
-        widgets = {}
-except (OSError, ValueError, TypeError):
-    widgets = {}
-on = value == "on"
-# Sparse: a value equal to the widgets.config.ts default is not persisted.
-if on == defaults[widget]:
-    widgets.pop(widget, None)
-else:
-    widgets[widget] = on
-clean = {key: val for key, val in widgets.items() if key in defaults and isinstance(val, bool) and val != defaults[key]}
-print(json.dumps({"widgets": clean}, separators=(",", ":")))
+        text = handle.read()
+except OSError as error:
+    print('{"error": "cannot read widgets.config.ts: ' + str(error) + '"}', file=sys.stderr)
+    raise SystemExit(1)
+# Replace only the boolean on the widget's own line, preserving every other byte.
+updated, count = re.subn(rf"^(\s*{widget}\s*:\s*)(true|false)", rf"\g<1>{replacement}", text, count=1, flags=re.MULTILINE)
+if count != 1:
+    print('{"error": "no boolean line for widget: ' + widget + '"}', file=sys.stderr)
+    raise SystemExit(1)
+sys.stdout.write(updated)
 PY
         chmod 600 "$tmp"
         mv -f "$tmp" "$widgetsfile"
@@ -362,10 +350,6 @@ PY
     case "${2:-}" in
       ws-dots)
         rm -f "$HOME/.config/ags/ws-dot-colors.json"
-        echo "ok"
-        ;;
-      widgets)
-        rm -f "$HOME/.config/ags/widget-toggles.json"
         echo "ok"
         ;;
       *)

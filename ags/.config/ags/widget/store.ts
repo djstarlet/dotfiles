@@ -134,47 +134,12 @@ function parseWsDotColors(raw: string | undefined) {
   return colors.length === 8 && colors.every(isHexColor) ? colors : null
 }
 
-const WIDGET_IDS = Object.keys(config) as WidgetId[]
-
-// widget-toggles.json is sparse: keys present there override widgets.config.ts.
-// Unknown keys and non-boolean values are dropped (the file is user-editable).
-function parseWidgetOverrides(raw: unknown): Partial<Record<WidgetId, boolean>> {
-  const overrides: Partial<Record<WidgetId, boolean>> = {}
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return overrides
-  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
-    if (WIDGET_IDS.includes(key as WidgetId) && typeof value === "boolean") {
-      overrides[key as WidgetId] = value
-    }
-  }
-  return overrides
-}
-
-// Merge the persisted widget-toggles.json synchronously at store build, so the
-// first frame already reflects saved overrides (the exec below then only
-// reconciles edits made while the bar is running - a ~50ms defaults flash
-// otherwise). Shape matches `settings.sh get widgets`: { widgets: {...} }.
-function readWidgetOverridesSync(): Partial<Record<WidgetId, boolean>> {
-  const path = GLib.build_filenamev([GLib.get_home_dir(), ".config", "ags", "widget-toggles.json"])
-  try {
-    const [ok, contents] = GLib.file_get_contents(path)
-    if (!ok) return {}
-    const parsed = JSON.parse(new TextDecoder().decode(contents))
-    return parseWidgetOverrides(parsed?.widgets)
-  } catch {
-    return {}
-  }
-}
-
-// Single merge point for widget state: widgets.config.ts are the defaults,
-// widget-toggles.json the overrides. controlCenter off forces the widgets it
-// hosts off - derived here only, never written back to either file.
-function mergeWidgets(overrides: Partial<Record<WidgetId, boolean>>): Record<WidgetId, boolean> {
-  const enabled = { ...config, ...overrides }
-  if (!enabled.controlCenter) {
-    enabled.settings = false
-    enabled.displaySettings = false
-  }
-  return enabled
+// Single derivation point for widget state: widgets.config.ts is the state
+// itself, and controlCenter off forces the widgets it hosts off - derived here
+// only, never written back to the file.
+function applyWidgetCascade(enabled: Record<WidgetId, boolean>): Record<WidgetId, boolean> {
+  if (enabled.controlCenter) return enabled
+  return { ...enabled, settings: false, displaySettings: false }
 }
 
 function parseSavedPresets(raw: unknown): SavedPreset[] | null {
@@ -328,7 +293,7 @@ export function createStore() {
   const [workspaceFx, setWorkspaceFx] = createState<Record<number, "born" | "dying" | "collapsing" | "settled">>({})
   const [wsDotColors, setWsDotColors] = createState<string[]>(envWsDotColors ?? [...DEFAULT_WS_DOT_COLORS])
   const [savedPresets, setSavedPresets] = createState<SavedPreset[]>([])
-  const [widgetOverrides, setWidgetOverrides] = createState<Partial<Record<WidgetId, boolean>>>(readWidgetOverridesSync())
+  const [widgetEnabled, setWidgetEnabledState] = createState<Record<WidgetId, boolean>>({ ...config })
 
   if (!envWsDotColors) {
     execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh get ws-dots"])
@@ -355,23 +320,6 @@ export function createStore() {
       }
     })
     .catch(() => null)
-
-  // Widget overrides load like saved presets. Two-arg then: a throw from
-  // setWidgetOverrides must not read as a fetch failure. The state already
-  // starts from the same file via readWidgetOverridesSync(), so this only
-  // reconciles edits made while the bar is running.
-  execAsync(["bash", "-c", "$HOME/.config/ags/settings.sh get widgets"])
-    .then(
-      (out) => {
-        try {
-          const parsed = JSON.parse(out)
-          setWidgetOverrides(parseWidgetOverrides(parsed?.widgets))
-        } catch {
-          // Keep the widgets.config.ts defaults when the override file is unavailable.
-        }
-      },
-      () => null,
-    )
 
   function setWsDotColor(index: number, hex: string) {
     if (index < 0 || index >= 8 || !isHexColor(hex)) return
@@ -434,7 +382,7 @@ export function createStore() {
     if (ids.includes(active)) return ids
     return [...ids, active].sort((a, b) => a - b)
   })
-  const widgetsEnabled = createComputed(() => mergeWidgets(widgetOverrides()))
+  const widgetsEnabled = createComputed(() => applyWidgetCascade(widgetEnabled()))
   // Calendar widget off ⇒ the bar centre stays clock text (never the window
   // title); calendar on ⇒ clock while the flyout is open, window title otherwise.
   const centerDisplay = createComputed(() =>
@@ -539,20 +487,19 @@ export function createStore() {
     }
   }
 
-  // controlCenter is not user-toggleable: it hosts the Widgets panel and the
-  // mini-gear. GUI changes are sparse - a value equal to the widgets.config.ts
-  // default deletes the override instead of storing it.
+  // controlCenter is not toggleable from the GUI: it hosts the Widgets panel
+  // and the mini-gear, so switching it off makes the panel unreachable. The
+  // CLI can still set it; the cascade above keeps settings/displaySettings off.
   function setWidgetEnabled(id: WidgetId, on: boolean) {
     if (id === "controlCenter") return
-    setWidgetOverrides((current) => {
-      if (on === config[id]) {
-        if (!(id in current)) return current
-        const next = { ...current }
-        delete next[id]
-        return next
-      }
-      return { ...current, [id]: on }
-    })
+    if (widgetEnabled()[id] === on) {
+      // The rendered value can differ from the stored one (controlCenter off
+      // forces its hosted widgets off). Bump the state so the panel's sync
+      // effect snaps the switch back to what is actually rendered.
+      setWidgetEnabledState((current) => ({ ...current }))
+      return
+    }
+    setWidgetEnabledState((current) => ({ ...current, [id]: on }))
     if (!on) {
       const closer = WIDGET_FLYOUTS[id]
       if (closer) FLYOUT_CLOSERS[closer]()
