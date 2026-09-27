@@ -640,6 +640,23 @@ ensure_kitty() {
 	fi
 }
 
+# ble.sh paste guard - pasted text is never executed. Deployed once, never
+# overwritten. Sourced from the ble.sh block in ~/.bashrc (see ensure_blesh).
+ensure_blesh_paste() {
+	local paste="$HOME/.config/dotfiles/blesh-paste.sh"
+	if [[ -e $paste || -L $paste ]]; then
+		info "Keeping existing ble.sh paste guard: ${paste}"
+		return 0
+	fi
+	if (( DRY_RUN )); then
+		info "[dry-run] deploy ble.sh paste guard to ${paste}"
+		return 0
+	fi
+	mkdir -p "$(dirname "$paste")"
+	cp -p "$SRC_PATH/bash/blesh-paste.sh" "$paste"
+	SUMMARY_ACTIONS+=("deployed ble.sh paste guard to ~/.config/dotfiles/blesh-paste.sh")
+}
+
 # ble.sh - AUR blesh / Debian ble.sh; inert elsewhere. Gated on dotfiles_blesh (default 1).
 
 # The block appended by installer versions before the feature flags existed.
@@ -659,25 +676,35 @@ fi'
 
 # The pieces appended now, tracked separately so each lands exactly once.
 BLESH_FLAGS_LINE='[ -f "$HOME/.config/dotfiles/features.sh" ] && . "$HOME/.config/dotfiles/features.sh"'
-BLESH_NEW_BLOCK='# ble.sh - live completion suggestions (like CachyOS); toggle via dotfiles_blesh
+# The block written by installers before the paste-guard source line existed,
+# so an existing install is upgraded in place exactly once.
+BLESH_PREV_THEME_BLOCK='# ble.sh - live completion suggestions (like CachyOS); toggle via dotfiles_blesh
 if [ "${dotfiles_blesh:-1}" = 1 ] && [ -f /usr/share/blesh/ble.sh ]; then
   source /usr/share/blesh/ble.sh
   bleopt complete_auto_history=
   [ -f "$HOME/.config/dotfiles/blesh-theme.sh" ] && . "$HOME/.config/dotfiles/blesh-theme.sh"
 fi'
+BLESH_NEW_BLOCK='# ble.sh - live completion suggestions (like CachyOS); toggle via dotfiles_blesh
+if [ "${dotfiles_blesh:-1}" = 1 ] && [ -f /usr/share/blesh/ble.sh ]; then
+  source /usr/share/blesh/ble.sh
+  bleopt complete_auto_history=
+  [ -f "$HOME/.config/dotfiles/blesh-theme.sh" ] && . "$HOME/.config/dotfiles/blesh-theme.sh"
+  [ -f "$HOME/.config/dotfiles/blesh-paste.sh" ] && . "$HOME/.config/dotfiles/blesh-paste.sh"
+fi'
 
 ensure_blesh() {
-	local bashrc="$HOME/.bashrc" content="" have_old=0 have_prev=0 have_flags=0 have_new=0
+	local bashrc="$HOME/.bashrc" content="" have_old=0 have_prev=0 have_prev_theme=0 have_flags=0 have_new=0
 	if [[ -f $bashrc ]]; then
 		content="$(<"$bashrc")"
 	fi
 	if [[ $content == *"$BLESH_OLD_BLOCK"* ]]; then have_old=1; fi
 	if [[ $content == *"$BLESH_PREV_BLOCK"* ]]; then have_prev=1; fi
+	if [[ $content == *"$BLESH_PREV_THEME_BLOCK"* ]]; then have_prev_theme=1; fi
 	if [[ $content == *"dotfiles/features.sh"* ]]; then have_flags=1; fi
 	# Match the complete current block, so a pre-theme install is still migrated.
 	if [[ $content == *"$BLESH_NEW_BLOCK"* ]]; then have_new=1; fi
 
-	if (( !have_old && have_flags && have_new )); then
+	if (( !have_old && !have_prev_theme && have_flags && have_new )); then
 		info "ble.sh already enabled (toggle: dotfiles_blesh in ~/.config/dotfiles/features.sh)."
 		return 0
 	fi
@@ -687,6 +714,8 @@ ensure_blesh() {
 			info "[dry-run] replace the old ble.sh block in ${bashrc} with the feature-flag aware block"
 		elif (( have_prev )); then
 			info "[dry-run] upgrade the ble.sh block in ${bashrc} to source the generated theme"
+		elif (( have_prev_theme )); then
+			info "[dry-run] upgrade the ble.sh block in ${bashrc} to source the paste guard"
 		else
 			info "[dry-run] add the dotfiles feature-flags + ble.sh block to ${bashrc}"
 		fi
@@ -703,15 +732,18 @@ ensure_blesh() {
 	if (( have_prev )); then
 		content="${content/"$BLESH_PREV_BLOCK"/"$BLESH_NEW_BLOCK"}"
 	fi
+	if (( have_prev_theme )); then
+		content="${content/"$BLESH_PREV_THEME_BLOCK"/"$BLESH_NEW_BLOCK"}"
+	fi
 	if (( !have_flags )); then
 		content+=$'\n# dotfiles feature flags - edit ~/.config/dotfiles/features.sh to toggle\n'"$BLESH_FLAGS_LINE"
 	fi
-	if (( !have_new && !have_prev )); then
+	if (( !have_new && !have_prev && !have_prev_theme )); then
 		content+=$'\n\n'"$BLESH_NEW_BLOCK"
 	fi
 	printf '%s\n' "$content" > "$bashrc"
 
-	if (( have_old || have_prev )); then
+	if (( have_old || have_prev || have_prev_theme )); then
 		info "Updated the ble.sh block in ${bashrc} (toggle: dotfiles_blesh)."
 		SUMMARY_ACTIONS+=("updated the ble.sh block in ~/.bashrc (toggle via ~/.config/dotfiles/features.sh)")
 	else
@@ -957,6 +989,7 @@ main() {
 	ensure_bash_completion
 	ensure_features_file
 	ensure_blesh_theme_gen
+	ensure_blesh_paste
 	ensure_kitty
 	ensure_blesh
 	generate_blesh_theme

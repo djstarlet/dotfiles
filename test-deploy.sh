@@ -176,4 +176,41 @@ HOME="$HOME4" ensure_kitty >/dev/null
 [[ $(cat "$HOME4/.config/kitty/kitty.conf") == "$before" ]] || fail "existing kitty.conf overwritten"
 ok "kitty config deployed once, existing files kept"
 
+# ---- 9. blesh-paste.sh: file deploy, keep-existing, bashrc migration
+cp ./bash/blesh-paste.sh "$SRC_PATH/bash/blesh-paste.sh"
+HOME5="$work/home5"
+mkdir -p "$HOME5"
+HOME="$HOME5" ensure_blesh_paste >/dev/null
+grep -q 'bracketed-paste' "$HOME5/.config/dotfiles/blesh-paste.sh" || fail "paste guard not deployed"
+echo "user edit" >> "$HOME5/.config/dotfiles/blesh-paste.sh"
+before="$(cat "$HOME5/.config/dotfiles/blesh-paste.sh")"
+HOME="$HOME5" ensure_blesh_paste >/dev/null
+[[ $(cat "$HOME5/.config/dotfiles/blesh-paste.sh") == "$before" ]] || fail "existing paste guard overwritten"
+ok "paste guard deployed once, existing file kept"
+
+# a pre-paste flag-aware block (current public installer output) upgrades once
+printf '%s\n' \
+	'# ble.sh - live completion suggestions (like CachyOS); toggle via dotfiles_blesh' \
+	'if [ "${dotfiles_blesh:-1}" = 1 ] && [ -f /usr/share/blesh/ble.sh ]; then' \
+	'  source /usr/share/blesh/ble.sh' \
+	'  bleopt complete_auto_history=' \
+	'  [ -f "$HOME/.config/dotfiles/blesh-theme.sh" ] && . "$HOME/.config/dotfiles/blesh-theme.sh"' \
+	'fi' > "$HOME5/.bashrc"
+HOME="$HOME5" ensure_blesh >/dev/null
+grep -q 'dotfiles/blesh-paste.sh' "$HOME5/.bashrc" || fail "pre-paste block not upgraded"
+[[ $(grep -c 'source /usr/share/blesh/ble.sh' "$HOME5/.bashrc") == 1 ]] || fail "upgrade duplicated the ble block"
+ok "pre-paste flag-aware block upgraded exactly once"
+
+before="$(cat "$HOME5/.bashrc")"
+HOME="$HOME5" ensure_blesh >/dev/null
+[[ $(cat "$HOME5/.bashrc") == "$before" ]] || fail "upgraded bashrc changed on re-run"
+ok "paste-upgraded bashrc re-run is a no-op"
+
+# fresh install gets the paste line in the appended block
+HOME6="$work/home6"
+mkdir -p "$HOME6"
+HOME="$HOME6" ensure_blesh >/dev/null
+grep -q 'dotfiles/blesh-paste.sh' "$HOME6/.bashrc" || fail "fresh ble block missing paste line"
+ok "fresh ble block includes the paste line"
+
 echo "all checks passed"
