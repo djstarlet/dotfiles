@@ -617,6 +617,29 @@ ensure_blesh_theme_gen() {
 	SUMMARY_ACTIONS+=("deployed the ble.sh theme generator to ~/.config/dotfiles/gen-blesh-theme.sh")
 }
 
+# kitty terminal config - deployed once per file, never overwritten.
+# kitty.conf enables the paste filter, so paste-actions.py lands alongside it.
+ensure_kitty() {
+	local kitty_dir="$HOME/.config/kitty" src="$SRC_PATH/kitty" f
+	local deployed=()
+	if (( DRY_RUN )); then
+		info "[dry-run] deploy kitty config to ${kitty_dir}"
+		return 0
+	fi
+	mkdir -p "$kitty_dir"
+	for f in kitty.conf paste-actions.py; do
+		if [[ -e $kitty_dir/$f || -L $kitty_dir/$f ]]; then
+			info "Keeping existing kitty file: ${kitty_dir}/$f"
+		else
+			cp -p "$src/$f" "$kitty_dir/$f"
+			deployed+=("$f")
+		fi
+	done
+	if (( ${#deployed[@]} )); then
+		SUMMARY_ACTIONS+=("deployed kitty ${deployed[*]} to ~/.config/kitty/ (reload running kitties with ctrl+shift+f5)")
+	fi
+}
+
 # ble.sh - AUR blesh / Debian ble.sh; inert elsewhere. Gated on dotfiles_blesh (default 1).
 
 # The block appended by installer versions before the feature flags existed.
@@ -934,6 +957,7 @@ main() {
 	ensure_bash_completion
 	ensure_features_file
 	ensure_blesh_theme_gen
+	ensure_kitty
 	ensure_blesh
 	generate_blesh_theme
 	verify_bar_bundle

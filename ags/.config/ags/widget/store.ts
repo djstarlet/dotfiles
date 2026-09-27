@@ -745,7 +745,7 @@ export function createStore() {
 
     const command = {
       lock: "loginctl lock-session",
-      logout: "hyprctl dispatch exit",
+      logout: "hyprctl dispatch 'hl.dsp.exit()'",
       reboot: "loginctl reboot",
       shutdown: "loginctl poweroff",
     }[action]

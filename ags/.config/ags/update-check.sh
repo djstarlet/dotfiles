@@ -22,8 +22,9 @@ flock -n 9 || exit 0
 remote_version="$(curl -fsSL --max-time 15 "$RELEASE_URL" 2>/dev/null || true)"
 [ -n "$remote_version" ] || exit 0
 
+# Only report a NEWER remote version, not merely a different one.
 update_available=false
-[ "$local_version" != "$remote_version" ] && update_available=true
+[ "$(printf '%s\n%s\n' "$local_version" "$remote_version" | sort -V | tail -n1)" != "$local_version" ] && update_available=true
 
 cat > "$OUT" <<EOF
 {"checked_at": "$(date -Is)", "update_available": $update_available, "local_version": "$local_version", "remote_version": "$remote_version"}

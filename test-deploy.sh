@@ -162,4 +162,18 @@ echo 'dotfiles_blesh=1' > "$probe/.config/dotfiles/features.sh"
 [[ $(run_probe) == 1 ]] || fail "dotfiles_blesh=1 did not source ble.sh"
 ok "dotfiles_blesh gates ble.sh on/off"
 
+# ---- 8. kitty config: fresh deploy, keep-existing, re-run no-op
+mkdir -p "$SRC_PATH/kitty"
+cp ./kitty/kitty.conf ./kitty/paste-actions.py "$SRC_PATH/kitty/"
+HOME4="$work/home4"
+mkdir -p "$HOME4"
+HOME="$HOME4" ensure_kitty >/dev/null
+grep -q 'paste_actions' "$HOME4/.config/kitty/kitty.conf" || fail "kitty.conf not deployed"
+[[ -f "$HOME4/.config/kitty/paste-actions.py" ]] || fail "paste-actions.py not deployed"
+echo "user edit" >> "$HOME4/.config/kitty/kitty.conf"
+before="$(cat "$HOME4/.config/kitty/kitty.conf")"
+HOME="$HOME4" ensure_kitty >/dev/null
+[[ $(cat "$HOME4/.config/kitty/kitty.conf") == "$before" ]] || fail "existing kitty.conf overwritten"
+ok "kitty config deployed once, existing files kept"
+
 echo "all checks passed"
